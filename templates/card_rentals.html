@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set page_title = t.card_rentals %}
 {% block body %}
-<h1 class="page-title">{{ t.card_rentals }}</h1>
+<h1 class="page-title"><span class="nav-emoji" aria-hidden="true">💳</span> {{ t.card_rentals }}</h1>
 
 {% if edit_row %}
 <form class="form" method="post" action="{{ url_for('card_rentals_update', cid=edit_row.id) }}">
