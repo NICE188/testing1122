@@ -38,9 +38,12 @@
     </nav>
 
     <div class="lang">
-      {{ t.language }}：
-      <a href="?lang=zh">中文</a> | <a href="?lang=en">EN</a>
-    </div>
+  <span class="lang-emoji" aria-hidden="true" title="Language">🌐</span>
+  <span class="lang-label">{{ t.language }}：</span>
+  <a href="?lang=zh" class="{{ 'active' if lang=='zh' else '' }}">中文</a>
+  <span class="sep">|</span>
+  <a href="?lang=en" class="{{ 'active' if lang=='en' else '' }}">EN</a>
+</div>
   </aside>
 
   <main class="content">
