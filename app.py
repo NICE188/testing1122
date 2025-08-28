@@ -1,9 +1,127 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, send_file
+from flask import Flask, request, jsonify, render_template, redirect, url_for, send_file, session, g
 import sqlite3, csv, io, os
 from datetime import datetime
 
 APP_DB = "data.db"
 app = Flask(__name__)
+
+# ---------- i18n: 多语言（中文/英文） ----------
+app.secret_key = os.environ.get("SECRET_KEY", "dev-key")
+LANGS = ("en", "zh")
+T = {
+    "en": {
+        "AppTitle": "Ops Dashboard",
+        "Overview": "Overview",
+        "Workers/Platforms": "Workers / Platforms",
+        "Bank Accounts": "Bank Accounts",
+        "Card Rentals": "Card Rentals",
+        "Salary Records": "Salary Records",
+        "Export": "Export",
+        "Export Workers": "Export Workers",
+        "Export Bank Accounts": "Export Bank Accounts",
+        "Export Card Rentals": "Export Card Rentals",
+        "Export Salaries": "Export Salaries",
+        "Total Workers": "Total Workers",
+        "Total Card Rentals": "Total Card Rentals",
+        "Total Salaries": "Total Salaries",
+        "Dashboard Tip": "Welcome! Use the left sidebar to navigate, and export CSV on the top-right.",
+        "Add New": "Add New",
+        "Name": "Name",
+        "Company": "Company",
+        "Commission": "Commission",
+        "Expenses": "Expenses",
+        "Created At": "Created At",
+        "Worker": "Worker",
+        "Bank Name": "Bank Name",
+        "Account Number": "Account Number",
+        "Amount": "Amount",
+        "Date": "Date",
+        "Note": "Note",
+        "Pay Date": "Pay Date",
+        "Actions": "Actions",
+        "No Data": "No data yet",
+        "Language": "Language",
+        "English": "English",
+        "Chinese": "Chinese",
+        "Add": "Add",
+        "Rental Amount": "Rental Amount",
+        "Salary Amount": "Salary Amount",
+        "Filters": "Filters",
+        "Save": "Save",
+        "Cancel": "Cancel",
+        "Required": "required",
+        "ID": "ID"
+    },
+    "zh": {
+        "AppTitle": "运营看板",
+        "Overview": "概览",
+        "Workers/Platforms": "工人 / 平台",
+        "Bank Accounts": "银行账户",
+        "Card Rentals": "银行卡租金",
+        "Salary Records": "出粮记录",
+        "Export": "导出",
+        "Export Workers": "导出工人",
+        "Export Bank Accounts": "导出银行账户",
+        "Export Card Rentals": "导出租金",
+        "Export Salaries": "导出出粮",
+        "Total Workers": "总工人/平台数",
+        "Total Card Rentals": "银行卡租金累计",
+        "Total Salaries": "出粮累计",
+        "Dashboard Tip": "欢迎使用：左侧切换模块进行录入与查询，右上角可一键导出 CSV。",
+        "Add New": "新增",
+        "Name": "名字",
+        "Company": "公司",
+        "Commission": "佣金",
+        "Expenses": "开销",
+        "Created At": "创建时间",
+        "Worker": "工人",
+        "Bank Name": "银行名称",
+        "Account Number": "账户号码",
+        "Amount": "金额",
+        "Date": "日期",
+        "Note": "备注",
+        "Pay Date": "出粮日期",
+        "Actions": "操作",
+        "No Data": "暂无数据",
+        "Language": "语言",
+        "English": "英文",
+        "Chinese": "华语",
+        "Add": "新增",
+        "Rental Amount": "租金金额",
+        "Salary Amount": "出粮金额",
+        "Filters": "筛选",
+        "Save": "保存",
+        "Cancel": "取消",
+        "Required": "必填",
+        "ID": "ID"
+    }
+}
+
+def get_lang():
+    lang = session.get("lang")
+    if lang in LANGS:
+        return lang
+    best = request.accept_languages.best_match(LANGS)
+    return best or "zh"
+
+@app.before_request
+def _set_lang():
+    g.lang = get_lang()
+
+@app.context_processor
+def inject_i18n():
+    def _(key):
+        lang = getattr(g, "lang", "zh")
+        return T.get(lang, {}).get(key, key)
+    return {"_": _, "current_lang": get_lang(), "LANGS": LANGS}
+
+@app.route("/lang/<code>")
+def set_lang(code):
+    if code not in LANGS:
+        code = "zh"
+    session["lang"] = code
+    ref = request.headers.get("Referer") or url_for("home")
+    return redirect(ref)
 
 # ---------- DB helpers ----------
 def get_db():
@@ -37,7 +155,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         worker_id INTEGER NOT NULL,
         rental_amount REAL NOT NULL,
-        date TEXT NOT NULL, -- ISO日期
+        date TEXT NOT NULL,
         note TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
@@ -47,7 +165,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         worker_id INTEGER NOT NULL,
         salary_amount REAL NOT NULL,
-        pay_date TEXT NOT NULL, -- 发薪日期
+        pay_date TEXT NOT NULL,
         note TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
@@ -117,7 +235,7 @@ def bank_accounts_list():
 @app.route("/bank-accounts/add", methods=["POST"])
 def bank_accounts_add():
     data = request.form or request.json
-    worker_id = int(data.get("worker_id"))
+    worker_id = int(data.get("worker_id")) if data.get("worker_id") else 0
     account_number = (data.get("account_number") or "").strip()
     bank_name = (data.get("bank_name") or "").strip()
     if not (worker_id and account_number and bank_name):
@@ -150,13 +268,12 @@ def card_rentals_list():
 @app.route("/card-rentals/add", methods=["POST"])
 def card_rentals_add():
     data = request.form or request.json
-    worker_id = int(data.get("worker_id"))
-    rental_amount = float(data.get("rental_amount"))
+    worker_id = int(data.get("worker_id")) if data.get("worker_id") else 0
+    rental_amount = float(data.get("rental_amount") or 0)
     date = (data.get("date") or "").strip()
     note = data.get("note") or ""
     if not (worker_id and rental_amount and date):
         return "worker_id, rental_amount, date required", 400
-    # 简单校验日期
     try:
         datetime.fromisoformat(date)
     except ValueError:
@@ -189,8 +306,8 @@ def salaries_list():
 @app.route("/salaries/add", methods=["POST"])
 def salaries_add():
     data = request.form or request.json
-    worker_id = int(data.get("worker_id"))
-    salary_amount = float(data.get("salary_amount"))
+    worker_id = int(data.get("worker_id")) if data.get("worker_id") else 0
+    salary_amount = float(data.get("salary_amount") or 0)
     pay_date = (data.get("pay_date") or "").strip()
     note = data.get("note") or ""
     if not (worker_id and salary_amount and pay_date):
@@ -210,7 +327,7 @@ def salaries_add():
         return jsonify({"ok": True})
     return redirect(url_for("salaries_list"))
 
-# ---------- 导出为 CSV ----------
+# ---------- 导出 CSV ----------
 def export_csv(query, headers, filename):
     con = get_db()
     rows = con.execute(query).fetchall()
@@ -260,7 +377,7 @@ def export_salaries():
         "salaries.csv"
     )
 
-# ---------- 简单 REST API 示例（可选） ----------
+# ---------- 简单 REST API ----------
 @app.route("/api/workers", methods=["GET"])
 def api_workers():
     con = get_db()
