@@ -1,155 +1,85 @@
 <!doctype html>
 <html lang="zh">
 <head>
-  <meta charset="utf-8">
-  <title>Worker & Platform Manager</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link href="https://unpkg.com/missing.css" rel="stylesheet">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ title or "后台系统" }}</title>
   <style>
-    :root {
-      --sidebar-w: 240px;
-      --bg: #0f172a;
-      --bg-2: #111827;
-      --fg: #e5e7eb;
-      --fg-dim: #9ca3af;
-      --brand: #f59e0b;
+    :root{
+      --bg:#0b0f14; --panel:#121821; --accent:#ffd54a; --muted:#9ca3af; --text:#e5e7eb;
+      --radius:14px;
     }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: #0b1020; color: var(--fg); }
-
-    /* Layout */
-    .layout { display: flex; min-height: 100vh; }
-    aside.sidebar {
-      width: var(--sidebar-w);
-      background: linear-gradient(180deg, var(--bg), var(--bg-2));
-      border-right: 1px solid rgba(255,255,255,.06);
-      padding: 16px 12px;
-      position: sticky; top: 0; height: 100vh;
+    *{box-sizing:border-box}
+    body{margin:0; font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#0b0f14,#0a0d12);}
+    a{color:inherit; text-decoration:none}
+    .layout{display:grid; grid-template-columns:260px 1fr; min-height:100vh}
+    /* sidebar */
+    .side{
+      background:linear-gradient(180deg,#111827 0%, #0f172a 100%);
+      color:var(--text); padding:20px; border-right:1px solid #1f2937;
+      position:sticky; top:0; height:100vh;
     }
-    .brand {
-      display: flex; align-items: center; gap: 10px;
-      font-weight: 700; letter-spacing:.2px; margin: 4px 6px 16px;
+    .brand{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.5px;}
+    .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent);}
+    .menu{margin-top:22px; display:flex; flex-direction:column; gap:8px}
+    .menu a{
+      padding:10px 12px; border-radius:10px; color:#d1d5db; border:1px solid transparent;
+      display:flex; justify-content:space-between; align-items:center;
     }
-    .brand .dot { width: 9px; height: 9px; border-radius: 999px; background: var(--brand); box-shadow: 0 0 12px var(--brand); }
-    nav.menu { display: grid; gap: 6px; margin-top: 6px; }
-    nav.menu a {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 12px; border-radius: 10px; color: var(--fg);
-      text-decoration: none; font-weight: 600;
+    .menu a.active, .menu a:hover{ background:#0b1220; border-color:#1f2937; color:#fff }
+    .exp{margin-top:auto; font-size:12px; color:#94a3b8; opacity:.8}
+    /* content */
+    .content{padding:24px; color:var(--text)}
+    .panel{
+      background:linear-gradient(180deg,#0e1522,#0c141f); border:1px solid #1f2937;
+      border-radius:var(--radius); padding:18px; box-shadow:0 8px 24px rgba(0,0,0,.25);
     }
-    nav.menu a:hover { background: rgba(255,255,255,.06); }
-    nav.menu a.active { background: rgba(245, 158, 11, .18); color: #fff; outline: 1px solid rgba(245, 158, 11, .35); }
-    nav.menu small { color: var(--fg-dim); font-weight: 600; margin: 10px 8px 4px; text-transform: uppercase; letter-spacing:.5px; }
-
-    main.content {
-      flex: 1;
-      padding: 22px 22px 40px 22px;
-      max-width: 1200px;
-      width: 100%;
-      margin: 0 auto;
+    h1,h2,h3{margin:0 0 14px}
+    .grid-form{
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+      gap:12px; align-items:end; margin:10px 0 18px;
     }
-
-    /* 顶部栏（移动端显示） */
-    .topbar {
-      display: none;
-      position: sticky; top: 0; left: 0; right: 0;
-      background: rgba(15,23,42,.65);
-      backdrop-filter: blur(10px);
-      padding: 10px 12px; z-index: 20;
-      border-bottom: 1px solid rgba(255,255,255,.06);
+    label{font-size:12px; color:#94a3b8}
+    input, select, textarea{
+      width:100%; padding:10px 12px; border-radius:10px; background:#0a1220; color:#e5e7eb;
+      border:1px solid #1f2937; outline:none;
     }
-    .topbar .row { display: flex; align-items: center; justify-content: space-between; }
-    .btn {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: rgba(255,255,255,.06); color: var(--fg);
-      border: 1px solid rgba(255,255,255,.08); border-radius: 10px;
-      padding: 8px 12px; text-decoration: none; cursor: pointer;
+    input:focus, select:focus, textarea:focus{border-color:#334155}
+    .btn{
+      padding:10px 12px; border-radius:10px; border:1px solid #a38525; background:linear-gradient(180deg,#ffd54a,#f5b800);
+      color:#111827; font-weight:700; cursor:pointer; box-shadow:inset 0 1px 0 #fff3;
     }
-    .btn:hover { background: rgba(255,255,255,.12); }
-
-    /* Responsive：小屏侧边栏可折叠 */
-    @media (max-width: 900px) {
-      aside.sidebar {
-        position: fixed; z-index: 30; height: 100vh; left: -260px; top: 0;
-        transition: left .25s ease;
-      }
-      aside.sidebar.open { left: 0; }
-      main.content { padding: 16px 14px 40px 14px; }
-      .topbar { display: block; }
-      .layout { padding-top: 56px; }
-    }
-
-    /* 表格/表单微调，沿用原页面 */
-    table { width: 100%; border-collapse: collapse; }
-    table th, table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.08); }
-    form .row { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 8px; }
-    a.export { color: #fde68a; }
+    .btn:active{transform:translateY(1px)}
+    table{width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px; border:1px solid #1f2937}
+    thead th{background:#0d1624; text-align:left; padding:10px 12px; font-size:13px; color:#cbd5e1; white-space:nowrap}
+    tbody td{padding:10px 12px; border-top:1px solid #1f2937; color:#e5e7eb}
+    tbody tr:hover{background:#0a1220}
+    .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin:8px 0 18px}
+    .stat{padding:16px;border-radius:12px;border:1px solid #1f2937;background:linear-gradient(180deg,#0f1928,#0d1726)}
+    .muted{color:#9ca3af}
+    .topbar{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px}
+    .exports a{font-size:12px; padding:8px 10px; border-radius:10px; border:1px solid #1f2937; background:#0b1220; color:#cbd5e1}
+    .exports a:hover{border-color:#334155}
+    @media (max-width: 880px){ .layout{grid-template-columns:1fr} .side{position:static;height:auto;border-right:none} }
   </style>
 </head>
 <body>
-
-<!-- 移动端顶栏 -->
-<div class="topbar">
-  <div class="row">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <button id="btnToggle" class="btn" type="button">☰ 菜单</button>
-      <strong>Worker & Platform Manager</strong>
-    </div>
-    <a class="btn" href="/">概览</a>
-  </div>
-</div>
-
 <div class="layout">
-  <!-- 侧边栏 -->
-  <aside class="sidebar" id="sidebar">
-    <div class="brand">
-      <span class="dot"></span>
-      <span>W&P Manager</span>
-    </div>
-
+  <aside class="side">
+    <div class="brand"><span class="dot"></span> 管理后台</div>
     <nav class="menu">
-      <small>导航</small>
-      <a href="{{ url_for('home') }}"
-         class="{% if request.path == '/' %}active{% endif %}">🏠 概览</a>
-
-      <a href="{{ url_for('workers_list') }}"
-         class="{% if request.path.startswith('/workers') %}active{% endif %}">👷 工人/平台</a>
-
-      <a href="{{ url_for('bank_accounts_list') }}"
-         class="{% if request.path.startswith('/bank-accounts') %}active{% endif %}">🏦 银行账户</a>
-
-      <a href="{{ url_for('card_rentals_list') }}"
-         class="{% if request.path.startswith('/card-rentals') %}active{% endif %}">💳 银行卡租金</a>
-
-      <a href="{{ url_for('salaries_list') }}"
-         class="{% if request.path.startswith('/salaries') %}active{% endif %}">💰 出粮记录</a>
-
-      <small>导出 CSV</small>
-      <a href="/export/workers.csv">📤 工人/平台</a>
-      <a href="/export/bank_accounts.csv">📤 银行账户</a>
-      <a href="/export/card_rentals.csv">📤 银行卡租金</a>
-      <a href="/export/salaries.csv">📤 出粮记录</a>
+      <a href="{{ url_for('home') }}" class="{{ 'active' if request.path=='/' else '' }}">概览 Overview</a>
+      <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">工人 / 平台</a>
+      <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">银行账户</a>
+      <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">银行卡租金</a>
+      <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}">出粮记录</a>
     </nav>
+    <div class="exp">© {{ 2025 }} Your Team</div>
   </aside>
 
-  <!-- 主内容 -->
   <main class="content">
     {% block content %}{% endblock %}
   </main>
 </div>
-
-<script>
-  // 移动端：展开/收起侧边栏
-  const btn = document.getElementById('btnToggle');
-  const sb  = document.getElementById('sidebar');
-  if (btn) btn.addEventListener('click', () => {
-    sb.classList.toggle('open');
-  });
-  // 点击内容区时收起
-  document.addEventListener('click', (e) => {
-    const within = sb.contains(e.target) || (btn && btn.contains(e.target));
-    if (!within) sb.classList.remove('open');
-  });
-</script>
 </body>
 </html>
