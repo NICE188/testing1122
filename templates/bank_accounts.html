@@ -1,33 +1,57 @@
 {% extends "base.html" %}
 {% block content %}
-<h3>银行账户</h3>
-
-<form action="/bank-accounts/add" method="post">
-  <div class="row">
-    <select name="worker_id" required>
-      <option value="">选择工人 *</option>
-      {% for w in workers %}
-      <option value="{{ w.id }}">{{ w.name }}</option>
-      {% endfor %}
-    </select>
-    <input name="account_number" placeholder="户口号码 *" required>
-    <input name="bank_name" placeholder="银行名字 *" required>
+  <div class="topbar">
+    <h2>🏦 银行账户</h2>
+    <div class="exports"><a href="{{ url_for('export_bank') }}">导出 CSV</a></div>
   </div>
-  <p><button>新增</button> <a href="/export/bank_accounts.csv">导出 CSV</a></p>
-</form>
 
-<table>
-  <thead><tr><th>ID</th><th>工人</th><th>账号</th><th>银行</th><th>创建时间</th></tr></thead>
-  <tbody>
-    {% for r in rows %}
-    <tr>
-      <td>{{ r.id }}</td>
-      <td>{{ r.worker_name }}</td>
-      <td>{{ r.account_number }}</td>
-      <td>{{ r.bank_name }}</td>
-      <td>{{ r.created_at }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+  <div class="panel">
+    <form action="{{ url_for('bank_accounts_add') }}" method="post">
+      <div class="grid-form">
+        <div>
+          <label>工人 *</label>
+          <select name="worker_id" required>
+            <option value="">请选择</option>
+            {% for w in workers %}
+              <option value="{{ w.id }}">{{ w.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>银行名称 *</label>
+          <input name="bank_name" required placeholder="例如：NIB, Global IME" />
+        </div>
+        <div>
+          <label>账户号码 *</label>
+          <input name="account_number" required placeholder="例如：123-456-7890" />
+        </div>
+        <div>
+          <button class="btn" type="submit" style="width:100%;">➕ 新增</button>
+        </div>
+      </div>
+    </form>
+
+    <div style="overflow:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>工人</th><th>银行名称</th><th>账户号码</th><th>创建时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.worker_name }}</td>
+            <td>{{ r.bank_name }}</td>
+            <td>{{ r.account_number }}</td>
+            <td>{{ r.created_at }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="muted" style="text-align:center;">暂无数据</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 {% endblock %}
