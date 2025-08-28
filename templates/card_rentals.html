@@ -3,6 +3,20 @@
 {% block body %}
 <h1 class="page-title">{{ t.card_rentals }}</h1>
 
+{% if edit_row %}
+<form class="form" method="post" action="{{ url_for('card_rentals_update', cid=edit_row.id) }}">
+  <select name="worker_id" required>
+    {% for w in workers %}
+      <option value="{{ w.id }}" {% if w.id==edit_row.worker_id %}selected{% endif %}>{{ w.name }}</option>
+    {% endfor %}
+  </select>
+  <input name="rental_amount" type="number" step="0.01" value="{{ edit_row.rental_amount }}" placeholder="{{ t.rental_amount }}" required>
+  <input name="date" type="date" value="{{ edit_row.date }}" required>
+  <input name="note" value="{{ edit_row.note or '' }}" placeholder="{{ t.note }}">
+  <button class="btn" type="submit">{{ t.save }}</button>
+  <a class="btn" href="{{ url_for('card_rentals_list') }}">{{ t.cancel }}</a>
+</form>
+{% else %}
 <form class="form" method="post" action="{{ url_for('card_rentals_add') }}">
   <select name="worker_id" required>
     <option value="">{{ t.worker }}</option>
@@ -15,19 +29,26 @@
   <input name="note" placeholder="{{ t.note }}">
   <button class="btn" type="submit">{{ t.add }}</button>
 </form>
+{% endif %}
 
 <div class="panel">
   <table>
     <thead>
-    <tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.rental_amount }}</th><th>{{ t.date }}</th><th>{{ t.note }}</th><th>{{ t.created_at }}</th></tr>
+    <tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.rental_amount }}</th><th>{{ t.date }}</th><th>{{ t.note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr>
     </thead>
     <tbody>
       {% for r in rows %}
       <tr>
         <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.rental_amount }}</td><td>{{ r.date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
+        <td>
+          <a class="btn" href="{{ url_for('card_rentals_edit', cid=r.id) }}">{{ t.edit }}</a>
+          <form style="display:inline" method="post" action="{{ url_for('card_rentals_delete', cid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
+            <button class="btn danger" type="submit">{{ t.delete }}</button>
+          </form>
+        </td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="empty">{{ t.empty }}</td></tr>
+      <tr><td colspan="7" class="empty">{{ t.empty }}</td></tr>
       {% endfor %}
     </tbody>
   </table>
