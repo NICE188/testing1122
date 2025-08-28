@@ -1,31 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
   <div class="topbar">
-    <h2>📊 概览</h2>
+    <h2>📊 {{ _('Overview') }}</h2>
     <div class="exports">
-      <a href="{{ url_for('export_workers') }}">导出工人</a>
-      <a href="{{ url_for('export_bank') }}">导出银行账户</a>
-      <a href="{{ url_for('export_rentals') }}">导出租金</a>
-      <a href="{{ url_for('export_salaries') }}">导出出粮</a>
+      <a href="{{ url_for('export_workers') }}">{{ _('Export Workers') }}</a>
+      <a href="{{ url_for('export_bank') }}">{{ _('Export Bank Accounts') }}</a>
+      <a href="{{ url_for('export_rentals') }}">{{ _('Export Card Rentals') }}</a>
+      <a href="{{ url_for('export_salaries') }}">{{ _('Export Salaries') }}</a>
     </div>
   </div>
 
   <div class="stats">
     <div class="stat">
-      <div class="muted">总工人/平台数</div>
+      <div class="muted">{{ _('Total Workers') }}</div>
       <div style="font-size:28px;font-weight:800;margin-top:6px;">{{ total_workers }}</div>
     </div>
     <div class="stat">
-      <div class="muted">银行卡租金累计</div>
+      <div class="muted">{{ _('Total Card Rentals') }}</div>
       <div style="font-size:28px;font-weight:800;margin-top:6px;">{{ '%.2f'|format(total_rentals or 0) }}</div>
     </div>
     <div class="stat">
-      <div class="muted">出粮累计</div>
+      <div class="muted">{{ _('Total Salaries') }}</div>
       <div style="font-size:28px;font-weight:800;margin-top:6px;">{{ '%.2f'|format(total_salaries or 0) }}</div>
     </div>
   </div>
 
   <div class="panel muted">
-    欢迎使用：左侧切换模块进行录入与查询，右上角可一键导出 CSV。
+    {{ _('Dashboard Tip') }}
   </div>
 {% endblock %}
