@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>出粮记录</h3>
+
+<form action="/salaries/add" method="post">
+  <div class="row">
+    <select name="worker_id" required>
+      <option value="">选择工人 *</option>
+      {% for w in workers %}
+      <option value="{{ w.id }}">{{ w.name }}</option>
+      {% endfor %}
+    </select>
+    <input name="salary_amount" type="number" step="0.01" placeholder="发薪金额 *" required>
+    <input name="pay_date" type="date" placeholder="出粮日期 *" required>
+    <input name="note" placeholder="备注">
+  </div>
+  <p><button>新增</button> <a href="/export/salaries.csv">导出 CSV</a></p>
+</form>
+
+<table>
+  <thead><tr><th>ID</th><th>工人</th><th>金额</th><th>出粮日期</th><th>备注</th><th>创建时间</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.id }}</td>
+      <td>{{ r.worker_name }}</td>
+      <td>{{ r.salary_amount }}</td>
+      <td>{{ r.pay_date }}</td>
+      <td>{{ r.note }}</td>
+      <td>{{ r.created_at }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
