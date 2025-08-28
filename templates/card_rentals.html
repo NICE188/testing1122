@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>银行卡租金</h3>
+
+<form action="/card-rentals/add" method="post">
+  <div class="row">
+    <select name="worker_id" required>
+      <option value="">选择工人 *</option>
+      {% for w in workers %}
+      <option value="{{ w.id }}">{{ w.name }}</option>
+      {% endfor %}
+    </select>
+    <input name="rental_amount" type="number" step="0.01" placeholder="租金金额 *" required>
+    <input name="date" type="date" placeholder="日期 *" required>
+    <input name="note" placeholder="备注">
+  </div>
+  <p><button>新增</button> <a href="/export/card_rentals.csv">导出 CSV</a></p>
+</form>
+
+<table>
+  <thead><tr><th>ID</th><th>工人</th><th>金额</th><th>日期</th><th>备注</th><th>创建时间</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.id }}</td>
+      <td>{{ r.worker_name }}</td>
+      <td>{{ r.rental_amount }}</td>
+      <td>{{ r.date }}</td>
+      <td>{{ r.note }}</td>
+      <td>{{ r.created_at }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
