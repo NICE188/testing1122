@@ -7,7 +7,7 @@ APP_DB = os.environ.get("APP_DB", "data.db")
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
 
-# ---------------- I18N（非常简化） ----------------
+# ---------------- I18N（简化） ----------------
 I18N = {
     "zh": {
         "app_name": "Nepwin88",
@@ -45,8 +45,14 @@ I18N = {
         "note": "备注",
         "submit": "提交",
         "language": "语言",
-        "empty": "暂无数据"
-    },
+        "empty": "暂无数据",
+        "edit": "编辑",
+        "delete": "删除",
+        "save": "保存",
+        "cancel": "取消",
+        "back": "返回",
+        "confirm_delete": "确认删除？此操作不可恢复。",
+      },
     "en": {
         "app_name": "Nepwin88",
         "dashboard": "Dashboard",
@@ -83,7 +89,13 @@ I18N = {
         "note": "Note",
         "submit": "Submit",
         "language": "Language",
-        "empty": "No data yet"
+        "empty": "No data yet",
+        "edit": "Edit",
+        "delete": "Delete",
+        "save": "Save",
+        "cancel": "Cancel",
+        "back": "Back",
+        "confirm_delete": "Are you sure? This action cannot be undone.",
     }
 }
 
@@ -103,6 +115,8 @@ def inject_i18n():
 def get_db():
     con = sqlite3.connect(APP_DB)
     con.row_factory = sqlite3.Row
+    # 推荐打开外键（旧库没启用也不影响本功能）
+    con.execute("PRAGMA foreign_keys = ON")
     return con
 
 def init_db():
@@ -241,6 +255,49 @@ def workers_add():
     con.close()
     return redirect(url_for("workers_list"))
 
+# edit/update/delete（同页编辑）
+@app.get("/workers/<int:wid>/edit")
+def workers_edit(wid):
+    con = get_db()
+    rows = con.execute("SELECT * FROM workers ORDER BY id DESC").fetchall()
+    edit_row = con.execute("SELECT * FROM workers WHERE id=?", (wid,)).fetchone()
+    con.close()
+    if not edit_row:
+        return "Worker not found", 404
+    return render_template("workers.html", rows=rows, edit_row=edit_row)
+
+@app.post("/workers/<int:wid>/edit")
+def workers_update(wid):
+    d = request.form or request.json
+    name = (d.get("name") or "").strip()
+    company = d.get("company") or ""
+    commission = float(d.get("commission") or 0)
+    expenses = float(d.get("expenses") or 0)
+    if not name:
+        return "Name required", 400
+    con = get_db()
+    con.execute("""UPDATE workers
+                   SET name=?, company=?, commission=?, expenses=?
+                   WHERE id=?""",
+                (name, company, commission, expenses, wid))
+    con.commit()
+    con.close()
+    return redirect(url_for("workers_list"))
+
+@app.post("/workers/<int:wid>/delete")
+def workers_delete(wid):
+    con = get_db()
+    cur = con.cursor()
+    # 手动清理从表，避免外键阻断
+    cur.execute("DELETE FROM bank_accounts WHERE worker_id=?", (wid,))
+    cur.execute("DELETE FROM card_rentals WHERE worker_id=?", (wid,))
+    cur.execute("DELETE FROM salary_payments WHERE worker_id=?", (wid,))
+    cur.execute("DELETE FROM expense_records WHERE worker_id=?", (wid,))
+    cur.execute("DELETE FROM workers WHERE id=?", (wid,))
+    con.commit()
+    con.close()
+    return redirect(url_for("workers_list"))
+
 # ---------------- Bank Accounts ----------------
 @app.route("/bank-accounts")
 def bank_accounts_list():
@@ -265,6 +322,47 @@ def bank_accounts_add():
     con = get_db()
     con.execute("INSERT INTO bank_accounts (worker_id, account_number, bank_name) VALUES (?,?,?)",
                 (worker_id, account_number, bank_name))
+    con.commit()
+    con.close()
+    return redirect(url_for("bank_accounts_list"))
+
+# edit/update/delete（同页编辑）
+@app.get("/bank-accounts/<int:bid>/edit")
+def bank_accounts_edit(bid):
+    con = get_db()
+    rows = con.execute("""
+      SELECT b.*, w.name AS worker_name
+      FROM bank_accounts b JOIN workers w ON w.id=b.worker_id
+      ORDER BY b.id DESC
+    """).fetchall()
+    workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
+    edit_row = con.execute("SELECT * FROM bank_accounts WHERE id=?", (bid,)).fetchone()
+    con.close()
+    if not edit_row:
+        return "Bank account not found", 404
+    return render_template("bank_accounts.html", rows=rows, workers=workers, edit_row=edit_row)
+
+@app.post("/bank-accounts/<int:bid>/edit")
+def bank_accounts_update(bid):
+    d = request.form or request.json
+    worker_id = int(d.get("worker_id"))
+    account_number = (d.get("account_number") or "").strip()
+    bank_name = (d.get("bank_name") or "").strip()
+    if not (worker_id and account_number and bank_name):
+        return "worker_id, account_number, bank_name required", 400
+    con = get_db()
+    con.execute("""UPDATE bank_accounts
+                   SET worker_id=?, account_number=?, bank_name=?
+                   WHERE id=?""",
+                (worker_id, account_number, bank_name, bid))
+    con.commit()
+    con.close()
+    return redirect(url_for("bank_accounts_list"))
+
+@app.post("/bank-accounts/<int:bid>/delete")
+def bank_accounts_delete(bid):
+    con = get_db()
+    con.execute("DELETE FROM bank_accounts WHERE id=?", (bid,))
     con.commit()
     con.close()
     return redirect(url_for("bank_accounts_list"))
@@ -300,6 +398,50 @@ def card_rentals_add():
     con.close()
     return redirect(url_for("card_rentals_list"))
 
+# edit/update/delete（同页编辑）
+@app.get("/card-rentals/<int:cid>/edit")
+def card_rentals_edit(cid):
+    con = get_db()
+    rows = con.execute("""
+      SELECT c.*, w.name AS worker_name
+      FROM card_rentals c JOIN workers w ON w.id=c.worker_id
+      ORDER BY c.date DESC, c.id DESC
+    """).fetchall()
+    workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
+    edit_row = con.execute("SELECT * FROM card_rentals WHERE id=?", (cid,)).fetchone()
+    con.close()
+    if not edit_row:
+        return "Card rental not found", 404
+    return render_template("card_rentals.html", rows=rows, workers=workers, edit_row=edit_row)
+
+@app.post("/card-rentals/<int:cid>/edit")
+def card_rentals_update(cid):
+    d = request.form or request.json
+    worker_id = int(d.get("worker_id"))
+    rental_amount = float(d.get("rental_amount"))
+    date = (d.get("date") or "").strip()
+    note = d.get("note") or ""
+    try:
+        datetime.fromisoformat(date)
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
+    con = get_db()
+    con.execute("""UPDATE card_rentals
+                   SET worker_id=?, rental_amount=?, date=?, note=?
+                   WHERE id=?""",
+                (worker_id, rental_amount, date, note, cid))
+    con.commit()
+    con.close()
+    return redirect(url_for("card_rentals_list"))
+
+@app.post("/card-rentals/<int:cid>/delete")
+def card_rentals_delete(cid):
+    con = get_db()
+    con.execute("DELETE FROM card_rentals WHERE id=?", (cid,))
+    con.commit()
+    con.close()
+    return redirect(url_for("card_rentals_list"))
+
 # ---------------- Salaries ----------------
 @app.route("/salaries")
 def salaries_list():
@@ -327,6 +469,50 @@ def salaries_add():
     con = get_db()
     con.execute("INSERT INTO salary_payments (worker_id, salary_amount, pay_date, note) VALUES (?,?,?,?)",
                 (worker_id, salary_amount, pay_date, note))
+    con.commit()
+    con.close()
+    return redirect(url_for("salaries_list"))
+
+# edit/update/delete（同页编辑）
+@app.get("/salaries/<int:sid>/edit")
+def salaries_edit(sid):
+    con = get_db()
+    rows = con.execute("""
+      SELECT s.*, w.name AS worker_name
+      FROM salary_payments s JOIN workers w ON w.id=s.worker_id
+      ORDER BY s.pay_date DESC, s.id DESC
+    """).fetchall()
+    workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
+    edit_row = con.execute("SELECT * FROM salary_payments WHERE id=?", (sid,)).fetchone()
+    con.close()
+    if not edit_row:
+        return "Salary record not found", 404
+    return render_template("salaries.html", rows=rows, workers=workers, edit_row=edit_row)
+
+@app.post("/salaries/<int:sid>/edit")
+def salaries_update(sid):
+    d = request.form or request.json
+    worker_id = int(d.get("worker_id"))
+    salary_amount = float(d.get("salary_amount"))
+    pay_date = (d.get("pay_date") or "").strip()
+    note = d.get("note") or ""
+    try:
+        datetime.fromisoformat(pay_date)
+    except Exception:
+        return "pay_date must be YYYY-MM-DD", 400
+    con = get_db()
+    con.execute("""UPDATE salary_payments
+                   SET worker_id=?, salary_amount=?, pay_date=?, note=?
+                   WHERE id=?""",
+                (worker_id, salary_amount, pay_date, note, sid))
+    con.commit()
+    con.close()
+    return redirect(url_for("salaries_list"))
+
+@app.post("/salaries/<int:sid>/delete")
+def salaries_delete(sid):
+    con = get_db()
+    con.execute("DELETE FROM salary_payments WHERE id=?", (sid,))
     con.commit()
     con.close()
     return redirect(url_for("salaries_list"))
@@ -360,6 +546,52 @@ def expenses_add():
     con = get_db()
     con.execute("INSERT INTO expense_records (worker_id, amount, date, note) VALUES (?,?,?,?)",
                 (worker_id, amount, date, note))
+    con.commit()
+    con.close()
+    return redirect(url_for("expenses_list"))
+
+# edit/update/delete（同页编辑）
+@app.get("/expenses/<int:eid>/edit")
+def expenses_edit(eid):
+    con = get_db()
+    rows = con.execute("""
+      SELECT e.*, w.name AS worker_name
+      FROM expense_records e
+      LEFT JOIN workers w ON w.id=e.worker_id
+      ORDER BY e.date DESC, e.id DESC
+    """).fetchall()
+    workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
+    edit_row = con.execute("SELECT * FROM expense_records WHERE id=?", (eid,)).fetchone()
+    con.close()
+    if not edit_row:
+        return "Expense record not found", 404
+    return render_template("expenses.html", rows=rows, workers=workers, edit_row=edit_row)
+
+@app.post("/expenses/<int:eid>/edit")
+def expenses_update(eid):
+    d = request.form or request.json
+    worker_id = d.get("worker_id")
+    worker_id = int(worker_id) if worker_id else None
+    amount = float(d.get("amount"))
+    date = (d.get("date") or "").strip()
+    note = d.get("note") or ""
+    try:
+        datetime.fromisoformat(date)
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
+    con = get_db()
+    con.execute("""UPDATE expense_records
+                   SET worker_id=?, amount=?, date=?, note=?
+                   WHERE id=?""",
+                (worker_id, amount, date, note, eid))
+    con.commit()
+    con.close()
+    return redirect(url_for("expenses_list"))
+
+@app.post("/expenses/<int:eid>/delete")
+def expenses_delete(eid):
+    con = get_db()
+    con.execute("DELETE FROM expense_records WHERE id=?", (eid,))
     con.commit()
     con.close()
     return redirect(url_for("expenses_list"))
