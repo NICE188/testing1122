@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% block title %}Expenses · Nepwin Ops{% endblock %}
+{% block header %}Expenses{% endblock %}
+
+{% block content %}
+<form class="form-inline" action="{{ url_for('expenses_add') }}" method="post">
+  <div class="row">
+    <select name="worker_id">
+      <option value="">(Optional) Link Worker</option>
+      {% for w in workers %}
+        <option value="{{ w.id }}"
+          {% if request.args.get('worker', type=int) == w.id %}selected{% endif %}>
+          {{ w.name }}
+        </option>
+      {% endfor %}
+    </select>
+    <input name="category" placeholder="Category (e.g. Rent/Ads/Bills)">
+    <input name="amount" type="number" step="0.01" placeholder="Amount" required>
+    <input name="date" type="date" required>
+    <input name="note" placeholder="Note (optional)">
+    <button type="submit">+ Add</button>
+  </div>
+</form>
+
+<div class="grid">
+  {% for r in rows %}
+  <div class="tile">
+    <div class="tile-head">
+      <div>
+        <div class="tile-title">#{{ r.id }} · {{ r.category or 'General Expense' }}</div>
+        <div class="tile-sub">Created: {{ r.created_at }}</div>
+      </div>
+      {% if r.worker_name %}<span class="badge">{{ r.worker_name }}</span>{% endif %}
+    </div>
+    <div class="tile-row">
+      <div class="kv"><label>Amount</label><span>{{ '%.2f'|format(r.amount or 0) }}</span></div>
+      <div class="kv"><label>Date</label><span>{{ r.date }}</span></div>
+      {% if r.note %}
+      <div class="kv" style="min-width:220px"><label>Note</label><span>{{ r.note }}</span></div>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+    <div class="tile">No expenses yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}
