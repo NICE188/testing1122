@@ -1,61 +1,41 @@
 {% extends "base.html" %}
 {% block content %}
-  <div class="topbar">
-    <h2>🏦 {{ _('Bank Accounts') }}</h2>
-    <div class="exports"><a href="{{ url_for('export_bank') }}">{{ _('Export Bank Accounts') }}</a></div>
-  </div>
+<div class="panel">
+  <h3 style="margin-top:0;">{{ _('BankAccounts') }}</h3>
+  <form class="form-grid" action="{{ url_for('bank_accounts_add', lang=curLang()) }}" method="post">
+    <select class="input" name="worker_id" required>
+      <option value="">{{ _('Worker') }}</option>
+      {% for w in workers %}
+        <option value="{{ w.id }}">{{ w.name }}</option>
+      {% endfor %}
+    </select>
+    <input class="input" name="account_number" placeholder="{{ _('AccountNumber') }}" required>
+    <input class="input" name="bank_name" placeholder="{{ _('BankName') }}" required>
+    <button class="btn" type="submit">{{ _('Submit') }}</button>
+  </form>
 
-  <div class="panel">
-    <form action="{{ url_for('bank_accounts_add') }}" method="post">
-      <div class="grid-form">
-        <div>
-          <label>{{ _('Worker') }} *</label>
-          <select name="worker_id" required>
-            <option value="">{{ _('Worker') }}</option>
-            {% for w in workers %}
-              <option value="{{ w.id }}">{{ w.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label>{{ _('Bank Name') }} *</label>
-          <input name="bank_name" required placeholder="{{ _('Bank Name') }}">
-        </div>
-        <div>
-          <label>{{ _('Account Number') }} *</label>
-          <input name="account_number" required placeholder="{{ _('Account Number') }}">
-        </div>
-        <div style="align-self:end;">
-          <button class="btn" type="submit" style="width:100%;">➕ {{ _('Add New') }}</button>
-        </div>
-      </div>
-    </form>
-
-    <div style="overflow:auto;">
-      <table>
-        <thead>
-          <tr>
-            <th>{{ _('ID') }}</th>
-            <th>{{ _('Worker') }}</th>
-            <th>{{ _('Bank Name') }}</th>
-            <th>{{ _('Account Number') }}</th>
-            <th>{{ _('Created At') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in rows %}
-          <tr>
-            <td>{{ r.id }}</td>
-            <td>{{ r.worker_name }}</td>
-            <td>{{ r.bank_name }}</td>
-            <td>{{ r.account_number }}</td>
-            <td>{{ r.created_at }}</td>
-          </tr>
-          {% else %}
-          <tr><td colspan="5" class="muted" style="text-align:center;">{{ _('No Data') }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th><th>{{ _('Worker') }}</th><th>{{ _('AccountNumber') }}</th>
+          <th>{{ _('BankName') }}</th><th>{{ _('CreatedAt') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td>{{ r.id }}</td>
+          <td>{{ r.worker_name }}</td>
+          <td>{{ r.account_number }}</td>
+          <td>{{ r.bank_name }}</td>
+          <td>{{ r.created_at }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="muted">{{ _('NoData') }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
   </div>
+</div>
 {% endblock %}
