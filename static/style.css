@@ -13,8 +13,10 @@ a{color:var(--text);text-decoration:none}
 .lang{margin-top:16px;color:var(--muted)}
 .content{padding:16px 20px}
 .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.btn{padding:8px 12px;background:#1f2937;border:1px solid #334155;border-radius:10px;color:#e5e7eb}
+.btn{padding:8px 12px;background:#1f2937;border:1px solid #334155;border-radius:10px;color:#e5e7eb;cursor:pointer}
 .btn:hover{background:#273245}
+.btn.danger{border-color:#7f1d1d;background:#3f1d1d}
+.btn.danger:hover{background:#5a1f1f}
 .page-title{margin:8px 2px 12px;font-size:20px;font-weight:700}
 .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
