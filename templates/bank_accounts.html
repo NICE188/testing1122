@@ -1,8 +1,7 @@
 {% extends "base.html" %}
 {% set page_title = t.bank_accounts %}
 {% block body %}
-<h1 class="page-title">{{ t.bank_accounts }}</h1>
-
+<h1 class="page-title"><span class="nav-emoji" aria-hidden="true">🏦</span> {{ t.bank_accounts }}</h1>
 {% if edit_row %}
 <form class="form" method="post" action="{{ url_for('bank_accounts_update', bid=edit_row.id) }}">
   <select name="worker_id" required>
