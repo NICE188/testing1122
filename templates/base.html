@@ -4,44 +4,36 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>{{ t.app_name }} — {{ page_title if page_title else '' }}</title>
-  <link rel="icon" href="{{ url_for('static', filename='logo.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
 </head>
 <body>
 <div class="layout">
   <aside class="sidebar">
-    <!-- 品牌位：站点 LOGO + 名称 -->
-    <div class="brand">
-      <img class="brand-logo" src="{{ url_for('static', filename='logo.svg') }}" alt="{{ t.app_name }}">
-      <span class="brand-name"> {{ t.app_name }} </span>
-    </div>
+    <!-- 品牌位（可以保留文字，也可以自己换成表情/图片） -->
+    <div class="brand">✨ {{ t.app_name }}</div>
 
-    <!-- 导航：每个功能前加图标 -->
+    <!-- 导航：每个功能前加 emoji 图标 -->
     <nav class="nav">
       <a href="{{ url_for('home') }}" class="{{ 'active' if request.path=='/' else '' }}">
-        <img class="nav-ico" src="{{ url_for('static', filename='icons/dashboard.svg') }}" alt="">
-        <span>{{ t.dashboard }}</span>
+        <span class="nav-emoji" aria-hidden="true">🎰</span><span>{{ t.dashboard }}</span>
       </a>
       <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">
-        <img class="nav-ico" src="{{ url_for('static', filename='icons/workers.svg') }}" alt="">
+        <span class="nav-emoji" aria-hidden="true">👨‍💼</span>
+        <span class="nav-emoji" aria-hidden="true">📲</span>
         <span>{{ t.workers }}</span>
       </a>
       <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
-        <img class="nav-ico" src="{{ url_for('static', filename='icons/bank.svg') }}" alt="">
-        <span>{{ t.bank_accounts }}</span>
+        <span class="nav-emoji" aria-hidden="true">🏦</span><span>{{ t.bank_accounts }}</span>
       </a>
       <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">
-        <img class="nav-ico" src="{{ url_for('static', filename='icons/card.svg') }}" alt="">
-        <span>{{ t.card_rentals }}</span>
+        <span class="nav-emoji" aria-hidden="true">💳</span><span>{{ t.card_rentals }}</span>
       </a>
       <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}">
-        <img class="nav-ico" src="{{ url_for('static', filename='icons/salary.svg') }}" alt="">
-        <span>{{ t.salaries }}</span>
+        <span class="nav-emoji" aria-hidden="true">💵</span><span>{{ t.salaries }}</span>
       </a>
       <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}">
-        <img class="nav-ico" src="{{ url_for('static', filename='icons/expenses.svg') }}" alt="">
-        <span>{{ t.expenses }}</span>
+        <span class="nav-emoji" aria-hidden="true">💸</span><span>{{ t.expenses }}</span>
       </a>
     </nav>
 
