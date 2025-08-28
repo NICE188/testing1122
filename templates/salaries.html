@@ -1,44 +1,67 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="panel">
-  <h3 style="margin-top:0;">{{ _('SalaryRecords') }}</h3>
-  <form class="form-grid" action="{{ url_for('salaries_add', lang=curLang()) }}" method="post">
-    <select class="input" name="worker_id" required>
-      <option value="">{{ _('Worker') }}</option>
-      {% for w in workers %}
-        <option value="{{ w.id }}">{{ w.name }}</option>
-      {% endfor %}
-    </select>
-    <input class="input" name="salary_amount" type="number" step="0.01" placeholder="{{ _('SalaryAmount') }}" required>
-    <input class="input" name="pay_date" type="date" placeholder="{{ _('PayDate') }}" required>
-    <input class="input" name="note" placeholder="{{ _('Note') }}">
-    <button class="btn" type="submit">{{ _('Submit') }}</button>
-  </form>
-  <div class="muted" style="margin:-8px 0 12px 0;">{{ _('TipsISODate') }}</div>
-
-  <div class="table-wrap">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>ID</th><th>{{ _('Worker') }}</th><th>{{ _('SalaryAmount') }}</th>
-          <th>{{ _('PayDate') }}</th><th>{{ _('Note') }}</th><th>{{ _('CreatedAt') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for r in rows %}
-        <tr>
-          <td>{{ r.id }}</td>
-          <td>{{ r.worker_name }}</td>
-          <td>{{ r.salary_amount }}</td>
-          <td>{{ r.pay_date }}</td>
-          <td>{{ r.note }}</td>
-          <td>{{ r.created_at }}</td>
-        </tr>
-      {% else %}
-        <tr><td colspan="6" class="muted">{{ _('NoData') }}</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  <div class="topbar">
+    <h2>💵 {{ _('Salary Records') }}</h2>
+    <div class="exports"><a href="{{ url_for('export_salaries') }}">{{ _('Export Salaries') }}</a></div>
   </div>
-</div>
+
+  <div class="panel">
+    <form action="{{ url_for('salaries_add') }}" method="post">
+      <div class="grid-form">
+        <div>
+          <label>{{ _('Worker') }} *</label>
+          <select name="worker_id" required>
+            <option value="">{{ _('Worker') }}</option>
+            {% for w in workers %}
+              <option value="{{ w.id }}">{{ w.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>{{ _('Salary Amount') }} *</label>
+          <input name="salary_amount" type="number" step="0.01" required placeholder="0.00">
+        </div>
+        <div>
+          <label>{{ _('Pay Date') }} (YYYY-MM-DD) *</label>
+          <input name="pay_date" type="date" required>
+        </div>
+        <div>
+          <label>{{ _('Note') }}</label>
+          <input name="note" placeholder="{{ _('Note') }}">
+        </div>
+        <div style="align-self:end;">
+          <button class="btn" type="submit" style="width:100%;">➕ {{ _('Add New') }}</button>
+        </div>
+      </div>
+    </form>
+
+    <div style="overflow:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Worker') }}</th>
+            <th>{{ _('Amount') }}</th>
+            <th>{{ _('Pay Date') }}</th>
+            <th>{{ _('Note') }}</th>
+            <th>{{ _('Created At') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.worker_name }}</td>
+            <td>{{ '%.2f'|format(r.salary_amount or 0) }}</td>
+            <td>{{ r.pay_date }}</td>
+            <td>{{ r.note or '-' }}</td>
+            <td>{{ r.created_at }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="muted" style="text-align:center;">{{ _('No Data') }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 {% endblock %}
