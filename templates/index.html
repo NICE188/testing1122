@@ -1,8 +1,7 @@
 {% extends "base.html" %}
 {% set page_title = t.dashboard %}
 {% block body %}
-<h1 class="page-title">{{ t.dashboard }}</h1>
-
+<h1 class="page-title"><span class="nav-emoji" aria-hidden="true">🎰</span> {{ t.dashboard }}</h1>
 <div class="cards">
   <div class="card"><div class="metric-title">{{ t.total_workers }}</div><div class="metric-num">{{ total_workers }}</div></div>
   <div class="card"><div class="metric-title">{{ t.total_rentals }}</div><div class="metric-num">{{ '%.2f'|format(total_rentals or 0) }}</div></div>
