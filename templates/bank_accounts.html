@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>银行账户</h3>
+
+<form action="/bank-accounts/add" method="post">
+  <div class="row">
+    <select name="worker_id" required>
+      <option value="">选择工人 *</option>
+      {% for w in workers %}
+      <option value="{{ w.id }}">{{ w.name }}</option>
+      {% endfor %}
+    </select>
+    <input name="account_number" placeholder="户口号码 *" required>
+    <input name="bank_name" placeholder="银行名字 *" required>
+  </div>
+  <p><button>新增</button> <a href="/export/bank_accounts.csv">导出 CSV</a></p>
+</form>
+
+<table>
+  <thead><tr><th>ID</th><th>工人</th><th>账号</th><th>银行</th><th>创建时间</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.id }}</td>
+      <td>{{ r.worker_name }}</td>
+      <td>{{ r.account_number }}</td>
+      <td>{{ r.bank_name }}</td>
+      <td>{{ r.created_at }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
