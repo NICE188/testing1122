@@ -1,69 +1,42 @@
 <!doctype html>
-<html lang="{{ 'en' if current_lang=='en' else 'zh' }}">
+<html lang="zh">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{{ _('AppTitle') }}</title>
-  <style>
-    :root{
-      --bg:#0b1220; --panel:#0f172a; --muted:#94a3b8; --txt:#e5e7eb;
-      --brand:#f59e0b; --brand-2:#fde68a; --line:rgba(148,163,184,.15);
-      --radius:14px;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:radial-gradient(1200px 600px at 10% -10%,rgba(245,158,11,.15),transparent),
-                 radial-gradient(900px 500px at 110% 10%,rgba(253,230,138,.1),transparent),
-                 var(--bg); color:var(--txt); font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial}
-    a{color:var(--brand); text-decoration:none}
-    .layout{display:grid; grid-template-columns:260px 1fr; min-height:100vh}
-    .sidebar{padding:20px; border-right:1px solid var(--line); background:rgba(10,15,30,.6); backdrop-filter: blur(12px);}
-    .brand{font-weight:800; font-size:18px; letter-spacing:.4px; margin-bottom:12px}
-    .nav a{display:block; padding:10px 12px; border-radius:10px; color:var(--txt); margin:6px 0; border:1px solid transparent}
-    .nav a:hover{background:rgba(253,230,138,.06); border-color:var(--line)}
-    .nav .active{background:rgba(245,158,11,.15); border-color:rgba(245,158,11,.35)}
-    .lang{margin-top:12px; font-size:13px; color:var(--muted)}
-    .main{padding:24px 28px}
-    .topbar{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px}
-    h2{margin:0; font-size:22px}
-    .exports a{margin-left:10px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; color:var(--txt)}
-    .exports a:hover{background:rgba(253,230,138,.06)}
-    .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-bottom:16px}
-    .stat{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px}
-    .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:16px}
-    .muted{color:var(--muted)}
-    .grid-form{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px}
-    label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
-    input, select, textarea{width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:#0b1325; color:var(--txt)}
-    table{width:100%; border-collapse:collapse; margin-top:12px; border:1px solid var(--line)}
-    th, td{border-bottom:1px solid var(--line); padding:10px}
-    th{background:rgba(253,230,138,.06); text-align:left}
-    .btn{background:linear-gradient(135deg,var(--brand),#d97706); color:#111; font-weight:700; padding:10px 12px; border:0; border-radius:10px; cursor:pointer}
-    .btn:hover{filter:brightness(1.05)}
-    @media (max-width:900px){ .layout{grid-template-columns:1fr} .sidebar{position:sticky; top:0; z-index:5} }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <!-- Chart.js 全站一次引入 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="layout">
   <aside class="sidebar">
-    <div class="brand">🗻 {{ _('Nepwin88') }}</div>
-    <nav class="nav">
-      <a href="{{ url_for('home') }}" class="{{ 'active' if request.path=='/' else '' }}">{{ _('Dashboard') }}</a>
-      <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">{{ _('Workers/Platforms') }}</a>
-      <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">{{ _('Bank Accounts') }}</a>
-      <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">{{ _('Card Rentals') }}</a>
-      <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}">{{ _('Salary Records') }}</a>
-    </nav>
+    <div class="brand">🪙 {{ _('AppTitle') }}</div>
+
+    <a class="nav-item {% if request.path=='/' %}active{% endif %}" href="{{ urlL('home') }}">{{ _('Dashboard') }}</a>
+    <a class="nav-item {% if request.path.startswith('/workers') %}active{% endif %}" href="{{ urlL('workers_list') }}">{{ _('WorkersPlatforms') }}</a>
+    <a class="nav-item {% if request.path.startswith('/bank-accounts') %}active{% endif %}" href="{{ urlL('bank_accounts_list') }}">{{ _('BankAccounts') }}</a>
+    <a class="nav-item {% if request.path.startswith('/card-rentals') %}active{% endif %}" href="{{ urlL('card_rentals_list') }}">{{ _('CardRentals') }}</a>
+    <a class="nav-item {% if request.path.startswith('/salaries') %}active{% endif %}" href="{{ urlL('salaries_list') }}">{{ _('SalaryRecords') }}</a>
+
     <div class="lang">
       {{ _('Language') }}：
-      {% if current_lang=='zh' %}
-        <strong>中文</strong> | <a href="{{ url_for('set_lang', code='en') }}">EN</a>
-      {% else %}
-        <a href="{{ url_for('set_lang', code='zh') }}">中文</a> | <strong>EN</strong>
-      {% endif %}
+      <a href="{{ request.path }}?lang=zh">中文</a> |
+      <a href="{{ request.path }}?lang=en">EN</a>
     </div>
   </aside>
 
   <main class="main">
+    <header class="topbar">
+      <div class="topbar-title">📊 {{ _('Overview') if request.path=='/' else '' }}</div>
+      <div class="topbar-actions">
+        <a class="btn" href="{{ url_for('export_workers') }}"> {{ _('ExportWorkers') }} </a>
+        <a class="btn" href="{{ url_for('export_bank') }}"> {{ _('ExportBank') }} </a>
+        <a class="btn" href="{{ url_for('export_rentals') }}"> {{ _('ExportRentals') }} </a>
+        <a class="btn" href="{{ url_for('export_salaries') }}"> {{ _('ExportSalaries') }} </a>
+      </div>
+    </header>
+
     {% block content %}{% endblock %}
   </main>
 </div>
