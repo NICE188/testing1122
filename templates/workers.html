@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>工人/平台</h3>
+
+<form action="/workers/add" method="post">
+  <div class="row">
+    <input name="name" placeholder="名字 *" required>
+    <input name="company" placeholder="公司">
+    <input name="commission" type="number" step="0.01" placeholder="佣金">
+    <input name="expenses" type="number" step="0.01" placeholder="开销">
+  </div>
+  <p><button>新增</button> <a href="/export/workers.csv">导出 CSV</a></p>
+</form>
+
+<table>
+  <thead><tr><th>ID</th><th>名字</th><th>公司</th><th>佣金</th><th>开销</th><th>创建时间</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.id }}</td>
+      <td>{{ r.name }}</td>
+      <td>{{ r.company }}</td>
+      <td>{{ r.commission }}</td>
+      <td>{{ r.expenses }}</td>
+      <td>{{ r.created_at }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
