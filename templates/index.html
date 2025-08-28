@@ -23,8 +23,10 @@
       <div class="muted">{{ _('Total Salaries') }}</div>
       <div style="font-size:28px;font-weight:800;margin-top:6px;">{{ '%.2f'|format(total_salaries or 0) }}</div>
     </div>
+<div class="stat">
+  <div class="label">Total Expenses</div>
+  <div class="value">{{ '%.2f'|format(total_expenses or 0) }}</div>
   </div>
-
   <div class="panel muted">
     {{ _('Dashboard Tip') }}
   </div>
