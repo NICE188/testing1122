@@ -1,8 +1,11 @@
 {% extends "base.html" %}
 {% set page_title = t.workers %}
 {% block body %}
-<h1 class="page-title">{{ t.workers }}</h1>
-
+<h1 class="page-title">
+  <span class="nav-emoji" aria-hidden="true">👨‍💼</span>
+  <span class="nav-emoji" aria-hidden="true">📲</span>
+  {{ t.workers }}
+</h1>
 {% if edit_row %}
 <form class="form" method="post" action="{{ url_for('workers_update', wid=edit_row.id) }}">
   <input name="name" value="{{ edit_row.name }}" placeholder="{{ t.name }}" required>
