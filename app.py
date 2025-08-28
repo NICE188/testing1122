@@ -1,45 +1,54 @@
-# app.py
 from flask import Flask, request, jsonify, render_template, redirect, url_for, send_file, session
 import sqlite3, csv, io, os
 from datetime import datetime
-from collections import defaultdict
 
-# -----------------------------
-# 基础设置 & DB 位置（可写路径）
-# -----------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-os.makedirs(DATA_DIR, exist_ok=True)
-APP_DB = os.path.join(DATA_DIR, "data.db")
+APP_DB = os.environ.get("APP_DB", "data.db")
 
-app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "change-me-please")
+app = Flask(__name__, template_folder="templates", static_folder="static")
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
 
-# -----------------------------
-# 简易多语言（中文 / 英文）
-# -----------------------------
+# ---------------- I18N（非常简化） ----------------
 I18N = {
     "zh": {
-        "brand": "Nepwin88",
-        "dashboard": "概览",
+        "app_name": "Nepwin88",
+        "dashboard": "Dashboard",
         "workers": "工人 / 平台",
         "bank_accounts": "银行账户",
         "card_rentals": "银行卡租金",
         "salaries": "出粮记录",
-        "expenses": "开销",
+        "expenses": "开销记录",
         "export_workers": "导出工人",
         "export_bank": "导出银行账户",
         "export_rentals": "导出银行卡租金",
-        "export_salaries": "导出出粮记录",
+        "export_salaries": "导出出粮",
         "export_expenses": "导出开销",
-        "total_workers": "总工人数",
-        "total_rentals": "租金合计",
-        "total_salaries": "工资合计",
-        "total_expenses": "开销合计",
-        "welcome": "欢迎！使用左侧侧边栏进行导航，右上角可导出 CSV。",
+        "total_workers": "Total Workers",
+        "total_rentals": "Total Card Rentals",
+        "total_salaries": "Total Salaries",
+        "total_expenses": "Total Expenses",
+        "welcome_tip": "使用左侧侧边栏导航，右上角可导出 CSV。",
+        "add": "新增",
+        "name": "名字",
+        "company": "公司",
+        "commission": "佣金",
+        "expense_amount": "金额",
+        "expenses_note": "备注",
+        "created_at": "创建时间",
+        "actions": "操作",
+        "account_number": "账户号码",
+        "bank_name": "银行名字",
+        "worker": "工人",
+        "rental_amount": "租金金额",
+        "date": "日期",
+        "salary_amount": "工资金额",
+        "pay_date": "发薪日期",
+        "note": "备注",
+        "submit": "提交",
+        "language": "语言",
+        "empty": "暂无数据"
     },
     "en": {
-        "brand": "Nepwin88",
+        "app_name": "Nepwin88",
         "dashboard": "Dashboard",
         "workers": "Workers / Platforms",
         "bank_accounts": "Bank Accounts",
@@ -55,27 +64,44 @@ I18N = {
         "total_rentals": "Total Card Rentals",
         "total_salaries": "Total Salaries",
         "total_expenses": "Total Expenses",
-        "welcome": "Welcome! Use the left sidebar to navigate, and export CSV on the top-right.",
+        "welcome_tip": "Use the left sidebar to navigate. Export CSV at top-right.",
+        "add": "Add",
+        "name": "Name",
+        "company": "Company",
+        "commission": "Commission",
+        "expense_amount": "Amount",
+        "expenses_note": "Note",
+        "created_at": "Created At",
+        "actions": "Actions",
+        "account_number": "Account Number",
+        "bank_name": "Bank Name",
+        "worker": "Worker",
+        "rental_amount": "Rental Amount",
+        "date": "Date",
+        "salary_amount": "Salary Amount",
+        "pay_date": "Pay Date",
+        "note": "Note",
+        "submit": "Submit",
+        "language": "Language",
+        "empty": "No data yet"
     }
 }
 
-def t():
-    """根据 session 中的语言返回翻译字典"""
-    lang = session.get("lang", "zh")
-    return I18N.get(lang, I18N["zh"])
+def get_lang():
+    lang = request.args.get("lang")
+    if lang in I18N:
+        session["lang"] = lang
+    return session.get("lang", "zh")
 
-@app.route("/set-lang/<lang>")
-def set_lang(lang):
-    if lang not in I18N:
-        lang = "zh"
-    session["lang"] = lang
-    return redirect(request.referrer or url_for("home"))
+@app.context_processor
+def inject_i18n():
+    lang = get_lang()
+    t = I18N[lang]
+    return dict(t=t, lang=lang)
 
-# -----------------------------
-# DB helpers
-# -----------------------------
+# ---------------- DB helpers ----------------
 def get_db():
-    con = sqlite3.connect(APP_DB, check_same_thread=False)
+    con = sqlite3.connect(APP_DB)
     con.row_factory = sqlite3.Row
     return con
 
@@ -105,7 +131,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         worker_id INTEGER NOT NULL,
         rental_amount REAL NOT NULL,
-        date TEXT NOT NULL, -- YYYY-MM-DD
+        date TEXT NOT NULL,
         note TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
@@ -115,19 +141,17 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         worker_id INTEGER NOT NULL,
         salary_amount REAL NOT NULL,
-        pay_date TEXT NOT NULL, -- YYYY-MM-DD
+        pay_date TEXT NOT NULL,
         note TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
 
-    -- 新增 Expenses 表
-    CREATE TABLE IF NOT EXISTS expenses (
+    CREATE TABLE IF NOT EXISTS expense_records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        worker_id INTEGER,           -- 可选：与工人关联
+        worker_id INTEGER,
         amount REAL NOT NULL,
-        date TEXT NOT NULL,          -- YYYY-MM-DD
-        category TEXT,               -- 类别(可选)
+        date TEXT NOT NULL,
         note TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
@@ -139,44 +163,69 @@ def init_db():
 if not os.path.exists(APP_DB):
     init_db()
 
-# -----------------------------
-# 健康检查
-# -----------------------------
-@app.route("/healthz")
-def healthz():
+# ---------------- Health ----------------
+@app.get("/health")
+def health():
     return "ok", 200
 
-# -----------------------------
-# 页面：Dashboard
-# -----------------------------
+# ---------------- Home / Dashboard ----------------
 @app.route("/")
 def home():
     con = get_db()
     total_workers = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
     total_rentals = con.execute("SELECT IFNULL(SUM(rental_amount),0) s FROM card_rentals").fetchone()["s"]
     total_salaries = con.execute("SELECT IFNULL(SUM(salary_amount),0) s FROM salary_payments").fetchone()["s"]
-    total_expenses = con.execute("SELECT IFNULL(SUM(amount),0) s FROM expenses").fetchone()["s"]
+    total_expenses = con.execute("SELECT IFNULL(SUM(amount),0) s FROM expense_records").fetchone()["s"]
     con.close()
-    return render_template(
-        "index.html",
-        t=t(),
-        total_workers=total_workers,
-        total_rentals=total_rentals,
-        total_salaries=total_salaries,
-        total_expenses=total_expenses
-    )
+    return render_template("index.html",
+                           total_workers=total_workers,
+                           total_rentals=total_rentals,
+                           total_salaries=total_salaries,
+                           total_expenses=total_expenses)
 
-# -----------------------------
-# Workers CRUD
-# -----------------------------
+# 图表数据（近 6 个月的租金/工资/开销）
+@app.get("/api/summary")
+def api_summary():
+    con = get_db()
+    def q(sql):
+        return con.execute(sql).fetchall()
+
+    months_sql = """
+        WITH m(n) AS (
+          SELECT strftime('%Y-%m', date('now','start of month','-5 months'))
+          UNION ALL
+          SELECT strftime('%Y-%m', date(substr(n||'-01',1,10),'start of month','+1 month'))
+          FROM m WHERE n < strftime('%Y-%m', 'now', 'start of month')
+        )
+        SELECT n AS ym FROM m;
+    """
+    months = [r["ym"] for r in q(months_sql)]
+
+    def series(table, field, date_field):
+        rows = q(f"""
+            SELECT strftime('%Y-%m', {date_field}) ym, IFNULL(SUM({field}),0) total
+            FROM {table}
+            WHERE {date_field} >= date('now','start of month','-5 months')
+            GROUP BY ym
+        """)
+        d = {r["ym"]: r["total"] for r in rows}
+        return [float(d.get(m, 0)) for m in months]
+
+    rentals = series("card_rentals", "rental_amount", "date")
+    salaries = series("salary_payments", "salary_amount", "pay_date")
+    expenses = series("expense_records", "amount", "date")
+    con.close()
+    return jsonify({"months": months, "rentals": rentals, "salaries": salaries, "expenses": expenses})
+
+# ---------------- Workers ----------------
 @app.route("/workers")
 def workers_list():
     con = get_db()
     rows = con.execute("SELECT * FROM workers ORDER BY id DESC").fetchall()
     con.close()
-    return render_template("workers.html", t=t(), rows=rows)
+    return render_template("workers.html", rows=rows)
 
-@app.route("/workers/add", methods=["POST"])
+@app.post("/workers/add")
 def workers_add():
     data = request.form or request.json
     name = (data.get("name") or "").strip()
@@ -186,222 +235,136 @@ def workers_add():
     commission = float(data.get("commission") or 0)
     expenses = float(data.get("expenses") or 0)
     con = get_db()
-    con.execute(
-        "INSERT INTO workers (name, company, commission, expenses) VALUES (?, ?, ?, ?)",
-        (name, company, commission, expenses)
-    )
+    con.execute("INSERT INTO workers (name, company, commission, expenses) VALUES (?,?,?,?)",
+                (name, company, commission, expenses))
     con.commit()
     con.close()
-    if request.is_json:
-        return jsonify({"ok": True})
     return redirect(url_for("workers_list"))
 
-# -----------------------------
-# Bank Accounts
-# -----------------------------
+# ---------------- Bank Accounts ----------------
 @app.route("/bank-accounts")
 def bank_accounts_list():
     con = get_db()
     rows = con.execute("""
-        SELECT b.*, w.name AS worker_name
-        FROM bank_accounts b
-        JOIN workers w ON w.id = b.worker_id
-        ORDER BY b.id DESC
+      SELECT b.*, w.name AS worker_name
+      FROM bank_accounts b JOIN workers w ON w.id=b.worker_id
+      ORDER BY b.id DESC
     """).fetchall()
-    workers = con.execute("SELECT id, name FROM workers ORDER BY name").fetchall()
+    workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
-    return render_template("bank_accounts.html", t=t(), rows=rows, workers=workers)
+    return render_template("bank_accounts.html", rows=rows, workers=workers)
 
-@app.route("/bank-accounts/add", methods=["POST"])
+@app.post("/bank-accounts/add")
 def bank_accounts_add():
-    data = request.form or request.json
-    worker_id = int(data.get("worker_id"))
-    account_number = (data.get("account_number") or "").strip()
-    bank_name = (data.get("bank_name") or "").strip()
+    d = request.form or request.json
+    worker_id = int(d.get("worker_id"))
+    account_number = (d.get("account_number") or "").strip()
+    bank_name = (d.get("bank_name") or "").strip()
     if not (worker_id and account_number and bank_name):
         return "worker_id, account_number, bank_name required", 400
     con = get_db()
-    con.execute(
-        "INSERT INTO bank_accounts (worker_id, account_number, bank_name) VALUES (?, ?, ?)",
-        (worker_id, account_number, bank_name)
-    )
+    con.execute("INSERT INTO bank_accounts (worker_id, account_number, bank_name) VALUES (?,?,?)",
+                (worker_id, account_number, bank_name))
     con.commit()
     con.close()
-    if request.is_json:
-        return jsonify({"ok": True})
     return redirect(url_for("bank_accounts_list"))
 
-# -----------------------------
-# Card Rentals
-# -----------------------------
+# ---------------- Card Rentals ----------------
 @app.route("/card-rentals")
 def card_rentals_list():
     con = get_db()
     rows = con.execute("""
-        SELECT c.*, w.name AS worker_name
-        FROM card_rentals c
-        JOIN workers w ON w.id = c.worker_id
-        ORDER BY c.date DESC, c.id DESC
+      SELECT c.*, w.name AS worker_name
+      FROM card_rentals c JOIN workers w ON w.id=c.worker_id
+      ORDER BY c.date DESC, c.id DESC
     """).fetchall()
-    workers = con.execute("SELECT id, name FROM workers ORDER BY name").fetchall()
+    workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
-    return render_template("card_rentals.html", t=t(), rows=rows, workers=workers)
+    return render_template("card_rentals.html", rows=rows, workers=workers)
 
-@app.route("/card-rentals/add", methods=["POST"])
+@app.post("/card-rentals/add")
 def card_rentals_add():
-    data = request.form or request.json
-    worker_id = int(data.get("worker_id"))
-    rental_amount = float(data.get("rental_amount"))
-    date = (data.get("date") or "").strip()
-    note = data.get("note") or ""
-    if not (worker_id and rental_amount and date):
-        return "worker_id, rental_amount, date required", 400
+    d = request.form or request.json
+    worker_id = int(d.get("worker_id"))
+    rental_amount = float(d.get("rental_amount"))
+    date = (d.get("date") or "").strip()
+    note = d.get("note") or ""
     try:
         datetime.fromisoformat(date)
-    except ValueError:
-        return "date must be ISO format YYYY-MM-DD", 400
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
     con = get_db()
-    con.execute(
-        "INSERT INTO card_rentals (worker_id, rental_amount, date, note) VALUES (?, ?, ?, ?)",
-        (worker_id, rental_amount, date, note)
-    )
+    con.execute("INSERT INTO card_rentals (worker_id, rental_amount, date, note) VALUES (?,?,?,?)",
+                (worker_id, rental_amount, date, note))
     con.commit()
     con.close()
-    if request.is_json:
-        return jsonify({"ok": True})
     return redirect(url_for("card_rentals_list"))
 
-# -----------------------------
-# Salaries
-# -----------------------------
+# ---------------- Salaries ----------------
 @app.route("/salaries")
 def salaries_list():
     con = get_db()
     rows = con.execute("""
-        SELECT s.*, w.name AS worker_name
-        FROM salary_payments s
-        JOIN workers w ON w.id = s.worker_id
-        ORDER BY s.pay_date DESC, s.id DESC
+      SELECT s.*, w.name AS worker_name
+      FROM salary_payments s JOIN workers w ON w.id=s.worker_id
+      ORDER BY s.pay_date DESC, s.id DESC
     """).fetchall()
-    workers = con.execute("SELECT id, name FROM workers ORDER BY name").fetchall()
+    workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
-    return render_template("salaries.html", t=t(), rows=rows, workers=workers)
+    return render_template("salaries.html", rows=rows, workers=workers)
 
-@app.route("/salaries/add", methods=["POST"])
+@app.post("/salaries/add")
 def salaries_add():
-    data = request.form or request.json
-    worker_id = int(data.get("worker_id"))
-    salary_amount = float(data.get("salary_amount"))
-    pay_date = (data.get("pay_date") or "").strip()
-    note = data.get("note") or ""
-    if not (worker_id and salary_amount and pay_date):
-        return "worker_id, salary_amount, pay_date required", 400
+    d = request.form or request.json
+    worker_id = int(d.get("worker_id"))
+    salary_amount = float(d.get("salary_amount"))
+    pay_date = (d.get("pay_date") or "").strip()
+    note = d.get("note") or ""
     try:
         datetime.fromisoformat(pay_date)
-    except ValueError:
-        return "pay_date must be ISO format YYYY-MM-DD", 400
+    except Exception:
+        return "pay_date must be YYYY-MM-DD", 400
     con = get_db()
-    con.execute(
-        "INSERT INTO salary_payments (worker_id, salary_amount, pay_date, note) VALUES (?, ?, ?, ?)",
-        (worker_id, salary_amount, pay_date, note)
-    )
+    con.execute("INSERT INTO salary_payments (worker_id, salary_amount, pay_date, note) VALUES (?,?,?,?)",
+                (worker_id, salary_amount, pay_date, note))
     con.commit()
     con.close()
-    if request.is_json:
-        return jsonify({"ok": True})
     return redirect(url_for("salaries_list"))
 
-# -----------------------------
-# Expenses（新模块）
-# -----------------------------
+# ---------------- Expenses ----------------
 @app.route("/expenses")
 def expenses_list():
     con = get_db()
     rows = con.execute("""
-        SELECT e.*, w.name AS worker_name
-        FROM expenses e
-        LEFT JOIN workers w ON w.id = e.worker_id
-        ORDER BY e.date DESC, e.id DESC
+      SELECT e.*, w.name AS worker_name
+      FROM expense_records e
+      LEFT JOIN workers w ON w.id=e.worker_id
+      ORDER BY e.date DESC, e.id DESC
     """).fetchall()
-    workers = con.execute("SELECT id, name FROM workers ORDER BY name").fetchall()
+    workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
-    return render_template("expenses.html", t=t(), rows=rows, workers=workers)
+    return render_template("expenses.html", rows=rows, workers=workers)
 
-@app.route("/expenses/add", methods=["POST"])
+@app.post("/expenses/add")
 def expenses_add():
-    data = request.form or request.json
-    worker_id_raw = data.get("worker_id")
-    worker_id = int(worker_id_raw) if worker_id_raw not in (None, "", "null") else None
-    amount = float(data.get("amount"))
-    date = (data.get("date") or "").strip()
-    category = (data.get("category") or "").strip()
-    note = data.get("note") or ""
-    if not (amount and date):
-        return "amount and date required", 400
+    d = request.form or request.json
+    worker_id = d.get("worker_id")
+    worker_id = int(worker_id) if worker_id else None
+    amount = float(d.get("amount"))
+    date = (d.get("date") or "").strip()
+    note = d.get("note") or ""
     try:
         datetime.fromisoformat(date)
-    except ValueError:
-        return "date must be ISO format YYYY-MM-DD", 400
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
     con = get_db()
-    con.execute(
-        "INSERT INTO expenses (worker_id, amount, date, category, note) VALUES (?, ?, ?, ?, ?)",
-        (worker_id, amount, date, category, note)
-    )
+    con.execute("INSERT INTO expense_records (worker_id, amount, date, note) VALUES (?,?,?,?)",
+                (worker_id, amount, date, note))
     con.commit()
     con.close()
-    if request.is_json:
-        return jsonify({"ok": True})
     return redirect(url_for("expenses_list"))
 
-# -----------------------------
-# Chart 数据（Dashboard 柱状图汇总）
-# 返回：每月 sums
-# -----------------------------
-@app.route("/api/chart-summary")
-def chart_summary():
-    """
-    返回类似：
-    {
-      "labels": ["2025-01","2025-02",...],
-      "card_rentals": [1200, 760, ...],
-      "salaries": [5000, 4800, ...],
-      "expenses": [300, 900, ...]
-    }
-    """
-    con = get_db()
-    # 读取三张表，按 YYYY-MM 汇总
-    def rows_to_month_sum(rows, col_amount, col_date):
-        m = defaultdict(float)
-        for r in rows:
-            try:
-                d = datetime.fromisoformat(r[col_date]).strftime("%Y-%m")
-            except Exception:
-                continue
-            m[d] += float(r[col_amount] or 0)
-        return m
-
-    rentals = con.execute("SELECT rental_amount, date FROM card_rentals").fetchall()
-    salaries = con.execute("SELECT salary_amount, pay_date FROM salary_payments").fetchall()
-    expenses = con.execute("SELECT amount, date FROM expenses").fetchall()
-    con.close()
-
-    m_rentals = rows_to_month_sum(rentals, "rental_amount", "date")
-    m_salaries = rows_to_month_sum(salaries, "salary_amount", "pay_date")
-    m_expenses = rows_to_month_sum(expenses, "amount", "date")
-
-    # 统一所有月份
-    months = sorted(set(m_rentals.keys()) | set(m_salaries.keys()) | set(m_expenses.keys()))
-    data = {
-        "labels": months,
-        "card_rentals": [round(m_rentals.get(m, 0), 2) for m in months],
-        "salaries": [round(m_salaries.get(m, 0), 2) for m in months],
-        "expenses": [round(m_expenses.get(m, 0), 2) for m in months],
-    }
-    return jsonify(data)
-
-# -----------------------------
-# CSV 导出
-# -----------------------------
+# ---------------- Export CSV ----------------
 def export_csv(query, headers, filename):
     con = get_db()
     rows = con.execute(query).fetchall()
@@ -411,12 +374,11 @@ def export_csv(query, headers, filename):
     cw.writerow(headers)
     for r in rows:
         cw.writerow([r[h] for h in headers])
-    mem = io.BytesIO()
-    mem.write(si.getvalue().encode("utf-8-sig"))
+    mem = io.BytesIO(si.getvalue().encode("utf-8-sig"))
     mem.seek(0)
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name=filename)
 
-@app.route("/export/workers.csv")
+@app.get("/export/workers.csv")
 def export_workers():
     return export_csv(
         "SELECT id,name,company,commission,expenses,created_at FROM workers ORDER BY id",
@@ -424,7 +386,7 @@ def export_workers():
         "workers.csv"
     )
 
-@app.route("/export/bank_accounts.csv")
+@app.get("/export/bank_accounts.csv")
 def export_bank():
     return export_csv(
         """SELECT b.id, w.name as worker_name, b.account_number, b.bank_name, b.created_at
@@ -433,7 +395,7 @@ def export_bank():
         "bank_accounts.csv"
     )
 
-@app.route("/export/card_rentals.csv")
+@app.get("/export/card_rentals.csv")
 def export_rentals():
     return export_csv(
         """SELECT c.id, w.name as worker_name, c.rental_amount, c.date, c.note, c.created_at
@@ -442,7 +404,7 @@ def export_rentals():
         "card_rentals.csv"
     )
 
-@app.route("/export/salaries.csv")
+@app.get("/export/salaries.csv")
 def export_salaries():
     return export_csv(
         """SELECT s.id, w.name as worker_name, s.salary_amount, s.pay_date, s.note, s.created_at
@@ -451,18 +413,15 @@ def export_salaries():
         "salaries.csv"
     )
 
-@app.route("/export/expenses.csv")
+@app.get("/export/expenses.csv")
 def export_expenses():
     return export_csv(
-        """SELECT e.id, w.name as worker_name, e.amount, e.date, e.category, e.note, e.created_at
-           FROM expenses e LEFT JOIN workers w ON w.id=e.worker_id
-           ORDER BY e.date DESC, e.id""",
-        ["id","worker_name","amount","date","category","note","created_at"],
+        """SELECT e.id, w.name as worker_name, e.amount, e.date, e.note, e.created_at
+           FROM expense_records e LEFT JOIN workers w ON w.id=e.worker_id ORDER BY e.date DESC, e.id""",
+        ["id","worker_name","amount","date","note","created_at"],
         "expenses.csv"
     )
 
-# -----------------------------
-# 启动
-# -----------------------------
 if __name__ == "__main__":
-    app.run(debug=True)  # 本地用
+    # 本地调试：python app.py
+    app.run(debug=True)
