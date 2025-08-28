@@ -6,26 +6,150 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link href="https://unpkg.com/missing.css" rel="stylesheet">
   <style>
-    body { max-width: 1100px; margin: 24px auto; padding: 0 12px; }
-    header a { margin-right: 12px; }
-    table { width: 100%; overflow: auto; }
+    :root {
+      --sidebar-w: 240px;
+      --bg: #0f172a;
+      --bg-2: #111827;
+      --fg: #e5e7eb;
+      --fg-dim: #9ca3af;
+      --brand: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b1020; color: var(--fg); }
+
+    /* Layout */
+    .layout { display: flex; min-height: 100vh; }
+    aside.sidebar {
+      width: var(--sidebar-w);
+      background: linear-gradient(180deg, var(--bg), var(--bg-2));
+      border-right: 1px solid rgba(255,255,255,.06);
+      padding: 16px 12px;
+      position: sticky; top: 0; height: 100vh;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; letter-spacing:.2px; margin: 4px 6px 16px;
+    }
+    .brand .dot { width: 9px; height: 9px; border-radius: 999px; background: var(--brand); box-shadow: 0 0 12px var(--brand); }
+    nav.menu { display: grid; gap: 6px; margin-top: 6px; }
+    nav.menu a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 10px; color: var(--fg);
+      text-decoration: none; font-weight: 600;
+    }
+    nav.menu a:hover { background: rgba(255,255,255,.06); }
+    nav.menu a.active { background: rgba(245, 158, 11, .18); color: #fff; outline: 1px solid rgba(245, 158, 11, .35); }
+    nav.menu small { color: var(--fg-dim); font-weight: 600; margin: 10px 8px 4px; text-transform: uppercase; letter-spacing:.5px; }
+
+    main.content {
+      flex: 1;
+      padding: 22px 22px 40px 22px;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* 顶部栏（移动端显示） */
+    .topbar {
+      display: none;
+      position: sticky; top: 0; left: 0; right: 0;
+      background: rgba(15,23,42,.65);
+      backdrop-filter: blur(10px);
+      padding: 10px 12px; z-index: 20;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .topbar .row { display: flex; align-items: center; justify-content: space-between; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.06); color: var(--fg);
+      border: 1px solid rgba(255,255,255,.08); border-radius: 10px;
+      padding: 8px 12px; text-decoration: none; cursor: pointer;
+    }
+    .btn:hover { background: rgba(255,255,255,.12); }
+
+    /* Responsive：小屏侧边栏可折叠 */
+    @media (max-width: 900px) {
+      aside.sidebar {
+        position: fixed; z-index: 30; height: 100vh; left: -260px; top: 0;
+        transition: left .25s ease;
+      }
+      aside.sidebar.open { left: 0; }
+      main.content { padding: 16px 14px 40px 14px; }
+      .topbar { display: block; }
+      .layout { padding-top: 56px; }
+    }
+
+    /* 表格/表单微调，沿用原页面 */
+    table { width: 100%; border-collapse: collapse; }
+    table th, table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.08); }
     form .row { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 8px; }
+    a.export { color: #fde68a; }
   </style>
 </head>
 <body>
-<header>
-  <h2>📒 Worker & Platform Manager</h2>
-  <nav>
-    <a href="/">概览</a>
-    <a href="/workers">工人/平台</a>
-    <a href="/bank-accounts">银行账户</a>
-    <a href="/card-rentals">银行卡租金</a>
-    <a href="/salaries">出粮记录</a>
-  </nav>
-  <hr>
-</header>
-<main>
-  {% block content %}{% endblock %}
-</main>
+
+<!-- 移动端顶栏 -->
+<div class="topbar">
+  <div class="row">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button id="btnToggle" class="btn" type="button">☰ 菜单</button>
+      <strong>Worker & Platform Manager</strong>
+    </div>
+    <a class="btn" href="/">概览</a>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- 侧边栏 -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span>W&P Manager</span>
+    </div>
+
+    <nav class="menu">
+      <small>导航</small>
+      <a href="{{ url_for('home') }}"
+         class="{% if request.path == '/' %}active{% endif %}">🏠 概览</a>
+
+      <a href="{{ url_for('workers_list') }}"
+         class="{% if request.path.startswith('/workers') %}active{% endif %}">👷 工人/平台</a>
+
+      <a href="{{ url_for('bank_accounts_list') }}"
+         class="{% if request.path.startswith('/bank-accounts') %}active{% endif %}">🏦 银行账户</a>
+
+      <a href="{{ url_for('card_rentals_list') }}"
+         class="{% if request.path.startswith('/card-rentals') %}active{% endif %}">💳 银行卡租金</a>
+
+      <a href="{{ url_for('salaries_list') }}"
+         class="{% if request.path.startswith('/salaries') %}active{% endif %}">💰 出粮记录</a>
+
+      <small>导出 CSV</small>
+      <a href="/export/workers.csv">📤 工人/平台</a>
+      <a href="/export/bank_accounts.csv">📤 银行账户</a>
+      <a href="/export/card_rentals.csv">📤 银行卡租金</a>
+      <a href="/export/salaries.csv">📤 出粮记录</a>
+    </nav>
+  </aside>
+
+  <!-- 主内容 -->
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<script>
+  // 移动端：展开/收起侧边栏
+  const btn = document.getElementById('btnToggle');
+  const sb  = document.getElementById('sidebar');
+  if (btn) btn.addEventListener('click', () => {
+    sb.classList.toggle('open');
+  });
+  // 点击内容区时收起
+  document.addEventListener('click', (e) => {
+    const within = sb.contains(e.target) || (btn && btn.contains(e.target));
+    if (!within) sb.classList.remove('open');
+  });
+</script>
 </body>
 </html>
