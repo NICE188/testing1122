@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>Worker & Platform Manager</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://unpkg.com/missing.css" rel="stylesheet">
+  <style>
+    body { max-width: 1100px; margin: 24px auto; padding: 0 12px; }
+    header a { margin-right: 12px; }
+    table { width: 100%; overflow: auto; }
+    form .row { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 8px; }
+  </style>
+</head>
+<body>
+<header>
+  <h2>📒 Worker & Platform Manager</h2>
+  <nav>
+    <a href="/">概览</a>
+    <a href="/workers">工人/平台</a>
+    <a href="/bank-accounts">银行账户</a>
+    <a href="/card-rentals">银行卡租金</a>
+    <a href="/salaries">出粮记录</a>
+  </nav>
+  <hr>
+</header>
+<main>
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>
