@@ -465,5 +465,4 @@ def export_expenses():
 # 启动
 # -----------------------------
 if __name__ == "__main__":
-    # 本地调试；Railway 会注入 $PORT
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(debug=True)  # 本地用
