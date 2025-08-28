@@ -1,31 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
   <div class="topbar">
-    <h2>👷 工人 / 平台</h2>
-    <div class="exports"><a href="{{ url_for('export_workers') }}">导出 CSV</a></div>
+    <h2>👷 {{ _('Workers/Platforms') }}</h2>
+    <div class="exports"><a href="{{ url_for('export_workers') }}">{{ _('Export Workers') }}</a></div>
   </div>
 
   <div class="panel">
     <form action="{{ url_for('workers_add') }}" method="post">
       <div class="grid-form">
         <div>
-          <label>名字 *</label>
-          <input name="name" required placeholder="例如：Ram" />
+          <label>{{ _('Name') }} *</label>
+          <input name="name" required placeholder="{{ _('Name') }}">
         </div>
         <div>
-          <label>公司</label>
-          <input name="company" placeholder="例如：ABC Ltd." />
+          <label>{{ _('Company') }}</label>
+          <input name="company" placeholder="{{ _('Company') }}">
         </div>
         <div>
-          <label>佣金</label>
-          <input name="commission" type="number" step="0.01" placeholder="0.00" />
+          <label>{{ _('Commission') }}</label>
+          <input name="commission" type="number" step="0.01" placeholder="0.00">
         </div>
         <div>
-          <label>开销</label>
-          <input name="expenses" type="number" step="0.01" placeholder="0.00" />
+          <label>{{ _('Expenses') }}</label>
+          <input name="expenses" type="number" step="0.01" placeholder="0.00">
         </div>
-        <div>
-          <button class="btn" type="submit" style="width:100%;">➕ 新增</button>
+        <div style="align-self:end;">
+          <button class="btn" type="submit" style="width:100%;">➕ {{ _('Add New') }}</button>
         </div>
       </div>
     </form>
@@ -34,7 +34,12 @@
       <table>
         <thead>
           <tr>
-            <th>ID</th><th>名字</th><th>公司</th><th>佣金</th><th>开销</th><th>创建时间</th>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Name') }}</th>
+            <th>{{ _('Company') }}</th>
+            <th>{{ _('Commission') }}</th>
+            <th>{{ _('Expenses') }}</th>
+            <th>{{ _('Created At') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -48,7 +53,7 @@
             <td>{{ r.created_at }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="6" class="muted" style="text-align:center;">暂无数据</td></tr>
+          <tr><td colspan="6" class="muted" style="text-align:center;">{{ _('No Data') }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
