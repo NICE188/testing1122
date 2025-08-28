@@ -184,6 +184,7 @@ def home():
     total_workers = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
     total_rentals = con.execute("SELECT IFNULL(SUM(rental_amount),0) s FROM card_rentals").fetchone()["s"]
     total_salaries = con.execute("SELECT IFNULL(SUM(salary_amount),0) s FROM salary_payments").fetchone()["s"]
+    total_expenses = con.execute("SELECT IFNULL(SUM(amount),0) s FROM expenses").fetchone()["s"]   # 👈 新增
     con.close()
     return render_template("index.html",
                            total_workers=total_workers,
