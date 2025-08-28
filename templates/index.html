@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<section>
+  <h3>概览</h3>
+  <ul>
+    <li>工人数：<b>{{ total_workers }}</b></li>
+    <li>租金总额：<b>{{ '%.2f'|format(total_rentals) }}</b></li>
+    <li>出粮总额：<b>{{ '%.2f'|format(total_salaries) }}</b></li>
+  </ul>
+  <p>导出： 
+    <a href="/export/workers.csv">workers.csv</a> | 
+    <a href="/export/bank_accounts.csv">bank_accounts.csv</a> | 
+    <a href="/export/card_rentals.csv">card_rentals.csv</a> | 
+    <a href="/export/salaries.csv">salaries.csv</a>
+  </p>
+</section>
+{% endblock %}
