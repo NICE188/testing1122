@@ -1,32 +1,32 @@
 {% extends "base.html" %}
 {% block content %}
   <div class="topbar">
-    <h2>🏦 银行账户</h2>
-    <div class="exports"><a href="{{ url_for('export_bank') }}">导出 CSV</a></div>
+    <h2>🏦 {{ _('Bank Accounts') }}</h2>
+    <div class="exports"><a href="{{ url_for('export_bank') }}">{{ _('Export Bank Accounts') }}</a></div>
   </div>
 
   <div class="panel">
     <form action="{{ url_for('bank_accounts_add') }}" method="post">
       <div class="grid-form">
         <div>
-          <label>工人 *</label>
+          <label>{{ _('Worker') }} *</label>
           <select name="worker_id" required>
-            <option value="">请选择</option>
+            <option value="">{{ _('Worker') }}</option>
             {% for w in workers %}
               <option value="{{ w.id }}">{{ w.name }}</option>
             {% endfor %}
           </select>
         </div>
         <div>
-          <label>银行名称 *</label>
-          <input name="bank_name" required placeholder="例如：NIB, Global IME" />
+          <label>{{ _('Bank Name') }} *</label>
+          <input name="bank_name" required placeholder="{{ _('Bank Name') }}">
         </div>
         <div>
-          <label>账户号码 *</label>
-          <input name="account_number" required placeholder="例如：123-456-7890" />
+          <label>{{ _('Account Number') }} *</label>
+          <input name="account_number" required placeholder="{{ _('Account Number') }}">
         </div>
-        <div>
-          <button class="btn" type="submit" style="width:100%;">➕ 新增</button>
+        <div style="align-self:end;">
+          <button class="btn" type="submit" style="width:100%;">➕ {{ _('Add New') }}</button>
         </div>
       </div>
     </form>
@@ -35,7 +35,11 @@
       <table>
         <thead>
           <tr>
-            <th>ID</th><th>工人</th><th>银行名称</th><th>账户号码</th><th>创建时间</th>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Worker') }}</th>
+            <th>{{ _('Bank Name') }}</th>
+            <th>{{ _('Account Number') }}</th>
+            <th>{{ _('Created At') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -48,7 +52,7 @@
             <td>{{ r.created_at }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="5" class="muted" style="text-align:center;">暂无数据</td></tr>
+          <tr><td colspan="5" class="muted" style="text-align:center;">{{ _('No Data') }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
