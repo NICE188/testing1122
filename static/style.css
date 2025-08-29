@@ -1,39 +1,174 @@
+/* ===== Polished Dark UI ===== */
 :root{
-  --bg:#0f172a; --panel:#111827; --card:#0b1220; --text:#e5e7eb;
-  --muted:#9ca3af; --brand:#facc15; --line:#1f2937;
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto}
-a{color:var(--text);text-decoration:none}
-.layout{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
-.sidebar{background:#0a0f1c;border-right:1px solid var(--line);padding:16px}
-.brand{font-weight:800;margin-bottom:12px}
-.sidebar nav a{display:block;padding:10px 12px;border-radius:10px;margin-bottom:6px;color:#d1d5db}
-.sidebar nav a.active,.sidebar nav a:hover{background:#0f172a;color:#fff}
-.lang{margin-top:16px;color:var(--muted)}
-.content{padding:16px 20px; position:relative;}
-.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.btn{padding:8px 12px;background:#1f2937;border:1px solid #334155;border-radius:10px;color:#e5e7eb;cursor:pointer}
-.btn:hover{background:#273245}
-.btn.danger{border-color:#7f1d1d;background:#3f1d1d}
-.btn.danger:hover{background:#5a1f1f}
-.page-title{margin:8px 2px 12px;font-size:20px;font-weight:700}
-.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
-.metric-title{font-size:12px;color:var(--muted)}
-.metric-num{font-size:28px;font-weight:800;color:var(--brand)}
-.tip{background:#0b1220;border:1px dashed #273245;padding:10px;border-radius:10px;margin-bottom:12px;color:#cbd5e1}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
-.form{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-.form input,.form select{background:#0b1220;border:1px solid #273245;border-radius:8px;padding:8px;color:#e5e7eb;min-width:160px}
-table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid #1f2937}
-th{color:#cbd5e1;text-align:left}
-.empty{color:#9ca3af;text-align:center}
+  /* 调色盘 */
+  --bg:#0c1220;
+  --bg-grad-1:#0c1220;
+  --bg-grad-2:#0b1220;
+  --panel:rgba(19,26,43,.6);
+  --panel-solid:#111827;
+  --card:rgba(16,22,39,.65);
+  --text:#e7ebf3;
+  --muted:#93a4c0;
+  --brand:#facc15;
+  --line:rgba(148,163,184,.18);
 
-/* 状态徽章 + 浅色按钮 */
-.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid transparent}
-.badge.on{color:#22c55e;background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35)}
-.badge.off{color:#f59e0b;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35)}
-.btn.soft{background:#0f172a;border-color:#334155}
-.btn.soft:hover{background:#121c2f}
+  /* 状态色 */
+  --green:#22c55e;
+  --green-weak:rgba(34,197,94,.16);
+  --amber:#f59e0b;
+  --amber-weak:rgba(245,158,11,.16);
+  --red:#ef4444;
+  --red-weak:rgba(239,68,68,.14);
+
+  /* 阴影 */
+  --shadow-1:0 6px 24px rgba(0,0,0,.25);
+  --shadow-2:0 2px 10px rgba(0,0,0,.2);
+  --ring:#3659d6;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  color:var(--text);
+  font:14px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans","PingFang SC","Microsoft YaHei",sans-serif;
+  background:
+    radial-gradient(1100px 600px at 70% -200px, rgba(54,89,214,.22), transparent 60%),
+    radial-gradient(900px 500px at -200px 70%, rgba(250,204,21,.06), transparent 60%),
+    linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+}
+
+/* ============= 布局 ============= */
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.sidebar{
+  background:linear-gradient(180deg,#0a1020 0%, #0a111e 100%);
+  border-right:1px solid var(--line);
+  padding:16px 16px 18px;
+  position:relative;
+  box-shadow:var(--shadow-2) inset;
+}
+.brand{
+  display:flex;align-items:center;gap:8px;
+  font-weight:800;letter-spacing:.3px;
+  margin:6px 0 14px;
+  color:#fff;
+  text-shadow:0 1px 0 rgba(0,0,0,.25);
+}
+.sidebar nav a{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:12px;margin-bottom:8px;
+  color:#cbd5e1; border:1px solid transparent;
+  transition:.18s ease;
+}
+.sidebar nav a:hover{background:rgba(148,163,184,.08);color:#fff;border-color:var(--line)}
+.sidebar nav a.active{
+  background:linear-gradient(180deg, rgba(148,163,184,.12), rgba(148,163,184,.06));
+  color:#fff;border-color:rgba(148,163,184,.22);
+  box-shadow:0 0 0 1px rgba(148,163,184,.16) inset;
+}
+.lang{margin-top:18px;color:var(--muted);display:flex;align-items:center;gap:8px}
+
+.content{
+  position:relative; padding:18px 22px;
+  backdrop-filter:saturate(1.1);
+}
+
+/* 左下角装饰背景（可留可删） */
+.has-corner-bg::after{
+  content:""; position:absolute; left:26px; bottom:28px;
+  width:clamp(240px, 28vw, 520px); aspect-ratio:16/11;
+  background-image:url("https://i.imgur.com/RUhZHD9.jpeg");
+  background-repeat:no-repeat; background-size:contain; background-position:left bottom;
+  opacity:.16; filter:saturate(1.05) contrast(1.05); pointer-events:none; z-index:0;
+}
+.topbar,.form,.panel,.cards,table{position:relative; z-index:1;}
+
+.topbar{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:14px;
+}
+.exports .btn{margin-left:8px}
+
+/* ============= 元件 ============= */
+.btn{
+  padding:9px 12px;border-radius:10px;
+  background:linear-gradient(180deg,#1e2638,#1a2233);
+  border:1px solid rgba(148,163,184,.28);
+  color:#e7ebf3;cursor:pointer;transition:.18s ease;
+  box-shadow:var(--shadow-2) inset;
+}
+.btn:hover{filter:brightness(1.05)}
+.btn:active{transform:translateY(1px)}
+.btn.soft{background:rgba(30,38,56,.6)}
+.btn.danger{background:linear-gradient(180deg, #3b1a1a, #331717); border-color:rgba(239,68,68,.4)}
+.btn.danger:hover{background:#4a1e1e}
+
+.page-title{
+  margin:8px 2px 14px;font-size:20px;font-weight:800;letter-spacing:.2px;
+  display:flex;align-items:center;gap:10px;
+}
+.page-title::after{
+  content:"";height:1px;flex:1;margin-left:10px;
+  background:linear-gradient(90deg, rgba(250,204,21,.6), rgba(250,204,21,0));
+  opacity:.6;
+}
+
+/* 信息卡片（如有） */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.card{
+  background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:14px 14px 12px; box-shadow:var(--shadow-1);
+}
+.metric-title{font-size:12px;color:var(--muted)}
+.metric-num{font-size:28px;font-weight:800;color:var(--brand);letter-spacing:.3px}
+
+/* 面板容器 */
+.panel{
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;padding:14px; box-shadow:var(--shadow-1);
+  backdrop-filter: blur(8px) saturate(1.05);
+  overflow:hidden; /* 让圆角作用到表格 */
+}
+
+/* 表单 */
+.form{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.form input,.form select{
+  background:rgba(14,20,35,.9); border:1px solid rgba(148,163,184,.28);
+  border-radius:10px;padding:9px 10px;color:#e7ebf3;min-width:170px; outline:none;
+  transition:box-shadow .15s ease, border-color .15s ease, background .15s ease;
+}
+.form input::placeholder{color:#94a3b8}
+.form input:focus,.form select:focus{
+  border-color:rgba(54,89,214,.55);
+  box-shadow:0 0 0 3px rgba(54,89,214,.18);
+  background:rgba(18,24,41,.95);
+}
+
+/* 表格 */
+table{width:100%;border-collapse:separate;border-spacing:0}
+thead th{
+  font-size:12px; color:#cbd5e1; text-align:left; letter-spacing:.35px;
+  text-transform:uppercase; padding:12px 10px; position:sticky; top:0; z-index:2;
+  background:linear-gradient(180deg, rgba(17,24,39,.9), rgba(17,24,39,.55));
+  backdrop-filter:blur(6px);
+}
+tbody td{padding:12px 10px;border-top:1px solid rgba(148,163,184,.12)}
+tbody tr:hover{background:rgba(148,163,184,.06)}
+tbody tr:first-child td{border-top-color:rgba(148,163,184,.18)}
+.empty{color:#9ca3af;text-align:center;padding:24px}
+
+/* 徽章（状态） */
+.badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid transparent
+}
+.badge.on{color:var(--green);background:var(--green-weak);border-color:rgba(34,197,94,.35)}
+.badge.off{color:var(--amber);background:var(--amber-weak);border-color:rgba(245,158,11,.35)}
+
+/* 响应式 */
+@media (max-width:1200px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:860px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{position:sticky;top:0;z-index:10}
+  .has-corner-bg::after{display:none}
+}
