@@ -10,43 +10,27 @@
 <body>
 <div class="layout">
   <aside class="sidebar">
-    <!-- 品牌位（可以保留文字，也可以自己换成表情/图片） -->
-    <div class="brand">🚀 {{ t.app_name }}</div>
+    <!-- 品牌：尼泊尔国旗 + 名称 -->
+    <div class="brand">🇳🇵 {{ t.app_name }}</div>
 
-    <!-- 导航：每个功能前加 emoji 图标 -->
-    <nav class="nav">
-      <a href="{{ url_for('home') }}" class="{{ 'active' if request.path=='/' else '' }}">
-        <span class="nav-emoji" aria-hidden="true">🎰</span><span>{{ t.dashboard }}</span>
-      </a>
-      <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">
-        <span class="nav-emoji" aria-hidden="true">👨‍💼</span>
-        <span class="nav-emoji" aria-hidden="true">📲</span>
-        <span>{{ t.workers }}</span>
-      </a>
-      <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
-        <span class="nav-emoji" aria-hidden="true">🏦</span><span>{{ t.bank_accounts }}</span>
-      </a>
-      <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">
-        <span class="nav-emoji" aria-hidden="true">💳</span><span>{{ t.card_rentals }}</span>
-      </a>
-      <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}">
-        <span class="nav-emoji" aria-hidden="true">💵</span><span>{{ t.salaries }}</span>
-      </a>
-      <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}">
-        <span class="nav-emoji" aria-hidden="true">💸</span><span>{{ t.expenses }}</span>
-      </a>
+    <!-- 导航：功能前的图标 -->
+    <nav>
+      <a href="{{ url_for('home') }}" class="{{ 'active' if request.path=='/' else '' }}">🎰 {{ t.dashboard }}</a>
+      <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">👨‍💼📲 {{ t.workers }}</a>
+      <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">🏦 {{ t.bank_accounts }}</a>
+      <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">💳 {{ t.card_rentals }}</a>
+      <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}">💵 {{ t.salaries }}</a>
+      <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}">💸 {{ t.expenses }}</a>
     </nav>
 
     <div class="lang">
-  <span class="lang-emoji" aria-hidden="true" title="Language">🌐</span>
-  <span class="lang-label">{{ t.language }}：</span>
-  <a href="?lang=zh" class="{{ 'active' if lang=='zh' else '' }}">中文</a>
-  <span class="sep">|</span>
-  <a href="?lang=en" class="{{ 'active' if lang=='en' else '' }}">EN</a>
-</div>
+      🌐 {{ t.language }}：
+      <a href="?lang=zh">中文</a> | <a href="?lang=en">EN</a>
+    </div>
   </aside>
 
-  <main class="content">
+  <!-- 给主内容区加装饰背景 -->
+  <main class="content has-corner-bg">
     <header class="topbar">
       <div></div>
       <div class="exports">
