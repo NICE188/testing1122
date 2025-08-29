@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% set page_title = t.edit ~ ' - ' ~ t.card_rentals %}
+{% block body %}
+<h1 class="page-title">{{ t.edit }} — {{ t.card_rentals }}</h1>
+<form class="form" method="post" action="{{ url_for('card_rentals_edit', cid=r.id) }}">
+  <select name="worker_id" required>
+    {% for w in workers %}
+      <option value="{{ w.id }}" {{ 'selected' if w.id==r.worker_id else '' }}>{{ w.name }}</option>
+    {% endfor %}
+  </select>
+  <input name="rental_amount" type="number" step="0.01" value="{{ r.rental_amount }}" placeholder="{{ t.rental_amount }}" required>
+  <input name="date" type="date" value="{{ r.date }}" required>
+  <input name="note" value="{{ r.note }}" placeholder="{{ t.note }}">
+  <button class="btn" type="submit">{{ t.save }}</button>
+  <a class="btn" href="{{ url_for('card_rentals_list') }}">{{ t.back }}</a>
+</form>
+{% endblock %}
