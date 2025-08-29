@@ -32,3 +32,35 @@ th{color:#cbd5e1;text-align:left}
 .empty{color:#9ca3af;text-align:center}
 @media (max-width:1100px){.cards{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:680px){.layout{grid-template-columns:1fr}.sidebar{position:sticky;top:0}}
+/* 让主内容区可以挂一个角落背景 */
+.content{ position: relative; }
+
+/* 左下角背景图（使用你给的 Imgur 图片地址） */
+.has-corner-bg::after{
+  content:"";
+  position: absolute;
+  left: 24px;              /* 距离内容区左边距 */
+  bottom: 28px;            /* 距离内容区下边距 */
+  width: clamp(240px, 28vw, 520px);   /* 自适应宽度 */
+  aspect-ratio: 16 / 11;               /* 没有原图尺寸也能保持比例，可按需调整或删掉 */
+  background-image: url("https://i.imgur.com/RUhZHD9.jpeg");
+  background-repeat: no-repeat;
+  background-size: contain;            /* 完整显示整张图 */
+  background-position: left bottom;
+  opacity: .22;                        /* 透明度，避免干扰内容；想更明显可调到 .3~.4 */
+  filter: saturate(1.05) contrast(1.05); /* 轻微提色，可删 */
+  pointer-events: none;                /* 不拦截鼠标事件 */
+  z-index: 0;
+}
+
+/* 保证内容组件在背景图之上（保险起见） */
+.panel, .cards, table, .form, .topbar{ position: relative; z-index: 1; }
+
+/* 小屏幕上隐藏或缩小背景，避免挡住内容 */
+@media (max-width: 900px){
+  .has-corner-bg::after{ width: clamp(180px, 38vw, 320px); opacity:.18; }
+}
+@media (max-width: 680px){
+  .has-corner-bg::after{ display:none; }
+}
+
