@@ -18,37 +18,43 @@
     <!-- 侧栏导航：图标 + 名称（一定要有 tile-label 才会显示文字） -->
     <nav class="nav-grid" aria-label="Main">
   <a href="{{ url_for('home') }}"
-     class="tile {{ 'active' if request.path=='/' else '' }}">
+     class="tile {{ 'active' if request.path=='/' else '' }}"
+     data-label="{{ t.dashboard }}">
     <span class="tile-emoji">🎰</span>
-    <span class="tile-label">Dashboard</span>
+    <span class="tile-label">{{ t.dashboard }}</span>
   </a>
 
   <a href="{{ url_for('workers_list') }}"
-     class="tile {{ 'active' if request.path.startswith('/workers') else '' }}">
+     class="tile {{ 'active' if request.path.startswith('/workers') else '' }}"
+     data-label="{{ t.workers }}">
     <span class="tile-emoji">👨‍💼📲</span>
     <span class="tile-label">工人 / 平台</span>
   </a>
 
   <a href="{{ url_for('bank_accounts_list') }}"
-     class="tile {{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
+     class="tile {{ 'active' if request.path.startswith('/bank-accounts') else '' }}"
+     data-label="{{ t.bank_accounts }}">
     <span class="tile-emoji">🏦</span>
     <span class="tile-label">银行账户</span>
   </a>
 
   <a href="{{ url_for('card_rentals_list') }}"
-     class="tile {{ 'active' if request.path.startswith('/card-rentals') else '' }}">
+     class="tile {{ 'active' if request.path.startswith('/card-rentals') else '' }}"
+     data-label="{{ t.card_rentals }}">
     <span class="tile-emoji">💳</span>
     <span class="tile-label">银行卡租金</span>
   </a>
 
   <a href="{{ url_for('salaries_list') }}"
-     class="tile {{ 'active' if request.path.startswith('/salaries') else '' }}">
+     class="tile {{ 'active' if request.path.startswith('/salaries') else '' }}"
+     data-label="{{ t.salaries }}">
     <span class="tile-emoji">💵</span>
     <span class="tile-label">出粮记录</span>
   </a>
 
   <a href="{{ url_for('expenses_list') }}"
-     class="tile {{ 'active' if request.path.startswith('/expenses') else '' }}">
+     class="tile {{ 'active' if request.path.startswith('/expenses') else '' }}"
+     data-label="{{ t.expenses }}">
     <span class="tile-emoji">💸</span>
     <span class="tile-label">开销记录</span>
   </a>
