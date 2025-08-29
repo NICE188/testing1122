@@ -32,6 +32,10 @@
           <form style="display:inline" method="post" action="{{ url_for('workers_toggle', wid=r.id) }}">
             <button class="btn {{ '' if r.is_active else 'soft' }}" type="submit">{{ t.deactivate if r.is_active else t.activate }}</button>
           </form>
+          <a class="btn" href="{{ url_for('workers_edit_form', wid=r.id) }}">{{ t.edit }}</a>
+          <form style="display:inline" method="post" action="{{ url_for('workers_delete', wid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
+            <button class="btn danger" type="submit">{{ t.delete }}</button>
+          </form>
         </td>
       </tr>
       {% else %}
