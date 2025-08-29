@@ -3,6 +3,17 @@
 {% block body %}
 <h1 class="page-title">💵 {{ t.salaries }}</h1>
 
+<!-- 仅保留两个日期时间筛选 -->
+<form class="form" method="get" action="">
+  <input type="datetime-local" name="start" value="{{ request.args.get('start','') }}">
+  <input type="datetime-local" name="end"   value="{{ request.args.get('end','') }}">
+  <button class="btn" type="submit">{{ t.filter }}</button>
+  {% if request.args.get('start') or request.args.get('end') %}
+    <a class="btn soft" href="{{ request.path }}">{{ t.clear }}</a>
+  {% endif %}
+</form>
+
+<!-- 新增表单（保留不动） -->
 <form class="form" method="post" action="{{ url_for('salaries_add') }}">
   <select name="worker_id" required>
     <option value="">{{ t.worker }}</option>
@@ -14,22 +25,13 @@
   <button class="btn" type="submit">{{ t.add }}</button>
 </form>
 
-<!-- 日期筛选（s.pay_date） -->
-<form class="form" method="get" action="">
-  <input type="date" name="start" value="{{ request.args.get('start','') }}">
-  <input type="date" name="end"   value="{{ request.args.get('end','') }}">
-  <button class="btn" type="submit">{{ t.filter }}</button>
-  {% if request.args.get('start') or request.args.get('end') %}
-    <a class="btn soft" href="{{ request.path }}">{{ t.clear }}</a>
-  {% endif %}
-</form>
-
 <div class="panel">
   <table>
     <thead>
       <tr>
-        <th>ID</th><th>{{ t.worker }}</th><th>{{ t.salary_amount }}</th><th>{{ t.pay_date }}</th>
-        <th>{{ t.note }}</th><th>{{ t.created_at }}</th><th>{{ t.status }}</th><th>{{ t.actions }}</th>
+        <th>ID</th><th>{{ t.worker }}</th><th>{{ t.salary_amount }}</th>
+        <th>{{ t.pay_date }}</th><th>{{ t.note }}</th><th>{{ t.created_at }}</th>
+        <th>{{ t.status }}</th><th>{{ t.actions }}</th>
       </tr>
     </thead>
     <tbody>
@@ -41,14 +43,16 @@
         <td>{{ r.pay_date }}</td>
         <td>{{ r.note }}</td>
         <td>{{ r.created_at }}</td>
-        <td>{% if r.is_active %}<span class="badge on">{{ t.active }}</span>{% else %}<span class="badge off">{{ t.inactive }}</span>{% endif %}</td>
         <td>
-          <form method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}" style="display:inline">
-            <button class="btn soft" type="submit">{{ t.deactivate if r.is_active else t.activate }}</button>
+          {% if r.is_active %}<span class="badge on">{{ t.active }}</span>
+          {% else %}<span class="badge off">{{ t.inactive }}</span>{% endif %}
+        </td>
+        <td>
+          <form style="display:inline" method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}">
+            <button class="btn" type="submit">{% if r.is_active %}{{ t.deactivate }}{% else %}{{ t.activate }}{% endif %}</button>
           </form>
           <a class="btn" href="{{ url_for('salaries_edit_form', sid=r.id) }}">{{ t.edit }}</a>
-          <form method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" style="display:inline"
-                onsubmit="return confirm('{{ t.confirm_delete }}')">
+          <form style="display:inline" method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
             <button class="btn danger" type="submit">{{ t.delete }}</button>
           </form>
         </td>
