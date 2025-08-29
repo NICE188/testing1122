@@ -1,68 +1,132 @@
-{% extends "base.html" %}
-{% set page_title = "Login" %}
-{% block body %}
+<!doctype html>
+<html lang="{{ 'zh' if lang=='zh' else 'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ t.app_name }} — {{ t.login }}</title>
+  <!-- 复用你现有的暗色主题样式 -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    /* 页面专用样式（不影响其它页面） */
+    :root{
+      --login-glow1: rgba(54,89,214,.25);
+      --login-glow2: rgba(250,204,21,.10);
+      --panel:#111827; --line:rgba(148,163,184,.18);
+      --text:#e7ebf3; --muted:#93a4c0;
+    }
+    body{ margin:0; min-height:100vh; }
+    .login-wrap{
+      min-height:100vh; display:grid; place-items:center; padding:26px 16px;
+      /* 背景：与你全站保持一致，再加轻微光晕 */
+      background:
+        radial-gradient(1100px 600px at 70% -200px, var(--login-glow1), transparent 60%),
+        radial-gradient(900px 500px at -200px 70%, var(--login-glow2), transparent 60%),
+        linear-gradient(180deg,#0c1220,#0b1220);
+    }
+    .login-card{
+      width:min(440px, 96vw);
+      background:var(--panel); color:var(--text);
+      border:1px solid var(--line); border-radius:16px;
+      padding:18px; box-shadow:0 14px 40px rgba(0,0,0,.35);
+      animation: pop .18s ease-out;
+    }
+    @keyframes pop{ from{ transform:scale(.985); opacity:.8 } to{ transform:scale(1); opacity:1 } }
 
-<style>
-.login-wrap{min-height:calc(100vh - 40px); display:grid; place-items:center;}
-.login-card{
-  width:min(420px, 92vw);
-  background:var(--panel);
-  border:1px solid var(--line);
-  border-radius:16px;
-  box-shadow:0 10px 40px rgba(0,0,0,.35);
-  overflow:hidden;
-}
-.login-head{
-  padding:16px;
-  background:linear-gradient(180deg, rgba(17,24,39,.92), rgba(17,24,39,.65));
-  border-bottom:1px solid var(--line);
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-}
-.login-title{font-weight:800;display:flex;align-items:center;gap:8px}
-.login-sub{font-size:12px;color:var(--muted)}
-.login-body{padding:16px}
-.login-field{display:flex;flex-direction:column;gap:6px; margin-bottom:10px}
-.login-field label{font-size:12px;color:#cbd5e1}
-.login-field input{
-  background:#0b1220;border:1px solid #273245;border-radius:10px;padding:10px;color:#e5e7eb
-}
-.login-error{color:#fda4af;background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.35);
-  border-radius:10px;padding:8px 10px;margin-bottom:10px}
-.login-actions{display:flex;justify-content:flex-end;gap:10px;padding:12px 16px;border-top:1px solid var(--line);background:rgba(17,24,39,.4)}
-</style>
+    .brand{ display:flex; align-items:center; gap:10px; margin:4px 0 6px; }
+    .brand .logo{ font-size:22px }
+    .brand .name{ font-weight:800; letter-spacing:.3px }
 
-<div class="login-wrap">
-  <div class="login-card">
-    <div class="login-head">
-      <div>
-        <div class="login-title">🔐 Login</div>
-        <div class="login-sub">请输入用户名与密码 / Enter your credentials</div>
+    .subtitle{ color:var(--muted); margin:0 0 12px; font-size:13px }
+    .field{ margin:10px 0 }
+    .label{ display:block; font-size:13px; color:#cbd5e1; margin-bottom:6px }
+
+    .ctrl{
+      position:relative;
+    }
+    .ctrl input{
+      width:100%; padding:11px 40px 11px 12px; border-radius:12px;
+      background:#0b1220; color:var(--text);
+      border:1px solid rgba(148,163,184,.28); outline:none;
+      transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+    .ctrl input:focus{
+      border-color:rgba(54,89,214,.55);
+      box-shadow:0 0 0 3px rgba(54,89,214,.18);
+      background:#0d1424;
+    }
+    .eye{
+      position:absolute; right:8px; top:50%; transform:translateY(-50%);
+      background:transparent; border:0; color:#cbd5e1; cursor:pointer; padding:6px;
+    }
+    .btn{
+      width:100%; margin-top:8px; padding:11px 12px; border-radius:12px; cursor:pointer;
+      background:linear-gradient(180deg,#1e2638,#1a2233);
+      border:1px solid rgba(148,163,184,.28); color:var(--text);
+      transition:filter .15s ease, transform .02s ease;
+    }
+    .btn:hover{ filter:brightness(1.05) }
+    .btn:active{ transform:translateY(1px) }
+
+    .error{
+      margin-top:10px; padding:10px 12px; border-radius:12px; font-size:13px;
+      background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.35); color:#fecaca;
+    }
+    .lang-mini{ margin-top:10px; font-size:12px; color:var(--muted); text-align:right }
+    .lang-mini a{ color:#e5e7eb; text-decoration:none }
+    .lang-mini a:hover{ text-decoration:underline }
+    .foot{ margin-top:12px; font-size:12px; color:#9aa7c2; text-align:center; opacity:.85 }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <form class="login-card" method="post" action="{{ url_for('login_post') }}" novalidate>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">🇳🇵</div>
+        <div class="name">{{ t.app_name }}</div>
       </div>
-      <div style="opacity:.8">{{ t.app_name }}</div>
-    </div>
+      <h1 style="margin:4px 0 0; font-size:20px; font-weight:800;">{{ t.login }}</h1>
+      <p class="subtitle">{{ t.welcome_tip }}</p>
 
-    <form class="login-body" method="post" action="{{ url_for('login_post') }}">
+      <div class="field">
+        <label class="label" for="username">{{ t.username }}</label>
+        <div class="ctrl">
+          <input id="username" name="username" autocomplete="username" placeholder="{{ t.username }}" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="password">{{ t.password }}</label>
+        <div class="ctrl">
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="{{ t.password }}" required>
+          <button class="eye" type="button" tabindex="-1" aria-label="Toggle Password" onclick="togglePwd()">
+            👁️
+          </button>
+        </div>
+      </div>
+
+      <!-- 登录成功后要回跳到的页面 -->
+      <input type="hidden" name="next" value="{{ next_url or url_for('home') }}">
+
+      <button class="btn" type="submit">{{ t.login }}</button>
+
       {% if error %}
-      <div class="login-error">{{ error }}</div>
+        <div class="error">⚠ {{ error }}</div>
       {% endif %}
 
-      <div class="login-field">
-        <label for="lg_user">Username</label>
-        <input id="lg_user" name="username" autocomplete="username" placeholder="admin" required>
+      <div class="lang-mini">
+        {{ t.language }}：
+        <a href="?lang=zh">中文</a> | <a href="?lang=en">EN</a>
       </div>
 
-      <div class="login-field">
-        <label for="lg_pwd">Password</label>
-        <input id="lg_pwd" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
-      </div>
-
-      <input type="hidden" name="next" value="{{ next_url or url_for('home') }}"/>
-
-      <div class="login-actions">
-        <a class="btn soft" href="{{ url_for('health') }}">Health</a>
-        <button class="btn" type="submit">Login</button>
-      </div>
+      <div class="foot">© {{ t.app_name }}</div>
     </form>
   </div>
-</div>
-{% endblock %}
+
+  <script>
+    function togglePwd(){
+      const i = document.getElementById('password');
+      i.type = (i.type === 'password') ? 'text' : 'password';
+    }
+  </script>
+</body>
+</html>
