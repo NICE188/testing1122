@@ -1,26 +1,13 @@
 {% extends "base.html" %}
 {% set page_title = t.salaries %}
 {% block body %}
-<h1 class="page-title">💵 {{ t.salaries }}</h1>
 
-<form class="form" method="get" action="{{ url_for('salaries_list') }}">
-  <input type="datetime-local" name="start" value="{{ request.args.get('start','') }}">
-  <input type="datetime-local" name="end"   value="{{ request.args.get('end','') }}">
-  <button class="btn" type="submit">Filter</button>
-</form>
+<h1 class="page-title" style="display:flex;align-items:center;justify-content:space-between">
+  <span>💵 {{ t.salaries }}</span>
+  <button class="btn" id="openSalaryModal">{{ t.add }}</button>
+</h1>
 
-<form class="form" method="post" action="{{ url_for('salaries_add') }}">
-  <select name="worker_id" required>
-    <option value="">{{ t.worker }}</option>
-    {% for w in workers %}
-    <option value="{{ w.id }}">{{ w.name }}</option>
-    {% endfor %}
-  </select>
-  <input name="salary_amount" type="number" step="0.01" placeholder="{{ t.salary_amount }}" required>
-  <input name="note" placeholder="{{ t.note }}">
-  <button class="btn" type="submit">{{ t.add }}</button>
-</form>
-
+<!-- 列表 -->
 <div class="panel">
   <table>
     <thead>
@@ -40,21 +27,26 @@
       <tr>
         <td>{{ r.id }}</td>
         <td>{{ r.worker_name }}</td>
-        <td>{{ r.salary_amount }}</td>
+        <td>{{ '%.2f'|format(r.salary_amount) }}</td>
         <td>{{ r.pay_date }}</td>
         <td>{{ r.note }}</td>
         <td>
-          <span class="badge {{ 'on' if r.is_active else 'off' }}">
-            {{ t.active if r.is_active else t.inactive }}
-          </span>
+          {% if r.is_active %}
+            <span class="badge on">{{ t.active }}</span>
+          {% else %}
+            <span class="badge off">{{ t.inactive }}</span>
+          {% endif %}
         </td>
         <td>{{ r.created_at }}</td>
         <td>
-          <form style="display:inline" method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}">
-            <button class="btn soft" type="submit">{{ t.deactivate if r.is_active else t.activate }}</button>
+          <form method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}" style="display:inline">
+            <button class="btn soft" type="submit">
+              {% if r.is_active %}{{ t.deactivate }}{% else %}{{ t.activate }}{% endif %}
+            </button>
           </form>
           <a class="btn" href="{{ url_for('salaries_edit_form', sid=r.id) }}">{{ t.edit }}</a>
-          <form style="display:inline" method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
+          <form method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" style="display:inline"
+                onsubmit="return confirm('{{ t.confirm_delete }}')">
             <button class="btn danger" type="submit">{{ t.delete }}</button>
           </form>
         </td>
@@ -65,4 +57,155 @@
     </tbody>
   </table>
 </div>
+
+<!-- ================== 美观弹窗：出粮记录 ================== -->
+<style>
+/* —— 仅本页样式（sl-* 前缀），不影响全站 —— */
+.sl-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:60}
+.sl-modal.show{display:flex;animation:sl-fadeIn .18s ease}
+.sl-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(3px)}
+.sl-dialog{
+  position:relative; z-index:1; width:min(720px,92vw);
+  border-radius:16px; padding:0; overflow:hidden;
+  background:
+    linear-gradient(180deg, rgba(148,163,184,.08), rgba(148,163,184,.04)) padding-box,
+    linear-gradient(135deg, rgba(96,165,250,.75), rgba(167,139,250,.75), rgba(250,204,21,.55)) border-box;
+  border:1px solid transparent;
+  box-shadow:0 18px 60px rgba(0,0,0,.38);
+  animation:sl-popIn .18s ease;
+}
+.sl-header{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:14px 16px;
+  background:linear-gradient(180deg, rgba(17,24,39,.92), rgba(17,24,39,.65));
+  border-bottom:1px solid rgba(148,163,184,.18);
+}
+.sl-title{display:flex;align-items:center;gap:10px;font-weight:800}
+.sl-sub{font-size:12px;color:var(--muted)}
+.sl-close{background:transparent;border:0;color:var(--text);font-size:20px;line-height:1;cursor:pointer;opacity:.9}
+.sl-close:hover{opacity:1;transform:scale(1.06)}
+
+.sl-body{padding:14px 16px}
+.sl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media (max-width:720px){.sl-grid{grid-template-columns:1fr}}
+
+.sl-field{
+  display:flex;flex-direction:column;gap:6px;
+  background:rgba(14,20,35,.9); border:1px solid rgba(148,163,184,.28);
+  border-radius:12px; padding:10px 10px 9px;
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.sl-field:focus-within{
+  border-color:rgba(54,89,214,.55);
+  box-shadow:0 0 0 3px rgba(54,89,214,.18);
+  background:rgba(18,24,41,.95);
+}
+.sl-field label{font-size:12px;color:#cbd5e1;letter-spacing:.2px}
+.sl-field input, .sl-field select{
+  border:0;outline:none;background:transparent;color:var(--text)
+}
+.sl-field input::placeholder{color:#93a4c0}
+
+.sl-actions{
+  display:flex;gap:10px;justify-content:flex-end;
+  padding:12px 16px;
+  background:linear-gradient(180deg, rgba(17,24,39,.4), rgba(17,24,39,.25));
+  border-top:1px solid rgba(148,163,184,.12);
+}
+.btn.primary{
+  background:linear-gradient(180deg,#2b57f0,#274fe0);
+  border-color:rgba(147,163,184,.28);
+  color:#fff;
+}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{
+  background:transparent;border:1px solid rgba(148,163,184,.28)
+}
+
+@keyframes sl-popIn{from{transform:translateY(8px) scale(.98);opacity:.0}to{transform:none;opacity:1}}
+@keyframes sl-fadeIn{from{opacity:.0}to{opacity:1}}
+</style>
+
+<div class="sl-modal" id="salaryModal" aria-hidden="true">
+  <div class="sl-backdrop" data-close></div>
+
+  <div class="sl-dialog" role="dialog" aria-modal="true" aria-labelledby="sl_title">
+    <div class="sl-header">
+      <div>
+        <div id="sl_title" class="sl-title">💵 {{ t.add }} · {{ t.salaries }}</div>
+        <div class="sl-sub">{{ t.worker }}、{{ t.salary_amount }}、{{ t.pay_date }}、{{ t.note }}</div>
+      </div>
+      <button class="sl-close" type="button" title="Close" aria-label="Close" data-close>×</button>
+    </div>
+
+    <form method="post" action="{{ url_for('salaries_add') }}">
+      <div class="sl-body">
+        <div class="sl-grid">
+          <div class="sl-field">
+            <label for="sl_worker">{{ t.worker }}</label>
+            <select id="sl_worker" name="worker_id" required>
+              <option value="">{{ t.worker }}</option>
+              {% for w in workers %}
+              <option value="{{ w.id }}">{{ w.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="sl-field">
+            <label for="sl_amount">{{ t.salary_amount }}</label>
+            <input id="sl_amount" name="salary_amount" type="number" step="0.01" min="0" placeholder="0.00" required>
+          </div>
+
+          <div class="sl-field">
+            <label for="sl_date">{{ t.pay_date }}</label>
+            <input id="sl_date" name="pay_date" type="date" required>
+          </div>
+
+          <div class="sl-field">
+            <label for="sl_note">{{ t.note }}</label>
+            <input id="sl_note" name="note" placeholder="可填写备注信息">
+          </div>
+        </div>
+      </div>
+
+      <div class="sl-actions">
+        <button class="btn ghost" type="button" data-close>{{ t.back }}</button>
+        <button class="btn primary" type="submit">{{ t.submit }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  const modal = document.getElementById('salaryModal');
+  const openBtn = document.getElementById('openSalaryModal');
+  const dateInput = document.getElementById('sl_date');
+  const workerSelect = document.getElementById('sl_worker');
+
+  function todayISO(){
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function openModal(){
+    modal.classList.add('show');
+    document.documentElement.style.overflow = 'hidden'; // 防止背景滚动
+    try{ if(dateInput && !dateInput.value) dateInput.value = todayISO(); }catch(e){}
+    setTimeout(()=> workerSelect && workerSelect.focus(), 40);
+  }
+  function closeModal(){
+    modal.classList.remove('show');
+    document.documentElement.style.overflow = '';
+  }
+
+  openBtn?.addEventListener('click', openModal);
+  modal?.addEventListener('click', (e)=>{ if(e.target.matches('[data-close]')) closeModal(); });
+  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && modal.classList.contains('show')) closeModal(); });
+})();
+</script>
+
 {% endblock %}
