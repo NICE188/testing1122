@@ -10,17 +10,52 @@
 <body>
 <div class="layout">
   <aside class="sidebar">
-    <!-- 品牌：尼泊尔国旗 + 名称 -->
-    <div class="brand">👺 {{ t.app_name }}</div>
+    <!-- 品牌 -->
+    <div class="brand">🇳🇵 {{ t.app_name }}</div>
 
-    <!-- 导航：功能前的图标 -->
-    <nav>
-      <a href="{{ url_for('home') }}" class="{{ 'active' if request.path=='/' else '' }}">🎰 {{ t.dashboard }}</a>
-      <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">👨‍💼📲 {{ t.workers }}</a>
-      <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">🏦 {{ t.bank_accounts }}</a>
-      <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">💳 {{ t.card_rentals }}</a>
-      <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}">💵 {{ t.salaries }}</a>
-      <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}">💸 {{ t.expenses }}</a>
+    <!-- 磁贴格子导航 -->
+    <nav class="nav-grid" aria-label="Main">
+      <a href="{{ url_for('home') }}"
+         class="tile {{ 'active' if request.path=='/' else '' }}"
+         aria-label="{{ t.dashboard }}">
+        <span class="tile-emoji">🎰</span>
+        <span class="tile-label">{{ t.dashboard }}</span>
+      </a>
+
+      <a href="{{ url_for('workers_list') }}"
+         class="tile {{ 'active' if request.path.startswith('/workers') else '' }}"
+         aria-label="{{ t.workers }}">
+        <span class="tile-emoji">👨‍💼📲</span>
+        <span class="tile-label">{{ t.workers }}</span>
+      </a>
+
+      <a href="{{ url_for('bank_accounts_list') }}"
+         class="tile {{ 'active' if request.path.startswith('/bank-accounts') else '' }}"
+         aria-label="{{ t.bank_accounts }}">
+        <span class="tile-emoji">🏦</span>
+        <span class="tile-label">{{ t.bank_accounts }}</span>
+      </a>
+
+      <a href="{{ url_for('card_rentals_list') }}"
+         class="tile {{ 'active' if request.path.startswith('/card-rentals') else '' }}"
+         aria-label="{{ t.card_rentals }}">
+        <span class="tile-emoji">💳</span>
+        <span class="tile-label">{{ t.card_rentals }}</span>
+      </a>
+
+      <a href="{{ url_for('salaries_list') }}"
+         class="tile {{ 'active' if request.path.startswith('/salaries') else '' }}"
+         aria-label="{{ t.salaries }}">
+        <span class="tile-emoji">💵</span>
+        <span class="tile-label">{{ t.salaries }}</span>
+      </a>
+
+      <a href="{{ url_for('expenses_list') }}"
+         class="tile {{ 'active' if request.path.startswith('/expenses') else '' }}"
+         aria-label="{{ t.expenses }}">
+        <span class="tile-emoji">💸</span>
+        <span class="tile-label">{{ t.expenses }}</span>
+      </a>
     </nav>
 
     <div class="lang">
@@ -29,16 +64,15 @@
     </div>
   </aside>
 
-  <!-- 给主内容区加装饰背景 -->
-  <main class="content has-corner-bg">
+  <main class="content">
     <header class="topbar">
       <div></div>
       <div class="exports">
-        <a class="btn" href="{{ url_for('export_workers') }}">{{ t.export_workers }}</a>
-        <a class="btn" href="{{ url_for('export_bank') }}">{{ t.export_bank }}</a>
-        <a class="btn" href="{{ url_for('export_rentals') }}">{{ t.export_rentals }}</a>
-        <a class="btn" href="{{ url_for('export_salaries') }}">{{ t.export_salaries }}</a>
-        <a class="btn" href="{{ url_for('export_expenses') }}">{{ t.export_expenses }}</a>
+        <a class="btn soft" href="{{ url_for('export_workers') }}">{{ t.export_workers }}</a>
+        <a class="btn soft" href="{{ url_for('export_bank') }}">{{ t.export_bank }}</a>
+        <a class="btn soft" href="{{ url_for('export_rentals') }}">{{ t.export_rentals }}</a>
+        <a class="btn soft" href="{{ url_for('export_salaries') }}">{{ t.export_salaries }}</a>
+        <a class="btn soft" href="{{ url_for('export_expenses') }}">{{ t.export_expenses }}</a>
       </div>
     </header>
     {% block body %}{% endblock %}
