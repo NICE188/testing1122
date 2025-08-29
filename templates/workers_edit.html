@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% set page_title = t.edit ~ ' - ' ~ t.workers %}
+{% block body %}
+<h1 class="page-title">{{ t.edit }} — {{ t.workers }}</h1>
+<form class="form" method="post" action="{{ url_for('workers_edit', wid=r.id) }}">
+  <input name="name" value="{{ r.name }}" placeholder="{{ t.name }}" required>
+  <input name="company" value="{{ r.company }}" placeholder="{{ t.company }}">
+  <input name="commission" type="number" step="0.01" value="{{ r.commission }}" placeholder="{{ t.commission }}">
+  <input name="expenses" type="number" step="0.01" value="{{ r.expenses }}" placeholder="{{ t.expenses }}">
+  <button class="btn" type="submit">{{ t.save }}</button>
+  <a class="btn" href="{{ url_for('workers_list') }}">{{ t.back }}</a>
+</form>
+{% endblock %}
