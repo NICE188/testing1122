@@ -4,79 +4,42 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>{{ t.app_name }} — {{ page_title if page_title else '' }}</title>
-
-  <!-- 主样式（加版本号防缓存） -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=11">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-
-  <!-- 只做很小的保障样式：让侧栏一排显示“图标 + 文字” -->
-  <style>
-    /* 侧栏：一排“图标 + 文字” */
-    .sidebar nav { display:flex; flex-direction:column; gap:12px; }
-    .sidebar nav a {
-      display:flex; align-items:center; gap:10px;
-      height:48px; padding:10px 12px; width:100%;
-      border-radius:12px; text-decoration:none;
-    }
-    .sidebar nav a .tile-emoji { width:22px; text-align:center; font-size:18px; line-height:1; }
-    .sidebar nav a .tile-text  { font-size:14px; color:#e5e7eb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    /* 当前项左边的高亮条（可选） */
-    .sidebar nav a.active{ position:relative; }
-    .sidebar nav a.active::before{
-      content:""; position:absolute; left:0; top:-1px; bottom:-1px; width:3px;
-      border-radius:12px 0 0 12px;
-      background:linear-gradient(180deg, #60a5fa, #a78bfa);
-    }
-  </style>
 </head>
-<body>
+<body class="has-corner-bg">
 <div class="layout">
   <aside class="sidebar">
-    <!-- 品牌：带 🇳🇵 -->
-    <div class="brand">👹{{ t.app_name }}👹</div>
+    <!-- 品牌位 -->
+    <div class="brand">
+      <span style="font-size:18px">🇳🇵</span>
+      <span>{{ t.app_name }}</span>
+    </div>
 
-    <!-- 侧栏（注意：每个 a 里都写了“图标 + 文字”） -->
-    <nav aria-label="Main">
-      <a href="{{ url_for('home') }}"
-         class="{{ 'active' if request.path=='/' else '' }}">
-        <span class="tile-emoji" aria-hidden="true">🎰</span>
-        <span class="tile-text">{{ t.dashboard }}</span>
+    <!-- 导航（列表样式，含图标与名称） -->
+    <nav class="nav-grid">
+      <a class="tile {% if request.path=='/' %}active{% endif %}" href="{{ url_for('home') }}">
+        <span class="tile-emoji">🎰</span><span class="tile-label">{{ t.dashboard }}</span>
       </a>
-
-      <a href="{{ url_for('workers_list') }}"
-         class="{{ 'active' if request.path.startswith('/workers') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">👨‍💼</span>
-        <span class="tile-text">{{ t.workers }}</span>
+      <a class="tile {% if request.path.startswith('/workers') %}active{% endif %}" href="{{ url_for('workers_list') }}">
+        <span class="tile-emoji">👨‍💼</span><span class="tile-label">{{ t.workers }}</span>
       </a>
-
-      <a href="{{ url_for('bank_accounts_list') }}"
-         class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">🏦</span>
-        <span class="tile-text">{{ t.bank_accounts }}</span>
+      <a class="tile {% if request.path.startswith('/bank-accounts') %}active{% endif %}" href="{{ url_for('bank_accounts_list') }}">
+        <span class="tile-emoji">🏦</span><span class="tile-label">{{ t.bank_accounts }}</span>
       </a>
-
-      <a href="{{ url_for('card_rentals_list') }}"
-         class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">💳</span>
-        <span class="tile-text">{{ t.card_rentals }}</span>
+      <a class="tile {% if request.path.startswith('/card-rentals') %}active{% endif %}" href="{{ url_for('card_rentals_list') }}">
+        <span class="tile-emoji">💳</span><span class="tile-label">{{ t.card_rentals }}</span>
       </a>
-
-      <a href="{{ url_for('salaries_list') }}"
-         class="{{ 'active' if request.path.startswith('/salaries') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">💵</span>
-        <span class="tile-text">{{ t.salaries }}</span>
+      <a class="tile {% if request.path.startswith('/salaries') %}active{% endif %}" href="{{ url_for('salaries_list') }}">
+        <span class="tile-emoji">💵</span><span class="tile-label">{{ t.salaries }}</span>
       </a>
-
-      <a href="{{ url_for('expenses_list') }}"
-         class="{{ 'active' if request.path.startswith('/expenses') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">💸</span>
-        <span class="tile-text">{{ t.expenses }}</span>
+      <a class="tile {% if request.path.startswith('/expenses') %}active{% endif %}" href="{{ url_for('expenses_list') }}">
+        <span class="tile-emoji">💸</span><span class="tile-label">{{ t.expenses }}</span>
       </a>
     </nav>
 
-    <!-- 语言切换（🌐） -->
-    <div class="lang">
-      🌐 {{ t.language }}：
+    <div class="lang" style="display:flex;align-items:center;gap:6px">
+      <span>🌐 {{ t.language }}：</span>
       <a href="?lang=zh">中文</a> | <a href="?lang=en">EN</a>
     </div>
   </aside>
@@ -84,12 +47,25 @@
   <main class="content">
     <header class="topbar">
       <div></div>
-      <div class="exports">
+
+      <div class="exports" style="display:flex;align-items:center;gap:8px">
         <a class="btn" href="{{ url_for('export_workers') }}">{{ t.export_workers }}</a>
         <a class="btn" href="{{ url_for('export_bank') }}">{{ t.export_bank }}</a>
         <a class="btn" href="{{ url_for('export_rentals') }}">{{ t.export_rentals }}</a>
         <a class="btn" href="{{ url_for('export_salaries') }}">{{ t.export_salaries }}</a>
         <a class="btn" href="{{ url_for('export_expenses') }}">{{ t.export_expenses }}</a>
+
+        <!-- 登录状态 / 登出 -->
+        <div class="right" style="margin-left:10px">
+          {% if session.get('user_id') %}
+            <span class="muted" style="margin-right:8px">👤 {{ session.get('username') }}</span>
+            <form method="post" action="{{ url_for('logout') }}" style="display:inline">
+              <button class="btn" type="submit">Logout</button>
+            </form>
+          {% else %}
+            <a class="btn" href="{{ url_for('login') }}">Login</a>
+          {% endif %}
+        </div>
       </div>
     </header>
 
