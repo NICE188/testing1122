@@ -224,3 +224,59 @@ tbody tr:first-child td{border-top-color:rgba(148,163,184,.18)}
 @media (max-width: 820px){
   .nav-grid{ grid-template-columns:1fr; }
 }
+/* === 把侧栏磁贴改成“列表一排排” === */
+/* 不改 HTML，仍然使用 nav-grid + tile，只在这里覆盖布局与尺寸 */
+.sidebar .nav-grid{
+  display:flex;               /* 改为纵向列表 */
+  flex-direction:column;
+  gap:12px;
+}
+
+.sidebar .nav-grid .tile{
+  position:relative;
+  display:flex; align-items:center; gap:10px;
+  height:48px;                /* 每行高度 */
+  padding:10px 12px;
+  width:100%;
+  border-radius:12px;
+  text-align:left;
+
+  /* 覆盖掉正方形磁贴属性 */
+  aspect-ratio:auto;
+  background:linear-gradient(180deg, rgba(148,163,184,.08), rgba(148,163,184,.04));
+  border:1px solid rgba(148,163,184,.18);
+  color:#d7e0ee;
+  transition:filter .15s ease, border-color .15s ease, background .15s ease;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+.sidebar .nav-grid .tile:hover{
+  transform:none;             /* 列表不需要上浮 */
+  filter:brightness(1.06);
+  border-color:rgba(148,163,184,.28);
+  background:linear-gradient(180deg, rgba(148,163,184,.12), rgba(148,163,184,.06));
+}
+.sidebar .nav-grid .tile.active{
+  background:linear-gradient(180deg, rgba(148,163,184,.16), rgba(148,163,184,.08));
+  border-color:rgba(148,163,184,.32);
+  box-shadow:0 0 0 1px rgba(148,163,184,.16) inset;
+}
+
+/* 当前页左侧高亮条 */
+.sidebar .nav-grid .tile.active::before{
+  content:"";
+  position:absolute; left:0; top:-1px; bottom:-1px; width:3px;
+  border-radius:12px 0 0 12px;
+  background:linear-gradient(180deg, #60a5fa, #a78bfa);
+}
+
+/* 调整图标和文字大小（列表版） */
+.sidebar .nav-grid .tile .tile-emoji{ font-size:18px; line-height:1; }
+.sidebar .nav-grid .tile .tile-label{
+  font-size:14px; margin:0; color:#e5e7eb;
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
+}
+
+/* 小屏保持一列 */
+@media (max-width:820px){
+  .sidebar .nav-grid{ gap:10px; }
+}
