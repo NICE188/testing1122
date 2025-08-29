@@ -29,6 +29,10 @@
           <form style="display:inline" method="post" action="{{ url_for('card_rentals_toggle', cid=r.id) }}">
             <button class="btn {{ '' if r.is_active else 'soft' }}" type="submit">{{ t.deactivate if r.is_active else t.activate }}</button>
           </form>
+          <a class="btn" href="{{ url_for('card_rentals_edit_form', cid=r.id) }}">{{ t.edit }}</a>
+          <form style="display:inline" method="post" action="{{ url_for('card_rentals_delete', cid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
+            <button class="btn danger" type="submit">{{ t.delete }}</button>
+          </form>
         </td>
       </tr>
       {% else %}
