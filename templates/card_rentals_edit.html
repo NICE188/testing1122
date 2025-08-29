@@ -6,11 +6,6 @@
 
 <form class="form" method="post">
   <input name="card_name" value="{{ r.card_name }}" placeholder="{{ t.card_name }}" required>
-  <select name="worker_id" required>
-    {% for w in workers %}
-      <option value="{{ w.id }}" {% if w.id==r.worker_id %}selected{% endif %}>{{ w.name }}</option>
-    {% endfor %}
-  </select>
   <input name="rental_amount" value="{{ r.rental_amount }}" placeholder="{{ t.rental_amount }}" required>
   <input name="date" type="date" value="{{ r.date }}">
   <input name="note" value="{{ r.note }}" placeholder="{{ t.note }}">
