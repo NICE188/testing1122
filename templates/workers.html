@@ -1,8 +1,11 @@
 {% extends "base.html" %}
 {% set page_title = t.workers %}
 {% block body %}
-<h1 class="page-title">{{ t.workers }}</h1>
-
+<h1 class="page-title">
+  <span class="nav-emoji" aria-hidden="true">👨‍💼</span>
+  <span class="nav-emoji" aria-hidden="true">📲</span>
+  {{ t.workers }}
+</h1>
 <form class="form" method="post" action="{{ url_for('workers_add') }}">
   <input name="name" placeholder="{{ t.name }}" required>
   <input name="company" placeholder="{{ t.company }}">
