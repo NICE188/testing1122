@@ -259,3 +259,31 @@ tbody tr:first-child td{border-top-color:rgba(148,163,184,.18)}
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 @media (max-width:820px){ .sidebar .nav-grid{ gap:10px; } }
+/* 侧栏一排：图标 + 名称（覆盖磁贴样式） */
+.sidebar .nav-grid{ display:flex; flex-direction:column; gap:12px; }
+
+.sidebar .nav-grid .tile{
+  position:relative;
+  display:flex; align-items:center; justify-content:flex-start;
+  height:48px; padding:10px 12px; width:100%;
+  border-radius:12px; text-align:left;
+  aspect-ratio:auto;                   /* 取消正方形 */
+}
+
+.sidebar .nav-grid .tile .tile-emoji{
+  width:22px; text-align:center; font-size:18px; line-height:1;
+}
+
+.sidebar .nav-grid .tile .tile-label{
+  display:inline-block !important;
+  flex:1; margin-left:8px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-size:14px; color:#e5e7eb;
+}
+
+/* 当前项左侧高亮条（可选） */
+.sidebar .nav-grid .tile.active::before{
+  content:""; position:absolute; left:0; top:-1px; bottom:-1px; width:3px;
+  border-radius:12px 0 0 12px;
+  background:linear-gradient(180deg, #60a5fa, #a78bfa);
+}
