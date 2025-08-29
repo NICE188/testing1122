@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% set page_title = "Login" %}
+{% block body %}
+
+<style>
+.login-wrap{min-height:calc(100vh - 40px); display:grid; place-items:center;}
+.login-card{
+  width:min(420px, 92vw);
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:16px;
+  box-shadow:0 10px 40px rgba(0,0,0,.35);
+  overflow:hidden;
+}
+.login-head{
+  padding:16px;
+  background:linear-gradient(180deg, rgba(17,24,39,.92), rgba(17,24,39,.65));
+  border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+}
+.login-title{font-weight:800;display:flex;align-items:center;gap:8px}
+.login-sub{font-size:12px;color:var(--muted)}
+.login-body{padding:16px}
+.login-field{display:flex;flex-direction:column;gap:6px; margin-bottom:10px}
+.login-field label{font-size:12px;color:#cbd5e1}
+.login-field input{
+  background:#0b1220;border:1px solid #273245;border-radius:10px;padding:10px;color:#e5e7eb
+}
+.login-error{color:#fda4af;background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.35);
+  border-radius:10px;padding:8px 10px;margin-bottom:10px}
+.login-actions{display:flex;justify-content:flex-end;gap:10px;padding:12px 16px;border-top:1px solid var(--line);background:rgba(17,24,39,.4)}
+</style>
+
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-head">
+      <div>
+        <div class="login-title">🔐 Login</div>
+        <div class="login-sub">请输入用户名与密码 / Enter your credentials</div>
+      </div>
+      <div style="opacity:.8">{{ t.app_name }}</div>
+    </div>
+
+    <form class="login-body" method="post" action="{{ url_for('login_post') }}">
+      {% if error %}
+      <div class="login-error">{{ error }}</div>
+      {% endif %}
+
+      <div class="login-field">
+        <label for="lg_user">Username</label>
+        <input id="lg_user" name="username" autocomplete="username" placeholder="admin" required>
+      </div>
+
+      <div class="login-field">
+        <label for="lg_pwd">Password</label>
+        <input id="lg_pwd" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+      </div>
+
+      <input type="hidden" name="next" value="{{ next_url or url_for('home') }}"/>
+
+      <div class="login-actions">
+        <a class="btn soft" href="{{ url_for('health') }}">Health</a>
+        <button class="btn" type="submit">Login</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
