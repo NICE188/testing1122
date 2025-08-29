@@ -1,13 +1,13 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, send_file, session, abort
 import sqlite3, csv, io, os
-from datetime import datetime, date
+from datetime import datetime
 
 APP_DB = os.environ.get("APP_DB", "data.db")
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
 
-# ---------------- I18N（含状态/编辑/删除文案 + card_name 文案） ----------------
+# ---------------- I18N（含状态/编辑/删除/新字段文案） ----------------
 I18N = {
     "zh": {
         "app_name": "Nepwin88",
@@ -57,7 +57,12 @@ I18N = {
         "back": "返回",
         "confirm_delete": "确认删除？",
         "cannot_delete_worker_with_refs": "该工人存在关联记录，不能删除。",
+        # 新增字段
         "card_name": "银行卡名字",
+        "card_number": "银行卡号码",
+        "tac_number": "银行TAC 号码",
+        "phone_device": "电话设备",
+        "country": "国家",
     },
     "en": {
         "app_name": "Nepwin88",
@@ -107,7 +112,12 @@ I18N = {
         "back": "Back",
         "confirm_delete": "Confirm delete?",
         "cannot_delete_worker_with_refs": "Cannot delete worker because related records exist.",
+        # New fields
         "card_name": "Card Name",
+        "card_number": "Card Number",
+        "tac_number": "Bank TAC",
+        "phone_device": "Phone Device",
+        "country": "Country",
     }
 }
 
@@ -140,6 +150,7 @@ def init_db():
         company TEXT,
         commission REAL DEFAULT 0,
         expenses REAL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -148,17 +159,24 @@ def init_db():
         worker_id INTEGER NOT NULL,
         account_number TEXT NOT NULL,
         bank_name TEXT NOT NULL,
+        is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
 
-    -- 旧结构：worker_id NOT NULL（后面迁移会改）
+    /* 扩展后的 card_rentals（若是老库，下面还有补列逻辑） */
     CREATE TABLE IF NOT EXISTS card_rentals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        worker_id INTEGER NOT NULL,
+        worker_id INTEGER,
+        card_name TEXT,
+        card_number TEXT,
+        tac_number TEXT,
+        phone_device TEXT,
+        country TEXT,
         rental_amount REAL NOT NULL,
         date TEXT NOT NULL,
         note TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
@@ -169,6 +187,7 @@ def init_db():
         salary_amount REAL NOT NULL,
         pay_date TEXT NOT NULL,
         note TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
@@ -179,6 +198,7 @@ def init_db():
         amount REAL NOT NULL,
         date TEXT NOT NULL,
         note TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
@@ -187,7 +207,7 @@ def init_db():
     con.close()
 
 def ensure_is_active_columns():
-    """五张表补 is_active 列（默认 1）"""
+    """五张表补 is_active 列（默认 1），兼容老库"""
     tables = ["workers", "bank_accounts", "card_rentals", "salary_payments", "expense_records"]
     con = get_db()
     for tname in tables:
@@ -196,92 +216,30 @@ def ensure_is_active_columns():
             con.execute(f"ALTER TABLE {tname} ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
     con.commit(); con.close()
 
-def migrate_card_rentals_add_card_name_and_nullable_worker():
-    """
-    迁移 card_rentals：
-      - 增加 card_name TEXT NOT NULL
-      - 将 worker_id 变为可空（以后不再使用）
-    """
+def ensure_card_rentals_extra_columns():
+    """为 card_rentals 动态补充新列（老库也能用）"""
     con = get_db()
-    cols = con.execute("PRAGMA table_info(card_rentals)").fetchall()
-    colnames = [c["name"] for c in cols]
-    needs_rebuild = False
-
-    has_card_name = "card_name" in colnames
-    # 判断 worker_id 是否 NOT NULL
-    worker_notnull = False
-    for c in cols:
-        if c["name"] == "worker_id":
-            worker_notnull = (c["notnull"] == 1)
-            break
-
-    if (not has_card_name) or worker_notnull:
-        needs_rebuild = True
-
-    if not needs_rebuild:
-        con.close()
-        return
-
-    # 读取是否已有 is_active 列，复制时要带上
-    has_is_active = any(c["name"] == "is_active" for c in cols)
-
-    try:
-        con.execute("PRAGMA foreign_keys = OFF")
-        con.execute("BEGIN")
-
-        con.execute("""
-        CREATE TABLE card_rentals_new (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            card_name TEXT NOT NULL,
-            worker_id INTEGER,
-            rental_amount REAL NOT NULL,
-            date TEXT NOT NULL,
-            note TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            is_active INTEGER NOT NULL DEFAULT 1
-        )
-        """)
-
-        if has_card_name and has_is_active:
-            copy_sql = """
-                INSERT INTO card_rentals_new (id, card_name, worker_id, rental_amount, date, note, created_at, is_active)
-                SELECT id, COALESCE(card_name,''), worker_id, rental_amount, date, note, created_at, COALESCE(is_active,1)
-                FROM card_rentals
-            """
-        elif has_card_name and not has_is_active:
-            copy_sql = """
-                INSERT INTO card_rentals_new (id, card_name, worker_id, rental_amount, date, note, created_at, is_active)
-                SELECT id, COALESCE(card_name,''), worker_id, rental_amount, date, note, created_at, 1
-                FROM card_rentals
-            """
-        elif (not has_card_name) and has_is_active:
-            copy_sql = """
-                INSERT INTO card_rentals_new (id, card_name, worker_id, rental_amount, date, note, created_at, is_active)
-                SELECT id, '' as card_name, worker_id, rental_amount, date, note, created_at, COALESCE(is_active,1)
-                FROM card_rentals
-            """
-        else:
-            copy_sql = """
-                INSERT INTO card_rentals_new (id, card_name, worker_id, rental_amount, date, note, created_at, is_active)
-                SELECT id, '' as card_name, worker_id, rental_amount, date, note, created_at, 1
-                FROM card_rentals
-            """
-
-        con.execute(copy_sql)
-        con.execute("DROP TABLE card_rentals")
-        con.execute("ALTER TABLE card_rentals_new RENAME TO card_rentals")
-        con.execute("COMMIT")
-    except Exception as e:
-        con.execute("ROLLBACK")
-        raise e
-    finally:
-        con.execute("PRAGMA foreign_keys = ON")
-        con.close()
+    cols = {c["name"] for c in con.execute("PRAGMA table_info(card_rentals)")}
+    def add(col, typ):
+        if col not in cols:
+            con.execute(f"ALTER TABLE card_rentals ADD COLUMN {col} {typ}")
+    add("card_name", "TEXT")
+    add("card_number", "TEXT")
+    add("tac_number", "TEXT")
+    add("phone_device", "TEXT")
+    add("country", "TEXT")
+    if "worker_id" not in cols:
+        con.execute("ALTER TABLE card_rentals ADD COLUMN worker_id INTEGER")
+    con.commit(); con.close()
 
 if not os.path.exists(APP_DB):
     init_db()
+else:
+    # 确保基础表存在（某些平台可能先建了空库但无表）
+    init_db()
+
 ensure_is_active_columns()
-migrate_card_rentals_add_card_name_and_nullable_worker()
+ensure_card_rentals_extra_columns()
 
 # ---------------- Health ----------------
 @app.get("/health")
@@ -292,8 +250,8 @@ def health():
 @app.route("/")
 def home():
     con = get_db()
-    total_workers = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
-    total_rentals = con.execute("SELECT IFNULL(SUM(rental_amount),0) s FROM card_rentals").fetchone()["s"]
+    total_workers  = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
+    total_rentals  = con.execute("SELECT IFNULL(SUM(rental_amount),0) s FROM card_rentals").fetchone()["s"]
     total_salaries = con.execute("SELECT IFNULL(SUM(salary_amount),0) s FROM salary_payments").fetchone()["s"]
     total_expenses = con.execute("SELECT IFNULL(SUM(amount),0) s FROM expense_records").fetchone()["s"]
     con.close()
@@ -303,7 +261,7 @@ def home():
                            total_salaries=total_salaries,
                            total_expenses=total_expenses)
 
-# 近 6 个月图表数据
+# 图表数据（近 6 个月的租金/工资/开销）
 @app.get("/api/summary")
 def api_summary():
     con = get_db()
@@ -327,9 +285,9 @@ def api_summary():
         """)
         d = {r["ym"]: r["total"] for r in rows}
         return [float(d.get(m, 0)) for m in months]
-    rentals = series("card_rentals", "rental_amount", "date")
-    salaries = series("salary_payments", "salary_amount", "pay_date")
-    expenses = series("expense_records", "amount", "date")
+    rentals  = series("card_rentals",   "rental_amount", "date")
+    salaries = series("salary_payments","salary_amount", "pay_date")
+    expenses = series("expense_records","amount",        "date")
     con.close()
     return jsonify({"months": months, "rentals": rentals, "salaries": salaries, "expenses": expenses})
 
@@ -357,9 +315,9 @@ def workers_add():
     d = request.form or request.json
     name = (d.get("name") or "").strip()
     if not name: return "Name is required", 400
-    company = d.get("company") or ""
+    company    = d.get("company") or ""
     commission = float(d.get("commission") or 0)
-    expenses = float(d.get("expenses") or 0)
+    expenses   = float(d.get("expenses") or 0)
     con = get_db()
     con.execute("INSERT INTO workers (name, company, commission, expenses) VALUES (?,?,?,?)",
                 (name, company, commission, expenses))
@@ -383,9 +341,9 @@ def workers_edit_form(wid):
 def workers_edit(wid):
     d = request.form or request.json
     name = (d.get("name") or "").strip()
-    company = d.get("company") or ""
+    company    = d.get("company") or ""
     commission = float(d.get("commission") or 0)
-    expenses = float(d.get("expenses") or 0)
+    expenses   = float(d.get("expenses") or 0)
     con = get_db()
     con.execute("UPDATE workers SET name=?, company=?, commission=?, expenses=? WHERE id=?",
                 (name, company, commission, expenses, wid))
@@ -424,7 +382,7 @@ def bank_accounts_add():
     d = request.form or request.json
     worker_id = int(d.get("worker_id"))
     account_number = (d.get("account_number") or "").strip()
-    bank_name = (d.get("bank_name") or "").strip()
+    bank_name      = (d.get("bank_name") or "").strip()
     if not (worker_id and account_number and bank_name):
         return "worker_id, account_number, bank_name required", 400
     con = get_db()
@@ -452,7 +410,7 @@ def bank_accounts_edit(bid):
     d = request.form or request.json
     worker_id = int(d.get("worker_id"))
     account_number = (d.get("account_number") or "").strip()
-    bank_name = (d.get("bank_name") or "").strip()
+    bank_name      = (d.get("bank_name") or "").strip()
     con = get_db()
     con.execute("UPDATE bank_accounts SET worker_id=?, account_number=?, bank_name=? WHERE id=?",
                 (worker_id, account_number, bank_name, bid))
@@ -466,34 +424,45 @@ def bank_accounts_delete(bid):
     con.commit(); con.close()
     return redirect(url_for("bank_accounts_list"))
 
-# ---------------- Card Rentals （已改为 card_name 手动输入） ----------------
+# ---------------- Card Rentals（已扩展字段 + 兼容老库） ----------------
 @app.route("/card-rentals")
 def card_rentals_list():
     con = get_db()
     rows = con.execute("""
-      SELECT *
-      FROM card_rentals
-      ORDER BY date DESC, id DESC
+      SELECT c.*, w.name AS worker_name
+      FROM card_rentals c LEFT JOIN workers w ON w.id=c.worker_id
+      ORDER BY c.date DESC, c.id DESC
     """).fetchall()
     con.close()
+    # 弹窗新增不需要 workers；如果你仍有下拉可再传 workers
     return render_template("card_rentals.html", rows=rows)
 
 @app.post("/card-rentals/add")
 def card_rentals_add():
     d = request.form or request.json
-    card_name = (d.get("card_name") or "").strip()
-    rental_amount = float(d.get("rental_amount"))
-    date_str = (d.get("date") or date.today().isoformat()).strip()
-    note = d.get("note") or ""
+    # 弹窗字段（手输）
+    card_name    = (d.get("card_name") or "").strip()
+    card_number  = (d.get("card_number") or "").strip()
+    tac_number   = (d.get("tac_number") or "").strip()
+    phone_device = (d.get("phone_device") or "").strip()
+    country      = (d.get("country") or "").strip()
+    rental_amount = float(d.get("rental_amount") or 0)
+    date         = (d.get("date") or "").strip()
+    note         = d.get("note") or ""
+
     if not card_name:
         return "card_name required", 400
     try:
-        datetime.fromisoformat(date_str)
+        datetime.fromisoformat(date)
     except Exception:
         return "date must be YYYY-MM-DD", 400
+
     con = get_db()
-    con.execute("INSERT INTO card_rentals (card_name, rental_amount, date, note) VALUES (?,?,?,?)",
-                (card_name, rental_amount, date_str, note))
+    con.execute("""
+      INSERT INTO card_rentals
+      (worker_id, card_name, card_number, tac_number, phone_device, country, rental_amount, date, note)
+      VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (card_name, card_number, tac_number, phone_device, country, rental_amount, date, note))
     con.commit(); con.close()
     return redirect(url_for("card_rentals_list"))
 
@@ -506,25 +475,41 @@ def card_rentals_toggle(cid):
 def card_rentals_edit_form(cid):
     con = get_db()
     r = con.execute("SELECT * FROM card_rentals WHERE id=?", (cid,)).fetchone()
+    workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     if not r: abort(404)
-    return render_template("card_rentals_edit.html", r=r)
+    # 若你有 card_rentals_edit.html，可展示新字段；没有也可先不改
+    return render_template("card_rentals_edit.html", r=r, workers=workers)
 
 @app.post("/card-rentals/<int:cid>/edit")
 def card_rentals_edit(cid):
     d = request.form or request.json
-    card_name = (d.get("card_name") or "").strip()
-    rental_amount = float(d.get("rental_amount"))
-    date_val = (d.get("date") or "").strip()
-    note = d.get("note") or ""
-    if not card_name: return "card_name required", 400
+    # 兼容：有些旧模板可能仍传 worker_id；没有就保持 NULL
+    wid = d.get("worker_id")
+    worker_id = int(wid) if (wid and str(wid).isdigit()) else None
+
+    card_name    = (d.get("card_name") or "").strip()
+    card_number  = (d.get("card_number") or "").strip()
+    tac_number   = (d.get("tac_number") or "").strip()
+    phone_device = (d.get("phone_device") or "").strip()
+    country      = (d.get("country") or "").strip()
+    rental_amount = float(d.get("rental_amount") or 0)
+    date         = (d.get("date") or "").strip()
+    note         = d.get("note") or ""
     try:
-        datetime.fromisoformat(date_val)
+        datetime.fromisoformat(date)
     except Exception:
         return "date must be YYYY-MM-DD", 400
+
     con = get_db()
-    con.execute("UPDATE card_rentals SET card_name=?, rental_amount=?, date=?, note=? WHERE id=?",
-                (card_name, rental_amount, date_val, note, cid))
+    con.execute("""
+      UPDATE card_rentals
+         SET worker_id=?,
+             card_name=?, card_number=?, tac_number=?, phone_device=?, country=?,
+             rental_amount=?, date=?, note=?
+       WHERE id=?
+    """, (worker_id, card_name, card_number, tac_number, phone_device, country,
+          rental_amount, date, note, cid))
     con.commit(); con.close()
     return redirect(url_for("card_rentals_list"))
 
@@ -551,10 +536,10 @@ def salaries_list():
 @app.post("/salaries/add")
 def salaries_add():
     d = request.form or request.json
-    worker_id = int(d.get("worker_id"))
+    worker_id     = int(d.get("worker_id"))
     salary_amount = float(d.get("salary_amount"))
-    pay_date = (d.get("pay_date") or "").strip()
-    note = d.get("note") or ""
+    pay_date      = (d.get("pay_date") or "").strip()
+    note          = d.get("note") or ""
     try: datetime.fromisoformat(pay_date)
     except Exception: return "pay_date must be YYYY-MM-DD", 400
     con = get_db()
@@ -580,10 +565,10 @@ def salaries_edit_form(sid):
 @app.post("/salaries/<int:sid>/edit")
 def salaries_edit(sid):
     d = request.form or request.json
-    worker_id = int(d.get("worker_id"))
+    worker_id     = int(d.get("worker_id"))
     salary_amount = float(d.get("salary_amount"))
-    pay_date = (d.get("pay_date") or "").strip()
-    note = d.get("note") or ""
+    pay_date      = (d.get("pay_date") or "").strip()
+    note          = d.get("note") or ""
     try: datetime.fromisoformat(pay_date)
     except Exception: return "pay_date must be YYYY-MM-DD", 400
     con = get_db()
@@ -619,13 +604,13 @@ def expenses_add():
     worker_id = d.get("worker_id")
     worker_id = int(worker_id) if worker_id else None
     amount = float(d.get("amount"))
-    date_val = (d.get("date") or "").strip()
-    note = d.get("note") or ""
-    try: datetime.fromisoformat(date_val)
+    date   = (d.get("date") or "").strip()
+    note   = d.get("note") or ""
+    try: datetime.fromisoformat(date)
     except Exception: return "date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("INSERT INTO expense_records (worker_id, amount, date, note) VALUES (?,?,?,?)",
-                (worker_id, amount, date_val, note))
+                (worker_id, amount, date, note))
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
 
@@ -649,13 +634,13 @@ def expenses_edit(eid):
     worker_id = d.get("worker_id")
     worker_id = int(worker_id) if worker_id else None
     amount = float(d.get("amount"))
-    date_val = (d.get("date") or "").strip()
-    note = d.get("note") or ""
-    try: datetime.fromisoformat(date_val)
+    date   = (d.get("date") or "").strip()
+    note   = d.get("note") or ""
+    try: datetime.fromisoformat(date)
     except Exception: return "date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("UPDATE expense_records SET worker_id=?, amount=?, date=?, note=? WHERE id=?",
-                (worker_id, amount, date_val, note, eid))
+                (worker_id, amount, date, note, eid))
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
 
@@ -699,9 +684,11 @@ def export_bank():
 @app.get("/export/card_rentals.csv")
 def export_rentals():
     return export_csv(
-        """SELECT id, card_name, rental_amount, date, note, created_at
+        """SELECT id, card_name, card_number, tac_number, phone_device, country,
+                  rental_amount, date, note, created_at
            FROM card_rentals ORDER BY date DESC, id""",
-        ["id","card_name","rental_amount","date","note","created_at"],
+        ["id","card_name","card_number","tac_number","phone_device","country",
+         "rental_amount","date","note","created_at"],
         "card_rentals.csv"
     )
 
