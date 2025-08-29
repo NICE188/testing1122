@@ -1,4 +1,4 @@
-/* ===== Polished Dark UI ===== */
+/* ===== Polished Dark UI + Fullpage Background ===== */
 :root{
   /* 调色盘 */
   --bg:#0c1220;
@@ -28,18 +28,36 @@
 
 *{box-sizing:border-box}
 html,body{height:100%}
+
+/* —— 全屏背景：图片覆盖 + 渐变兜底 —— */
 body{
   margin:0;
   color:var(--text);
   font:14px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans","PingFang SC","Microsoft YaHei",sans-serif;
+
+  /* 背景从下到上：图片 → 渐变 */
   background:
-    radial-gradient(1100px 600px at 70% -200px, rgba(54,89,214,.22), transparent 60%),
-    radial-gradient(900px 500px at -200px 70%, rgba(250,204,21,.06), transparent 60%),
+    url("https://i.imgur.com/RUhZHD9.jpeg") center / cover fixed no-repeat,
     linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
 }
 
-/* ============= 布局 ============= */
-.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+/* 暗化 + 光晕遮罩：保证文字读性 */
+body::before{
+  content:"";
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1100px 600px at 70% -200px, rgba(54,89,214,.22), transparent 60%),
+    radial-gradient(900px 500px at -200px 70%, rgba(250,204,21,.08), transparent 60%),
+    rgba(10,14,25,.52); /* 觉得偏暗可把 .52 调小 */
+}
+
+/* 页面内容需要在遮罩之上 */
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh; position:relative; z-index:1}
+
+/* 关闭角落水印（如果 base.html 上有 has-corner-bg 类也不会出现小方块） */
+.has-corner-bg::after{ display:none !important; }
+
+/* ============= 侧栏 ============= */
 .sidebar{
   background:linear-gradient(180deg,#0a1020 0%, #0a111e 100%);
   border-right:1px solid var(--line);
@@ -68,21 +86,12 @@ body{
 }
 .lang{margin-top:18px;color:var(--muted);display:flex;align-items:center;gap:8px}
 
+/* ============= 主内容区 ============= */
 .content{
   position:relative; padding:18px 22px;
   backdrop-filter:saturate(1.1);
 }
-
-/* 左下角装饰背景（可留可删） */
-.has-corner-bg::after{
-  content:""; position:absolute; left:26px; bottom:28px;
-  width:clamp(240px, 28vw, 520px); aspect-ratio:16/11;
-  background-image:url("https://i.imgur.com/RUhZHD9.jpeg");
-  background-repeat:no-repeat; background-size:contain; background-position:left bottom;
-  opacity:.16; filter:saturate(1.05) contrast(1.05); pointer-events:none; z-index:0;
-}
 .topbar,.form,.panel,.cards,table{position:relative; z-index:1;}
-
 .topbar{
   display:flex;justify-content:space-between;align-items:center;
   margin-bottom:14px;
@@ -168,7 +177,8 @@ tbody tr:first-child td{border-top-color:rgba(148,163,184,.18)}
 /* 响应式 */
 @media (max-width:1200px){.cards{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:860px){
+  /* 移动端关闭 fixed 视差以提升性能 */
+  body{ background-attachment:scroll; }
   .layout{grid-template-columns:1fr}
   .sidebar{position:sticky;top:0;z-index:10}
-  .has-corner-bg::after{display:none}
 }
