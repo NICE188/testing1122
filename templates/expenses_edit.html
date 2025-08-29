@@ -1,17 +1,18 @@
 {% extends "base.html" %}
-{% set page_title = t.edit ~ ' - ' ~ t.expenses %}
+{% set page_title = t.expenses %}
 {% block body %}
-<h1 class="page-title">{{ t.edit }} — {{ t.expenses }}</h1>
+<h1 class="page-title">💸 {{ t.edit }} — {{ t.expenses }}</h1>
+
 <form class="form" method="post" action="{{ url_for('expenses_edit', eid=r.id) }}">
   <select name="worker_id">
     <option value="">{{ t.worker }} ({{ 'optional' if lang=='en' else '可选' }})</option>
     {% for w in workers %}
-      <option value="{{ w.id }}" {{ 'selected' if r.worker_id and w.id==r.worker_id else '' }}>{{ w.name }}</option>
+    <option value="{{ w.id }}" {{ 'selected' if r.worker_id==w.id else '' }}>{{ w.name }}</option>
     {% endfor %}
   </select>
-  <input name="amount" type="number" step="0.01" value="{{ r.amount }}" placeholder="{{ t.expense_amount }}" required>
-  <input name="date" type="date" value="{{ r.date }}" required>
-  <input name="note" value="{{ r.note }}" placeholder="{{ t.expenses_note }}">
+  <input name="amount" type="number" step="0.01" value="{{ r.amount }}" required>
+  <input name="date" type="date" value="{{ r.date }}">
+  <input name="note" value="{{ r.note }}">
   <button class="btn" type="submit">{{ t.save }}</button>
   <a class="btn" href="{{ url_for('expenses_list') }}">{{ t.back }}</a>
 </form>
