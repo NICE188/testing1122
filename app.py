@@ -5,9 +5,9 @@ from datetime import datetime, date
 APP_DB = os.environ.get("APP_DB", "data.db")
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
 
-# ---------------- I18N ----------------
+# ---------------- I18N（含状态/编辑/删除文案 + card_name 文案） ----------------
 I18N = {
     "zh": {
         "app_name": "Nepwin88",
@@ -38,7 +38,6 @@ I18N = {
         "account_number": "账户号码",
         "bank_name": "银行名字",
         "worker": "工人",
-        "card_name": "银行卡名字",
         "rental_amount": "租金金额",
         "date": "日期",
         "salary_amount": "工资金额",
@@ -57,7 +56,8 @@ I18N = {
         "save": "保存",
         "back": "返回",
         "confirm_delete": "确认删除？",
-        "cannot_delete_worker_with_refs": "该工人存在关联记录，不能删除。"
+        "cannot_delete_worker_with_refs": "该工人存在关联记录，不能删除。",
+        "card_name": "银行卡名字",
     },
     "en": {
         "app_name": "Nepwin88",
@@ -88,7 +88,6 @@ I18N = {
         "account_number": "Account Number",
         "bank_name": "Bank Name",
         "worker": "Worker",
-        "card_name": "Card Name",
         "rental_amount": "Rental Amount",
         "date": "Date",
         "salary_amount": "Salary Amount",
@@ -107,7 +106,8 @@ I18N = {
         "save": "Save",
         "back": "Back",
         "confirm_delete": "Confirm delete?",
-        "cannot_delete_worker_with_refs": "Cannot delete worker because related records exist."
+        "cannot_delete_worker_with_refs": "Cannot delete worker because related records exist.",
+        "card_name": "Card Name",
     }
 }
 
@@ -152,7 +152,7 @@ def init_db():
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
 
-    -- 旧结构会在迁移里替换
+    -- 旧结构：worker_id NOT NULL（后面迁移会改）
     CREATE TABLE IF NOT EXISTS card_rentals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         worker_id INTEGER NOT NULL,
@@ -187,6 +187,7 @@ def init_db():
     con.close()
 
 def ensure_is_active_columns():
+    """五张表补 is_active 列（默认 1）"""
     tables = ["workers", "bank_accounts", "card_rentals", "salary_payments", "expense_records"]
     con = get_db()
     for tname in tables:
@@ -195,59 +196,92 @@ def ensure_is_active_columns():
             con.execute(f"ALTER TABLE {tname} ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
     con.commit(); con.close()
 
-def ensure_card_rentals_schema():
+def migrate_card_rentals_add_card_name_and_nullable_worker():
     """
-    把 card_rentals 迁移为：去掉 worker_id，新增 card_name
-    新结构：
-      id, card_name TEXT NOT NULL, rental_amount REAL NOT NULL, date TEXT NOT NULL,
-      note TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, is_active INTEGER DEFAULT 1
+    迁移 card_rentals：
+      - 增加 card_name TEXT NOT NULL
+      - 将 worker_id 变为可空（以后不再使用）
     """
     con = get_db()
     cols = con.execute("PRAGMA table_info(card_rentals)").fetchall()
-    colnames = {c["name"] for c in cols}
+    colnames = [c["name"] for c in cols]
+    needs_rebuild = False
 
-    need_migrate = False
-    if "worker_id" in colnames:
-        need_migrate = True
-    if "card_name" not in colnames:
-        need_migrate = True
+    has_card_name = "card_name" in colnames
+    # 判断 worker_id 是否 NOT NULL
+    worker_notnull = False
+    for c in cols:
+        if c["name"] == "worker_id":
+            worker_notnull = (c["notnull"] == 1)
+            break
 
-    if not need_migrate:
+    if (not has_card_name) or worker_notnull:
+        needs_rebuild = True
+
+    if not needs_rebuild:
         con.close()
         return
 
-    con.execute("""
-        CREATE TABLE IF NOT EXISTS card_rentals__new (
+    # 读取是否已有 is_active 列，复制时要带上
+    has_is_active = any(c["name"] == "is_active" for c in cols)
+
+    try:
+        con.execute("PRAGMA foreign_keys = OFF")
+        con.execute("BEGIN")
+
+        con.execute("""
+        CREATE TABLE card_rentals_new (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            card_name TEXT NOT NULL DEFAULT '',
+            card_name TEXT NOT NULL,
+            worker_id INTEGER,
             rental_amount REAL NOT NULL,
             date TEXT NOT NULL,
             note TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             is_active INTEGER NOT NULL DEFAULT 1
         )
-    """)
+        """)
 
-    # 尝试从旧表复制数据（兼容旧列名）
-    has_card_name = "card_name" in colnames
-    select_card_name = "card_name" if has_card_name else "'' AS card_name"
-    copy_sql = f"""
-        INSERT INTO card_rentals__new (id, card_name, rental_amount, date, note, created_at, is_active)
-        SELECT id, {select_card_name}, rental_amount, date, note, created_at,
-               COALESCE(is_active,1)
-        FROM card_rentals
-    """
-    con.execute(copy_sql)
+        if has_card_name and has_is_active:
+            copy_sql = """
+                INSERT INTO card_rentals_new (id, card_name, worker_id, rental_amount, date, note, created_at, is_active)
+                SELECT id, COALESCE(card_name,''), worker_id, rental_amount, date, note, created_at, COALESCE(is_active,1)
+                FROM card_rentals
+            """
+        elif has_card_name and not has_is_active:
+            copy_sql = """
+                INSERT INTO card_rentals_new (id, card_name, worker_id, rental_amount, date, note, created_at, is_active)
+                SELECT id, COALESCE(card_name,''), worker_id, rental_amount, date, note, created_at, 1
+                FROM card_rentals
+            """
+        elif (not has_card_name) and has_is_active:
+            copy_sql = """
+                INSERT INTO card_rentals_new (id, card_name, worker_id, rental_amount, date, note, created_at, is_active)
+                SELECT id, '' as card_name, worker_id, rental_amount, date, note, created_at, COALESCE(is_active,1)
+                FROM card_rentals
+            """
+        else:
+            copy_sql = """
+                INSERT INTO card_rentals_new (id, card_name, worker_id, rental_amount, date, note, created_at, is_active)
+                SELECT id, '' as card_name, worker_id, rental_amount, date, note, created_at, 1
+                FROM card_rentals
+            """
 
-    con.execute("DROP TABLE card_rentals")
-    con.execute("ALTER TABLE card_rentals__new RENAME TO card_rentals")
-    con.commit()
-    con.close()
+        con.execute(copy_sql)
+        con.execute("DROP TABLE card_rentals")
+        con.execute("ALTER TABLE card_rentals_new RENAME TO card_rentals")
+        con.execute("COMMIT")
+    except Exception as e:
+        con.execute("ROLLBACK")
+        raise e
+    finally:
+        con.execute("PRAGMA foreign_keys = ON")
+        con.close()
 
 if not os.path.exists(APP_DB):
     init_db()
 ensure_is_active_columns()
-ensure_card_rentals_schema()   # ✅ 迁移去掉 worker_id + 加 card_name
+migrate_card_rentals_add_card_name_and_nullable_worker()
 
 # ---------------- Health ----------------
 @app.get("/health")
@@ -362,7 +396,8 @@ def workers_edit(wid):
 def workers_delete(wid):
     con = get_db()
     total = 0
-    for table, col in [("bank_accounts","worker_id"),("salary_payments","worker_id"),("expense_records","worker_id")]:
+    for table, col in [("bank_accounts","worker_id"),("card_rentals","worker_id"),
+                       ("salary_payments","worker_id"),("expense_records","worker_id")]:
         total += con.execute(f"SELECT COUNT(*) c FROM {table} WHERE {col}=?", (wid,)).fetchone()["c"]
     if total>0:
         con.close()
@@ -431,7 +466,7 @@ def bank_accounts_delete(bid):
     con.commit(); con.close()
     return redirect(url_for("bank_accounts_list"))
 
-# ---------------- Card Rentals （已移除工人字段） ----------------
+# ---------------- Card Rentals （已改为 card_name 手动输入） ----------------
 @app.route("/card-rentals")
 def card_rentals_list():
     con = get_db()
@@ -450,19 +485,15 @@ def card_rentals_add():
     rental_amount = float(d.get("rental_amount"))
     date_str = (d.get("date") or date.today().isoformat()).strip()
     note = d.get("note") or ""
-
     if not card_name:
         return "card_name required", 400
     try:
         datetime.fromisoformat(date_str)
     except Exception:
         return "date must be YYYY-MM-DD", 400
-
     con = get_db()
-    con.execute(
-        "INSERT INTO card_rentals (card_name, rental_amount, date, note) VALUES (?,?,?,?)",
-        (card_name, rental_amount, date_str, note)
-    )
+    con.execute("INSERT INTO card_rentals (card_name, rental_amount, date, note) VALUES (?,?,?,?)",
+                (card_name, rental_amount, date_str, note))
     con.commit(); con.close()
     return redirect(url_for("card_rentals_list"))
 
@@ -486,18 +517,14 @@ def card_rentals_edit(cid):
     rental_amount = float(d.get("rental_amount"))
     date_val = (d.get("date") or "").strip()
     note = d.get("note") or ""
-    if not card_name:
-        return "card_name required", 400
+    if not card_name: return "card_name required", 400
     try:
         datetime.fromisoformat(date_val)
     except Exception:
         return "date must be YYYY-MM-DD", 400
-
     con = get_db()
-    con.execute(
-        "UPDATE card_rentals SET card_name=?, rental_amount=?, date=?, note=? WHERE id=?",
-        (card_name, rental_amount, date_val, note, cid)
-    )
+    con.execute("UPDATE card_rentals SET card_name=?, rental_amount=?, date=?, note=? WHERE id=?",
+                (card_name, rental_amount, date_val, note, cid))
     con.commit(); con.close()
     return redirect(url_for("card_rentals_list"))
 
@@ -592,13 +619,13 @@ def expenses_add():
     worker_id = d.get("worker_id")
     worker_id = int(worker_id) if worker_id else None
     amount = float(d.get("amount"))
-    date_str = (d.get("date") or "").strip()
+    date_val = (d.get("date") or "").strip()
     note = d.get("note") or ""
-    try: datetime.fromisoformat(date_str)
+    try: datetime.fromisoformat(date_val)
     except Exception: return "date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("INSERT INTO expense_records (worker_id, amount, date, note) VALUES (?,?,?,?)",
-                (worker_id, amount, date_str, note))
+                (worker_id, amount, date_val, note))
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
 
@@ -672,9 +699,8 @@ def export_bank():
 @app.get("/export/card_rentals.csv")
 def export_rentals():
     return export_csv(
-        """SELECT c.id, c.card_name, c.rental_amount, c.date, c.note, c.created_at
-           FROM card_rentals c
-           ORDER BY c.date DESC, c.id""",
+        """SELECT id, card_name, rental_amount, date, note, created_at
+           FROM card_rentals ORDER BY date DESC, id""",
         ["id","card_name","rental_amount","date","note","created_at"],
         "card_rentals.csv"
     )
