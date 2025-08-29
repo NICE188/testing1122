@@ -287,3 +287,42 @@ tbody tr:first-child td{border-top-color:rgba(148,163,184,.18)}
   border-radius:12px 0 0 12px;
   background:linear-gradient(180deg, #60a5fa, #a78bfa);
 }
+/* 侧栏一排：图标 + 名称（覆盖为列表样式） */
+.sidebar .nav-grid{ display:flex; flex-direction:column; gap:12px; }
+
+.sidebar .nav-grid .tile{
+  position:relative;
+  display:flex; align-items:center; justify-content:flex-start;
+  height:48px; padding:10px 12px; width:100%;
+  border-radius:12px; text-align:left;
+  aspect-ratio:auto; /* 取消正方形 */
+}
+
+.sidebar .nav-grid .tile .tile-emoji{
+  width:22px; text-align:center; font-size:18px; line-height:1;
+}
+
+/* 正常显示：使用 .tile-label 里的文本 */
+.sidebar .nav-grid .tile .tile-label{
+  display:inline-block;
+  margin-left:8px;
+  font-size:14px; color:#e5e7eb;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* 兜底：如果没写 .tile-label，就用 data-label 生成文字 */
+.sidebar .nav-grid .tile::after{
+  content: attr(data-label);
+  display:none;
+  margin-left:8px;
+  font-size:14px; color:#e5e7eb;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.sidebar .nav-grid .tile:not(:has(.tile-label))::after{ display:inline; }
+
+/* 当前项左侧高亮条（可选） */
+.sidebar .nav-grid .tile.active::before{
+  content:""; position:absolute; left:0; top:-1px; bottom:-1px; width:3px;
+  border-radius:12px 0 0 12px;
+  background:linear-gradient(180deg, #60a5fa, #a78bfa);
+}
