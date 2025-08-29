@@ -16,6 +16,7 @@
         <th>{{ t.worker }}</th>
         <th>{{ t.expense_amount }}</th>
         <th>{{ t.date }}</th>
+        <th>{{ t.category }}</th>
         <th>{{ t.note }}</th>
         <th>{{ t.status }}</th>
         <th>{{ t.created_at }}</th>
@@ -29,6 +30,7 @@
         <td>{{ r.worker_name or '-' }}</td>
         <td>{{ '%.2f'|format(r.amount) }}</td>
         <td>{{ r.date }}</td>
+        <td>{{ r.category or '-' }}</td>
         <td>{{ r.note }}</td>
         <td>
           {% if r.is_active %}
@@ -52,7 +54,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="8" class="empty">{{ t.empty }}</td></tr>
+      <tr><td colspan="9" class="empty">{{ t.empty }}</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -131,7 +133,7 @@
     <div class="ex-header">
       <div>
         <div id="ex_title" class="ex-title">💸 {{ t.add }} · {{ t.expenses }}</div>
-        <div class="ex-sub">{{ t.worker }}（可选）、{{ t.expense_amount }}、{{ t.date }}、{{ t.note }}</div>
+        <div class="ex-sub">{{ t.worker }}（可选）、{{ t.expense_amount }}、{{ t.date }}、{{ t.category }}、{{ t.note }}</div>
       </div>
       <button class="ex-close" type="button" title="Close" aria-label="Close" data-close>×</button>
     </div>
@@ -159,7 +161,19 @@
             <input id="ex_date" name="date" type="date" required>
           </div>
 
+          <!-- 新增：分类下拉 -->
           <div class="ex-field">
+            <label for="ex_category">{{ t.category }}</label>
+            <select id="ex_category" name="category">
+              <option value="">请选择</option>
+              <option>手机费用</option>
+              <option>伙食</option>
+              <option>电脑花费</option>
+              <option>其他</option>
+            </select>
+          </div>
+
+          <div class="ex-field" style="grid-column:1/-1">
             <label for="ex_note">{{ t.note }}</label>
             <input id="ex_note" name="note" placeholder="可填写备注信息">
           </div>
