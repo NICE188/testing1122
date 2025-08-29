@@ -1,82 +1,37 @@
-<!doctype html>
-<html lang="{{ 'zh' if lang=='zh' else 'en' }}">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{{ t.app_name }} — {{ page_title if page_title else '' }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-</head>
-<body>
-<div class="layout">
-  <aside class="sidebar">
-    <!-- 品牌 -->
-    <div class="brand">👹{{ t.app_name }}👹</div>
+<nav class="nav-grid" aria-label="Main">
+  <a href="{{ url_for('home') }}"
+     class="tile {{ 'active' if request.path=='/' else '' }}">
+    <span class="tile-emoji">🎰</span>
+    <span class="tile-label">{{ t.dashboard }}</span>
+  </a>
 
-    <!-- 磁贴格子导航 -->
-    <nav class="nav-grid" aria-label="Main">
-      <a href="{{ url_for('home') }}"
-         class="tile {{ 'active' if request.path=='/' else '' }}"
-         aria-label="{{ t.dashboard }}">
-        <span class="tile-emoji">🎰</span>
-        <span class="tile-label">{{ t.dashboard }}</span>
-      </a>
+  <a href="{{ url_for('workers_list') }}"
+     class="tile {{ 'active' if request.path.startswith('/workers') else '' }}">
+    <span class="tile-emoji">👨‍💼📲</span>
+    <span class="tile-label">{{ t.workers }}</span>
+  </a>
 
-      <a href="{{ url_for('workers_list') }}"
-         class="tile {{ 'active' if request.path.startswith('/workers') else '' }}"
-         aria-label="{{ t.workers }}">
-        <span class="tile-emoji">👨‍💼📲</span>
-        <span class="tile-label">{{ t.workers }}</span>
-      </a>
+  <a href="{{ url_for('bank_accounts_list') }}"
+     class="tile {{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
+    <span class="tile-emoji">🏦</span>
+    <span class="tile-label">{{ t.bank_accounts }}</span>
+  </a>
 
-      <a href="{{ url_for('bank_accounts_list') }}"
-         class="tile {{ 'active' if request.path.startswith('/bank-accounts') else '' }}"
-         aria-label="{{ t.bank_accounts }}">
-        <span class="tile-emoji">🏦</span>
-        <span class="tile-label">{{ t.bank_accounts }}</span>
-      </a>
+  <a href="{{ url_for('card_rentals_list') }}"
+     class="tile {{ 'active' if request.path.startswith('/card-rentals') else '' }}">
+    <span class="tile-emoji">💳</span>
+    <span class="tile-label">{{ t.card_rentals }}</span>
+  </a>
 
-      <a href="{{ url_for('card_rentals_list') }}"
-         class="tile {{ 'active' if request.path.startswith('/card-rentals') else '' }}"
-         aria-label="{{ t.card_rentals }}">
-        <span class="tile-emoji">💳</span>
-        <span class="tile-label">{{ t.card_rentals }}</span>
-      </a>
+  <a href="{{ url_for('salaries_list') }}"
+     class="tile {{ 'active' if request.path.startswith('/salaries') else '' }}">
+    <span class="tile-emoji">💵</span>
+    <span class="tile-label">{{ t.salaries }}</span>
+  </a>
 
-      <a href="{{ url_for('salaries_list') }}"
-         class="tile {{ 'active' if request.path.startswith('/salaries') else '' }}"
-         aria-label="{{ t.salaries }}">
-        <span class="tile-emoji">💵</span>
-        <span class="tile-label">{{ t.salaries }}</span>
-      </a>
-
-      <a href="{{ url_for('expenses_list') }}"
-         class="tile {{ 'active' if request.path.startswith('/expenses') else '' }}"
-         aria-label="{{ t.expenses }}">
-        <span class="tile-emoji">💸</span>
-        <span class="tile-label">{{ t.expenses }}</span>
-      </a>
-    </nav>
-
-    <div class="lang">
-      🌐 {{ t.language }}：
-      <a href="?lang=zh">中文</a> | <a href="?lang=en">EN</a>
-    </div>
-  </aside>
-
-  <main class="content">
-    <header class="topbar">
-      <div></div>
-      <div class="exports">
-        <a class="btn soft" href="{{ url_for('export_workers') }}">{{ t.export_workers }}</a>
-        <a class="btn soft" href="{{ url_for('export_bank') }}">{{ t.export_bank }}</a>
-        <a class="btn soft" href="{{ url_for('export_rentals') }}">{{ t.export_rentals }}</a>
-        <a class="btn soft" href="{{ url_for('export_salaries') }}">{{ t.export_salaries }}</a>
-        <a class="btn soft" href="{{ url_for('export_expenses') }}">{{ t.export_expenses }}</a>
-      </div>
-    </header>
-    {% block body %}{% endblock %}
-  </main>
-</div>
-</body>
-</html>
+  <a href="{{ url_for('expenses_list') }}"
+     class="tile {{ 'active' if request.path.startswith('/expenses') else '' }}">
+    <span class="tile-emoji">💸</span>
+    <span class="tile-label">{{ t.expenses }}</span>
+  </a>
+</nav>
