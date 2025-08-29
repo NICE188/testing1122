@@ -7,7 +7,7 @@ APP_DB = os.environ.get("APP_DB", "data.db")
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
 
-# ---------------- I18N ----------------
+# ---------------- I18N（含状态/编辑/删除文案） ----------------
 I18N = {
     "zh": {
         "app_name": "Nepwin88",
@@ -184,7 +184,7 @@ def init_db():
     con.close()
 
 def ensure_is_active_columns():
-    """给五张表补 is_active 列（老库自动加，默认 1）"""
+    """五张表补 is_active 列（默认 1）"""
     tables = ["workers", "bank_accounts", "card_rentals", "salary_payments", "expense_records"]
     con = get_db()
     for tname in tables:
@@ -217,7 +217,7 @@ def home():
                            total_salaries=total_salaries,
                            total_expenses=total_expenses)
 
-# 图表数据（近 6 个月）
+# 近 6 个月图表数据
 @app.get("/api/summary")
 def api_summary():
     con = get_db()
@@ -251,8 +251,8 @@ def api_summary():
 def _toggle_active(table, rid):
     con = get_db()
     row = con.execute(f"SELECT is_active FROM {table} WHERE id=?", (rid,)).fetchone()
-    if not row: 
-        con.close(); 
+    if not row:
+        con.close()
         return False
     con.execute(f"UPDATE {table} SET is_active = CASE is_active WHEN 1 THEN 0 ELSE 1 END WHERE id=?", (rid,))
     con.commit(); con.close()
@@ -309,12 +309,11 @@ def workers_edit(wid):
 @app.post("/workers/<int:wid>/delete")
 def workers_delete(wid):
     con = get_db()
-    # 有外键引用时，禁止删除
-    counts = 0
+    total = 0
     for table, col in [("bank_accounts","worker_id"),("card_rentals","worker_id"),
                        ("salary_payments","worker_id"),("expense_records","worker_id")]:
-        counts += con.execute(f"SELECT COUNT(*) c FROM {table} WHERE {col}=?", (wid,)).fetchone()["c"]
-    if counts>0:
+        total += con.execute(f"SELECT COUNT(*) c FROM {table} WHERE {col}=?", (wid,)).fetchone()["c"]
+    if total>0:
         con.close()
         return I18N[get_lang()]["cannot_delete_worker_with_refs"], 400
     con.execute("DELETE FROM workers WHERE id=?", (wid,))
