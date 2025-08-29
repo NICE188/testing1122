@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% set page_title = t.edit ~ ' - ' ~ t.bank_accounts %}
+{% block body %}
+<h1 class="page-title">{{ t.edit }} — {{ t.bank_accounts }}</h1>
+<form class="form" method="post" action="{{ url_for('bank_accounts_edit', bid=r.id) }}">
+  <select name="worker_id" required>
+    {% for w in workers %}
+      <option value="{{ w.id }}" {{ 'selected' if w.id==r.worker_id else '' }}>{{ w.name }}</option>
+    {% endfor %}
+  </select>
+  <input name="account_number" value="{{ r.account_number }}" placeholder="{{ t.account_number }}" required>
+  <input name="bank_name" value="{{ r.bank_name }}" placeholder="{{ t.bank_name }}" required>
+  <button class="btn" type="submit">{{ t.save }}</button>
+  <a class="btn" href="{{ url_for('bank_accounts_list') }}">{{ t.back }}</a>
+</form>
+{% endblock %}
