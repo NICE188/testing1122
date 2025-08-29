@@ -17,7 +17,7 @@
 <div class="panel">
   <table>
     <thead>
-    <tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.expense_amount }}</th><th>{{ t.date }}</th><th>{{ t.note }}</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr>
+      <tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.expense_amount }}</th><th>{{ t.date }}</th><th>{{ t.note }}</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr>
     </thead>
     <tbody>
       {% for r in rows %}
@@ -28,6 +28,10 @@
         <td>
           <form style="display:inline" method="post" action="{{ url_for('expenses_toggle', eid=r.id) }}">
             <button class="btn {{ '' if r.is_active else 'soft' }}" type="submit">{{ t.deactivate if r.is_active else t.activate }}</button>
+          </form>
+          <a class="btn" href="{{ url_for('expenses_edit_form', eid=r.id) }}">{{ t.edit }}</a>
+          <form style="display:inline" method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
+            <button class="btn danger" type="submit">{{ t.delete }}</button>
           </form>
         </td>
       </tr>
