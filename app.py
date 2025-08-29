@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, send_file, session, abort
 import sqlite3, csv, io, os
-from datetime import datetime
+from datetime import datetime, date  # ← 加入 date
 
 APP_DB = os.environ.get("APP_DB", "data.db")
 
@@ -57,8 +57,6 @@ I18N = {
         "back": "返回",
         "confirm_delete": "确认删除？",
         "cannot_delete_worker_with_refs": "该工人存在关联记录，不能删除。",
-        "filter": "筛选",
-        "clear": "清空",
     },
     "en": {
         "app_name": "Nepwin88",
@@ -108,8 +106,6 @@ I18N = {
         "back": "Back",
         "confirm_delete": "Confirm delete?",
         "cannot_delete_worker_with_refs": "Cannot delete worker because related records exist.",
-        "filter": "Filter",
-        "clear": "Clear",
     }
 }
 
@@ -160,8 +156,7 @@ def init_db():
         rental_amount REAL NOT NULL,
         date TEXT NOT NULL,
         note TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(worker_id) REFERENCES workers(id)
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS salary_payments (
@@ -170,8 +165,7 @@ def init_db():
         salary_amount REAL NOT NULL,
         pay_date TEXT NOT NULL,
         note TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(worker_id) REFERENCES workers(id)
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS expense_records (
@@ -180,8 +174,7 @@ def init_db():
         amount REAL NOT NULL,
         date TEXT NOT NULL,
         note TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(worker_id) REFERENCES workers(id)
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
     """)
     con.commit()
@@ -265,7 +258,6 @@ def _toggle_active(table, rid):
 # ---------------- Workers ----------------
 @app.route("/workers")
 def workers_list():
-    # 可选：保留你已做的其它筛选；这里不动
     con = get_db()
     rows = con.execute("SELECT * FROM workers ORDER BY id DESC").fetchall()
     con.close()
@@ -388,31 +380,12 @@ def bank_accounts_delete(bid):
 # ---------------- Card Rentals ----------------
 @app.route("/card-rentals")
 def card_rentals_list():
-    # 仅保留两个日期时间筛选（开始/结束）
-    start = request.args.get("start")
-    end   = request.args.get("end")
-    start_d = (start[:10] if start else None)  # 取 YYYY-MM-DD
-    end_d   = (end[:10]   if end   else None)
-
     con = get_db()
-    where = []
-    params = []
-    if start_d:
-        where.append("c.date >= ?")
-        params.append(start_d)
-    if end_d:
-        where.append("c.date <= ?")
-        params.append(end_d)
-    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
-
-    rows = con.execute(f"""
+    rows = con.execute("""
       SELECT c.*, w.name AS worker_name
-      FROM card_rentals c
-      JOIN workers w ON w.id=c.worker_id
-      {where_sql}
+      FROM card_rentals c JOIN workers w ON w.id=c.worker_id
       ORDER BY c.date DESC, c.id DESC
-    """, params).fetchall()
-
+    """).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     return render_template("card_rentals.html", rows=rows, workers=workers)
@@ -422,13 +395,16 @@ def card_rentals_add():
     d = request.form or request.json
     worker_id = int(d.get("worker_id"))
     rental_amount = float(d.get("rental_amount"))
-    date = (d.get("date") or "").strip()
     note = d.get("note") or ""
-    try: datetime.fromisoformat(date)
-    except Exception: return "date must be YYYY-MM-DD", 400
+    # ↓↓↓ 允许不传 date，默认今天
+    date_str = (d.get("date") or date.today().isoformat()).strip()
+    try:
+        datetime.fromisoformat(date_str)
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("INSERT INTO card_rentals (worker_id, rental_amount, date, note) VALUES (?,?,?,?)",
-                (worker_id, rental_amount, date, note))
+                (worker_id, rental_amount, date_str, note))
     con.commit(); con.close()
     return redirect(url_for("card_rentals_list"))
 
@@ -451,13 +427,15 @@ def card_rentals_edit(cid):
     d = request.form or request.json
     worker_id = int(d.get("worker_id"))
     rental_amount = float(d.get("rental_amount"))
-    date = (d.get("date") or "").strip()
+    date_val = (d.get("date") or "").strip()
     note = d.get("note") or ""
-    try: datetime.fromisoformat(date)
-    except Exception: return "date must be YYYY-MM-DD", 400
+    try:
+        datetime.fromisoformat(date_val)
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("UPDATE card_rentals SET worker_id=?, rental_amount=?, date=?, note=? WHERE id=?",
-                (worker_id, rental_amount, date, note, cid))
+                (worker_id, rental_amount, date_val, note, cid))
     con.commit(); con.close()
     return redirect(url_for("card_rentals_list"))
 
@@ -471,30 +449,12 @@ def card_rentals_delete(cid):
 # ---------------- Salaries ----------------
 @app.route("/salaries")
 def salaries_list():
-    start = request.args.get("start")
-    end   = request.args.get("end")
-    start_d = (start[:10] if start else None)
-    end_d   = (end[:10]   if end   else None)
-
     con = get_db()
-    where = []
-    params = []
-    if start_d:
-        where.append("s.pay_date >= ?")
-        params.append(start_d)
-    if end_d:
-        where.append("s.pay_date <= ?")
-        params.append(end_d)
-    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
-
-    rows = con.execute(f"""
+    rows = con.execute("""
       SELECT s.*, w.name AS worker_name
-      FROM salary_payments s
-      JOIN workers w ON w.id=s.worker_id
-      {where_sql}
+      FROM salary_payments s JOIN workers w ON w.id=s.worker_id
       ORDER BY s.pay_date DESC, s.id DESC
-    """, params).fetchall()
-
+    """).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     return render_template("salaries.html", rows=rows, workers=workers)
@@ -504,10 +464,13 @@ def salaries_add():
     d = request.form or request.json
     worker_id = int(d.get("worker_id"))
     salary_amount = float(d.get("salary_amount"))
-    pay_date = (d.get("pay_date") or "").strip()
     note = d.get("note") or ""
-    try: datetime.fromisoformat(pay_date)
-    except Exception: return "pay_date must be YYYY-MM-DD", 400
+    # ↓↓↓ 允许不传 pay_date，默认今天
+    pay_date = (d.get("pay_date") or date.today().isoformat()).strip()
+    try:
+        datetime.fromisoformat(pay_date)
+    except Exception:
+        return "pay_date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("INSERT INTO salary_payments (worker_id, salary_amount, pay_date, note) VALUES (?,?,?,?)",
                 (worker_id, salary_amount, pay_date, note))
@@ -535,8 +498,10 @@ def salaries_edit(sid):
     salary_amount = float(d.get("salary_amount"))
     pay_date = (d.get("pay_date") or "").strip()
     note = d.get("note") or ""
-    try: datetime.fromisoformat(pay_date)
-    except Exception: return "pay_date must be YYYY-MM-DD", 400
+    try:
+        datetime.fromisoformat(pay_date)
+    except Exception:
+        return "pay_date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("UPDATE salary_payments SET worker_id=?, salary_amount=?, pay_date=?, note=? WHERE id=?",
                 (worker_id, salary_amount, pay_date, note, sid))
@@ -553,30 +518,13 @@ def salaries_delete(sid):
 # ---------------- Expenses ----------------
 @app.route("/expenses")
 def expenses_list():
-    start = request.args.get("start")
-    end   = request.args.get("end")
-    start_d = (start[:10] if start else None)
-    end_d   = (end[:10]   if end   else None)
-
     con = get_db()
-    where = []
-    params = []
-    if start_d:
-        where.append("e.date >= ?")
-        params.append(start_d)
-    if end_d:
-        where.append("e.date <= ?")
-        params.append(end_d)
-    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
-
-    rows = con.execute(f"""
+    rows = con.execute("""
       SELECT e.*, w.name AS worker_name
       FROM expense_records e
       LEFT JOIN workers w ON w.id=e.worker_id
-      {where_sql}
       ORDER BY e.date DESC, e.id DESC
-    """, params).fetchall()
-
+    """).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     return render_template("expenses.html", rows=rows, workers=workers)
@@ -587,13 +535,16 @@ def expenses_add():
     worker_id = d.get("worker_id")
     worker_id = int(worker_id) if worker_id else None
     amount = float(d.get("amount"))
-    date = (d.get("date") or "").strip()
     note = d.get("note") or ""
-    try: datetime.fromisoformat(date)
-    except Exception: return "date must be YYYY-MM-DD", 400
+    # ↓↓↓ 允许不传 date，默认今天
+    date_str = (d.get("date") or date.today().isoformat()).strip()
+    try:
+        datetime.fromisoformat(date_str)
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("INSERT INTO expense_records (worker_id, amount, date, note) VALUES (?,?,?,?)",
-                (worker_id, amount, date, note))
+                (worker_id, amount, date_str, note))
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
 
@@ -617,13 +568,15 @@ def expenses_edit(eid):
     worker_id = d.get("worker_id")
     worker_id = int(worker_id) if worker_id else None
     amount = float(d.get("amount"))
-    date = (d.get("date") or "").strip()
+    date_val = (d.get("date") or "").strip()
     note = d.get("note") or ""
-    try: datetime.fromisoformat(date)
-    except Exception: return "date must be YYYY-MM-DD", 400
+    try:
+        datetime.fromisoformat(date_val)
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("UPDATE expense_records SET worker_id=?, amount=?, date=?, note=? WHERE id=?",
-                (worker_id, amount, date, note, eid))
+                (worker_id, amount, date_val, note, eid))
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
 
