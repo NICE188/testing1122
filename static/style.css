@@ -37,20 +37,3 @@ th{color:#cbd5e1;text-align:left}
 .badge.off{color:#f59e0b;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35)}
 .btn.soft{background:#0f172a;border-color:#334155}
 .btn.soft:hover{background:#121c2f}
-
-/* 左下角装饰背景图（可换成本地图） */
-.has-corner-bg::after{
-  content:""; position:absolute; left:24px; bottom:28px;
-  width:clamp(240px, 28vw, 520px); aspect-ratio:16/11;
-  background-image:url("https://i.imgur.com/RUhZHD9.jpeg");
-  background-repeat:no-repeat; background-size:contain; background-position:left bottom;
-  opacity:.22; filter:saturate(1.05) contrast(1.05); pointer-events:none; z-index:0;
-}
-.panel, .cards, table, .form, .topbar{ position:relative; z-index:1; }
-
-@media (max-width:1100px){.cards{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:900px){ .has-corner-bg::after{ width:clamp(180px,38vw,320px); opacity:.18; } }
-@media (max-width:680px){
-  .layout{grid-template-columns:1fr}.sidebar{position:sticky;top:0}
-  .has-corner-bg::after{ display:none; }
-}
