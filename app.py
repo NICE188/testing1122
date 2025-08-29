@@ -2,9 +2,12 @@ from flask import Flask, request, jsonify, render_template, redirect, url_for, s
 import sqlite3, csv, io, os
 from datetime import datetime
 from functools import wraps
-from werkzeug.security import generate_password_hash, check_password_hash
 
 APP_DB = os.environ.get("APP_DB", "data.db")
+
+# ====== 简单账号（可用环境变量覆盖）======
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
@@ -59,6 +62,11 @@ I18N = {
         "back": "返回",
         "confirm_delete": "确认删除？",
         "cannot_delete_worker_with_refs": "该工人存在关联记录，不能删除。",
+        "login": "登录",
+        "logout": "退出",
+        "username": "用户名",
+        "password": "密码",
+        "login_failed": "用户名或密码错误",
     },
     "en": {
         "app_name": "Nepwin88",
@@ -108,6 +116,11 @@ I18N = {
         "back": "Back",
         "confirm_delete": "Confirm delete?",
         "cannot_delete_worker_with_refs": "Cannot delete worker because related records exist.",
+        "login": "Login",
+        "logout": "Logout",
+        "username": "Username",
+        "password": "Password",
+        "login_failed": "Wrong username or password",
     }
 }
 
@@ -123,6 +136,23 @@ def inject_i18n():
     t = I18N[lang]
     return dict(t=t, lang=lang)
 
+# ----------------- 简易登录保护 -----------------
+def is_logged_in():
+    return bool(session.get("user_id"))
+
+@app.before_request
+def require_login():
+    # 放行的端点（无需登录）
+    open_endpoints = {
+        "login", "login_post", "logout", "health", "static"
+    }
+    if request.endpoint in open_endpoints:
+        return
+    # 未登录则跳去 /login
+    if not is_logged_in():
+        next_url = request.path
+        return redirect(url_for("login", next=next_url))
+
 # ---------------- DB helpers ----------------
 def get_db():
     con = sqlite3.connect(APP_DB)
@@ -134,20 +164,12 @@ def init_db():
     con = get_db()
     cur = con.cursor()
     cur.executescript("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-
     CREATE TABLE IF NOT EXISTS workers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         company TEXT,
         commission REAL DEFAULT 0,
         expenses REAL DEFAULT 0,
-        is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -156,9 +178,8 @@ def init_db():
         worker_id INTEGER NOT NULL,
         account_number TEXT NOT NULL,
         bank_name TEXT NOT NULL,
-        is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(worker_id) REFERENCES workers(id) ON DELETE CASCADE
+        FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
 
     CREATE TABLE IF NOT EXISTS card_rentals (
@@ -167,9 +188,8 @@ def init_db():
         rental_amount REAL NOT NULL,
         date TEXT NOT NULL,
         note TEXT,
-        is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(worker_id) REFERENCES workers(id) ON DELETE CASCADE
+        FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
 
     CREATE TABLE IF NOT EXISTS salary_payments (
@@ -178,9 +198,8 @@ def init_db():
         salary_amount REAL NOT NULL,
         pay_date TEXT NOT NULL,
         note TEXT,
-        is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(worker_id) REFERENCES workers(id) ON DELETE CASCADE
+        FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
 
     CREATE TABLE IF NOT EXISTS expense_records (
@@ -188,52 +207,37 @@ def init_db():
         worker_id INTEGER,
         amount REAL NOT NULL,
         date TEXT NOT NULL,
-        category TEXT,
         note TEXT,
-        is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(worker_id) REFERENCES workers(id) ON DELETE SET NULL
+        FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
     """)
     con.commit()
     con.close()
 
-def ensure_admin_user():
-    username = os.environ.get("ADMIN_USERNAME", "admin")
-    password = os.environ.get("ADMIN_PASSWORD", "admin123")
+def ensure_is_active_columns():
+    """五张表补 is_active 列（默认 1）"""
+    tables = ["workers", "bank_accounts", "card_rentals", "salary_payments", "expense_records"]
     con = get_db()
-    r = con.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
-    if not r:
-        con.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)",
-                    (username, generate_password_hash(password)))
-        con.commit()
-        print(f"[INIT] Created default admin -> {username}/{password}")
-    con.close()
+    for tname in tables:
+        cols = con.execute(f"PRAGMA table_info({tname})").fetchall()
+        if not any(c["name"] == "is_active" for c in cols):
+            con.execute(f"ALTER TABLE {tname} ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
+    con.commit(); con.close()
 
-# 初始化
 if not os.path.exists(APP_DB):
     init_db()
-else:
-    init_db()
-ensure_admin_user()
+ensure_is_active_columns()
 
-# ---------------- 登录保护 ----------------
-def login_required(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        open_endpoints = {"login", "login_post", "logout", "health", "static"}
-        if session.get("user_id"):
-            return fn(*args, **kwargs)
-        if request.endpoint in open_endpoints or (request.endpoint or "").startswith("static"):
-            return fn(*args, **kwargs)
-        next_url = request.full_path if request.query_string else request.path
-        return redirect(url_for("login", next=next_url))
-    return wrapper
+# ---------------- Health ----------------
+@app.get("/health")
+def health():
+    return "ok", 200
 
-# ---------------- Auth 路由 ----------------
+# ---------------- Auth: login / logout ----------------
 @app.get("/login")
 def login():
-    if session.get("user_id"):
+    if is_logged_in():
         return redirect(url_for("home"))
     next_url = request.args.get("next", url_for("home"))
     return render_template("login.html", next_url=next_url, error=None)
@@ -241,30 +245,23 @@ def login():
 @app.post("/login")
 def login_post():
     username = (request.form.get("username") or "").strip()
-    password = request.form.get("password") or ""
+    password = (request.form.get("password") or "").strip()
     next_url = request.form.get("next") or url_for("home")
-    con = get_db()
-    user = con.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
-    con.close()
-    if user and check_password_hash(user["password_hash"], password):
-        session["user_id"] = user["id"]
-        session["username"] = user["username"]
-        return redirect(next_url)
-    return render_template("login.html", next_url=next_url, error="用户名或密码不正确 / Invalid credentials"), 401
 
-@app.route("/logout", methods=["GET","POST"])
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        session["user_id"] = username
+        return redirect(next_url)
+    # 登录失败
+    return render_template("login.html", next_url=next_url,
+                           error=I18N[get_lang()]["login_failed"]), 401
+
+@app.get("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
 
-# ---------------- Health ----------------
-@app.get("/health")
-def health():
-    return "ok", 200
-
 # ---------------- Home / Dashboard ----------------
 @app.route("/")
-@login_required
 def home():
     con = get_db()
     total_workers = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
@@ -280,7 +277,6 @@ def home():
 
 # 近 6 个月图表数据
 @app.get("/api/summary")
-@login_required
 def api_summary():
     con = get_db()
     def q(sql): return con.execute(sql).fetchall()
@@ -322,15 +318,23 @@ def _toggle_active(table, rid):
 
 # ---------------- Workers ----------------
 @app.route("/workers")
-@login_required
 def workers_list():
     con = get_db()
-    rows = con.execute("SELECT * FROM workers ORDER BY id DESC").fetchall()
+    # 支持可选时间过滤（开始/结束）
+    dt_from = request.args.get("from")
+    dt_to   = request.args.get("to")
+    sql = "SELECT * FROM workers WHERE 1=1"
+    args = []
+    if dt_from:
+        sql += " AND datetime(created_at) >= datetime(?)"; args.append(dt_from)
+    if dt_to:
+        sql += " AND datetime(created_at) <= datetime(?)"; args.append(dt_to)
+    sql += " ORDER BY id DESC"
+    rows = con.execute(sql, args).fetchall()
     con.close()
     return render_template("workers.html", rows=rows)
 
 @app.post("/workers/add")
-@login_required
 def workers_add():
     d = request.form or request.json
     name = (d.get("name") or "").strip()
@@ -345,13 +349,11 @@ def workers_add():
     return redirect(url_for("workers_list"))
 
 @app.post("/workers/<int:wid>/toggle")
-@login_required
 def workers_toggle(wid):
     _toggle_active("workers", wid)
     return redirect(url_for("workers_list"))
 
 @app.get("/workers/<int:wid>/edit")
-@login_required
 def workers_edit_form(wid):
     con = get_db()
     r = con.execute("SELECT * FROM workers WHERE id=?", (wid,)).fetchone()
@@ -360,7 +362,6 @@ def workers_edit_form(wid):
     return render_template("workers_edit.html", r=r)
 
 @app.post("/workers/<int:wid>/edit")
-@login_required
 def workers_edit(wid):
     d = request.form or request.json
     name = (d.get("name") or "").strip()
@@ -374,7 +375,6 @@ def workers_edit(wid):
     return redirect(url_for("workers_list"))
 
 @app.post("/workers/<int:wid>/delete")
-@login_required
 def workers_delete(wid):
     con = get_db()
     total = 0
@@ -390,7 +390,6 @@ def workers_delete(wid):
 
 # ---------------- Bank Accounts ----------------
 @app.route("/bank-accounts")
-@login_required
 def bank_accounts_list():
     con = get_db()
     rows = con.execute("""
@@ -403,7 +402,6 @@ def bank_accounts_list():
     return render_template("bank_accounts.html", rows=rows, workers=workers)
 
 @app.post("/bank-accounts/add")
-@login_required
 def bank_accounts_add():
     d = request.form or request.json
     worker_id = int(d.get("worker_id"))
@@ -418,13 +416,11 @@ def bank_accounts_add():
     return redirect(url_for("bank_accounts_list"))
 
 @app.post("/bank-accounts/<int:bid>/toggle")
-@login_required
 def bank_accounts_toggle(bid):
     _toggle_active("bank_accounts", bid)
     return redirect(url_for("bank_accounts_list"))
 
 @app.get("/bank-accounts/<int:bid>/edit")
-@login_required
 def bank_accounts_edit_form(bid):
     con = get_db()
     r = con.execute("SELECT * FROM bank_accounts WHERE id=?", (bid,)).fetchone()
@@ -434,7 +430,6 @@ def bank_accounts_edit_form(bid):
     return render_template("bank_accounts_edit.html", r=r, workers=workers)
 
 @app.post("/bank-accounts/<int:bid>/edit")
-@login_required
 def bank_accounts_edit(bid):
     d = request.form or request.json
     worker_id = int(d.get("worker_id"))
@@ -447,7 +442,6 @@ def bank_accounts_edit(bid):
     return redirect(url_for("bank_accounts_list"))
 
 @app.post("/bank-accounts/<int:bid>/delete")
-@login_required
 def bank_accounts_delete(bid):
     con = get_db()
     con.execute("DELETE FROM bank_accounts WHERE id=?", (bid,))
@@ -456,7 +450,6 @@ def bank_accounts_delete(bid):
 
 # ---------------- Card Rentals ----------------
 @app.route("/card-rentals")
-@login_required
 def card_rentals_list():
     con = get_db()
     rows = con.execute("""
@@ -469,15 +462,16 @@ def card_rentals_list():
     return render_template("card_rentals.html", rows=rows, workers=workers)
 
 @app.post("/card-rentals/add")
-@login_required
 def card_rentals_add():
     d = request.form or request.json
     worker_id = int(d.get("worker_id"))
     rental_amount = float(d.get("rental_amount"))
     date = (d.get("date") or "").strip()
     note = d.get("note") or ""
-    try: datetime.fromisoformat(date)
-    except Exception: return "date must be YYYY-MM-DD", 400
+    try:
+        datetime.fromisoformat(date)
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("INSERT INTO card_rentals (worker_id, rental_amount, date, note) VALUES (?,?,?,?)",
                 (worker_id, rental_amount, date, note))
@@ -485,13 +479,11 @@ def card_rentals_add():
     return redirect(url_for("card_rentals_list"))
 
 @app.post("/card-rentals/<int:cid>/toggle")
-@login_required
 def card_rentals_toggle(cid):
     _toggle_active("card_rentals", cid)
     return redirect(url_for("card_rentals_list"))
 
 @app.get("/card-rentals/<int:cid>/edit")
-@login_required
 def card_rentals_edit_form(cid):
     con = get_db()
     r = con.execute("SELECT * FROM card_rentals WHERE id=?", (cid,)).fetchone()
@@ -501,15 +493,16 @@ def card_rentals_edit_form(cid):
     return render_template("card_rentals_edit.html", r=r, workers=workers)
 
 @app.post("/card-rentals/<int:cid>/edit")
-@login_required
 def card_rentals_edit(cid):
     d = request.form or request.json
     worker_id = int(d.get("worker_id"))
     rental_amount = float(d.get("rental_amount"))
     date = (d.get("date") or "").strip()
     note = d.get("note") or ""
-    try: datetime.fromisoformat(date)
-    except Exception: return "date must be YYYY-MM-DD", 400
+    try:
+        datetime.fromisoformat(date)
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("UPDATE card_rentals SET worker_id=?, rental_amount=?, date=?, note=? WHERE id=?",
                 (worker_id, rental_amount, date, note, cid))
@@ -517,7 +510,6 @@ def card_rentals_edit(cid):
     return redirect(url_for("card_rentals_list"))
 
 @app.post("/card-rentals/<int:cid>/delete")
-@login_required
 def card_rentals_delete(cid):
     con = get_db()
     con.execute("DELETE FROM card_rentals WHERE id=?", (cid,))
@@ -526,7 +518,6 @@ def card_rentals_delete(cid):
 
 # ---------------- Salaries ----------------
 @app.route("/salaries")
-@login_required
 def salaries_list():
     con = get_db()
     rows = con.execute("""
@@ -539,15 +530,16 @@ def salaries_list():
     return render_template("salaries.html", rows=rows, workers=workers)
 
 @app.post("/salaries/add")
-@login_required
 def salaries_add():
     d = request.form or request.json
     worker_id = int(d.get("worker_id"))
     salary_amount = float(d.get("salary_amount"))
     pay_date = (d.get("pay_date") or "").strip()
     note = d.get("note") or ""
-    try: datetime.fromisoformat(pay_date)
-    except Exception: return "pay_date must be YYYY-MM-DD", 400
+    try:
+        datetime.fromisoformat(pay_date)
+    except Exception:
+        return "pay_date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("INSERT INTO salary_payments (worker_id, salary_amount, pay_date, note) VALUES (?,?,?,?)",
                 (worker_id, salary_amount, pay_date, note))
@@ -555,13 +547,11 @@ def salaries_add():
     return redirect(url_for("salaries_list"))
 
 @app.post("/salaries/<int:sid>/toggle")
-@login_required
 def salaries_toggle(sid):
     _toggle_active("salary_payments", sid)
     return redirect(url_for("salaries_list"))
 
 @app.get("/salaries/<int:sid>/edit")
-@login_required
 def salaries_edit_form(sid):
     con = get_db()
     r = con.execute("SELECT * FROM salary_payments WHERE id=?", (sid,)).fetchone()
@@ -571,15 +561,16 @@ def salaries_edit_form(sid):
     return render_template("salaries_edit.html", r=r, workers=workers)
 
 @app.post("/salaries/<int:sid>/edit")
-@login_required
 def salaries_edit(sid):
     d = request.form or request.json
     worker_id = int(d.get("worker_id"))
     salary_amount = float(d.get("salary_amount"))
     pay_date = (d.get("pay_date") or "").strip()
-    note = (d.get("note") or "")
-    try: datetime.fromisoformat(pay_date)
-    except Exception: return "pay_date must be YYYY-MM-DD", 400
+    note = d.get("note") or ""
+    try:
+        datetime.fromisoformat(pay_date)
+    except Exception:
+        return "pay_date must be YYYY-MM-DD", 400
     con = get_db()
     con.execute("UPDATE salary_payments SET worker_id=?, salary_amount=?, pay_date=?, note=? WHERE id=?",
                 (worker_id, salary_amount, pay_date, note, sid))
@@ -587,7 +578,6 @@ def salaries_edit(sid):
     return redirect(url_for("salaries_list"))
 
 @app.post("/salaries/<int:sid>/delete")
-@login_required
 def salaries_delete(sid):
     con = get_db()
     con.execute("DELETE FROM salary_payments WHERE id=?", (sid,))
@@ -596,7 +586,6 @@ def salaries_delete(sid):
 
 # ---------------- Expenses ----------------
 @app.route("/expenses")
-@login_required
 def expenses_list():
     con = get_db()
     rows = con.execute("""
@@ -610,33 +599,29 @@ def expenses_list():
     return render_template("expenses.html", rows=rows, workers=workers)
 
 @app.post("/expenses/add")
-@login_required
 def expenses_add():
     d = request.form or request.json
     worker_id = d.get("worker_id")
     worker_id = int(worker_id) if worker_id else None
     amount = float(d.get("amount"))
     date = (d.get("date") or "").strip()
-    note = (d.get("note") or "")
-    category = (d.get("category") or "").strip()
-    try: datetime.fromisoformat(date)
-    except Exception: return "date must be YYYY-MM-DD", 400
+    note = d.get("note") or ""
+    try:
+        datetime.fromisoformat(date)
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
     con = get_db()
-    con.execute(
-        "INSERT INTO expense_records (worker_id, amount, date, note, category) VALUES (?,?,?,?,?)",
-        (worker_id, amount, date, note, category)
-    )
+    con.execute("INSERT INTO expense_records (worker_id, amount, date, note) VALUES (?,?,?,?)",
+                (worker_id, amount, date, note))
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
 
 @app.post("/expenses/<int:eid>/toggle")
-@login_required
 def expenses_toggle(eid):
     _toggle_active("expense_records", eid)
     return redirect(url_for("expenses_list"))
 
 @app.get("/expenses/<int:eid>/edit")
-@login_required
 def expenses_edit_form(eid):
     con = get_db()
     r = con.execute("SELECT * FROM expense_records WHERE id=?", (eid,)).fetchone()
@@ -646,27 +631,24 @@ def expenses_edit_form(eid):
     return render_template("expenses_edit.html", r=r, workers=workers)
 
 @app.post("/expenses/<int:eid>/edit")
-@login_required
 def expenses_edit(eid):
     d = request.form or request.json
     worker_id = d.get("worker_id")
     worker_id = int(worker_id) if worker_id else None
     amount = float(d.get("amount"))
     date = (d.get("date") or "").strip()
-    note = (d.get("note") or "")
-    category = (d.get("category") or "").strip()
-    try: datetime.fromisoformat(date)
-    except Exception: return "date must be YYYY-MM-DD", 400
+    note = d.get("note") or ""
+    try:
+        datetime.fromisoformat(date)
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
     con = get_db()
-    con.execute(
-        "UPDATE expense_records SET worker_id=?, amount=?, date=?, note=?, category=? WHERE id=?",
-        (worker_id, amount, date, note, category, eid)
-    )
+    con.execute("UPDATE expense_records SET worker_id=?, amount=?, date=?, note=? WHERE id=?",
+                (worker_id, amount, date, note, eid))
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
 
 @app.post("/expenses/<int:eid>/delete")
-@login_required
 def expenses_delete(eid):
     con = get_db()
     con.execute("DELETE FROM expense_records WHERE id=?", (eid,))
@@ -687,7 +669,6 @@ def export_csv(query, headers, filename):
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name=filename)
 
 @app.get("/export/workers.csv")
-@login_required
 def export_workers():
     return export_csv(
         "SELECT id,name,company,commission,expenses,created_at FROM workers ORDER BY id",
@@ -696,7 +677,6 @@ def export_workers():
     )
 
 @app.get("/export/bank_accounts.csv")
-@login_required
 def export_bank():
     return export_csv(
         """SELECT b.id, w.name as worker_name, b.account_number, b.bank_name, b.created_at
@@ -706,7 +686,6 @@ def export_bank():
     )
 
 @app.get("/export/card_rentals.csv")
-@login_required
 def export_rentals():
     return export_csv(
         """SELECT c.id, w.name as worker_name, c.rental_amount, c.date, c.note, c.created_at
@@ -716,7 +695,6 @@ def export_rentals():
     )
 
 @app.get("/export/salaries.csv")
-@login_required
 def export_salaries():
     return export_csv(
         """SELECT s.id, w.name as worker_name, s.salary_amount, s.pay_date, s.note, s.created_at
@@ -726,12 +704,11 @@ def export_salaries():
     )
 
 @app.get("/export/expenses.csv")
-@login_required
 def export_expenses():
     return export_csv(
-        """SELECT e.id, w.name as worker_name, e.amount, e.date, e.category, e.note, e.created_at
+        """SELECT e.id, w.name as worker_name, e.amount, e.date, e.note, e.created_at
            FROM expense_records e LEFT JOIN workers w ON w.id=e.worker_id ORDER BY e.date DESC, e.id""",
-        ["id","worker_name","amount","date","category","note","created_at"],
+        ["id","worker_name","amount","date","note","created_at"],
         "expenses.csv"
     )
 
