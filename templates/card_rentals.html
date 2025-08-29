@@ -1,24 +1,21 @@
 {% extends "base.html" %}
 {% set page_title = t.card_rentals %}
 {% block body %}
+
 <h1 class="page-title">💳 {{ t.card_rentals }}</h1>
 
-<!-- 仅保留两个筛选时间 -->
-<form class="form" method="get" action="{{ url_for('card_rentals_list') }}">
-  <input type="datetime-local" name="start" value="{{ request.args.get('start','') }}">
-  <input type="datetime-local" name="end"   value="{{ request.args.get('end','') }}">
-  <button class="btn" type="submit">Filter</button>
-</form>
-
-<!-- 新增：无日期输入，后端默认今天 -->
 <form class="form" method="post" action="{{ url_for('card_rentals_add') }}">
+  <!-- ✅ 先输入银行卡名字 -->
+  <input name="card_name" placeholder="{{ t.card_name }}" required>
+  <!-- 可保留工人下拉（不想显示，可给默认值后隐藏） -->
   <select name="worker_id" required>
     <option value="">{{ t.worker }}</option>
     {% for w in workers %}
-    <option value="{{ w.id }}">{{ w.name }}</option>
+      <option value="{{ w.id }}">{{ w.name }}</option>
     {% endfor %}
   </select>
-  <input name="rental_amount" type="number" step="0.01" placeholder="{{ t.rental_amount }}" required>
+  <input name="rental_amount" placeholder="{{ t.rental_amount }}" required>
+  <input name="date" type="date">
   <input name="note" placeholder="{{ t.note }}">
   <button class="btn" type="submit">{{ t.add }}</button>
 </form>
@@ -28,6 +25,7 @@
     <thead>
       <tr>
         <th>ID</th>
+        <th>{{ t.card_name }}</th>
         <th>{{ t.worker }}</th>
         <th>{{ t.rental_amount }}</th>
         <th>{{ t.date }}</th>
@@ -41,30 +39,37 @@
       {% for r in rows %}
       <tr>
         <td>{{ r.id }}</td>
+        <td>{{ r.card_name }}</td>
         <td>{{ r.worker_name }}</td>
-        <td>{{ r.rental_amount }}</td>
+        <td>{{ '%.1f'|format(r.rental_amount) }}</td>
         <td>{{ r.date }}</td>
         <td>{{ r.note }}</td>
         <td>
-          <span class="badge {{ 'on' if r.is_active else 'off' }}">
-            {{ t.active if r.is_active else t.inactive }}
-          </span>
+          {% if r.is_active %}
+            <span class="badge on">{{ t.active }}</span>
+          {% else %}
+            <span class="badge off">{{ t.inactive }}</span>
+          {% endif %}
         </td>
         <td>{{ r.created_at }}</td>
         <td>
-          <form style="display:inline" method="post" action="{{ url_for('card_rentals_toggle', cid=r.id) }}">
-            <button class="btn soft" type="submit">{{ t.deactivate if r.is_active else t.activate }}</button>
+          <form method="post" action="{{ url_for('card_rentals_toggle', cid=r.id) }}" style="display:inline">
+            <button class="btn soft" type="submit">
+              {% if r.is_active %}{{ t.deactivate }}{% else %}{{ t.activate }}{% endif %}
+            </button>
           </form>
           <a class="btn" href="{{ url_for('card_rentals_edit_form', cid=r.id) }}">{{ t.edit }}</a>
-          <form style="display:inline" method="post" action="{{ url_for('card_rentals_delete', cid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
+          <form method="post" action="{{ url_for('card_rentals_delete', cid=r.id) }}" style="display:inline"
+                onsubmit="return confirm('{{ t.confirm_delete }}')">
             <button class="btn danger" type="submit">{{ t.delete }}</button>
           </form>
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="8" class="empty">{{ t.empty }}</td></tr>
+      <tr><td colspan="9" class="empty">{{ t.empty }}</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
 {% endblock %}
