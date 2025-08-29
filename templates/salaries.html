@@ -3,7 +3,6 @@
 {% block body %}
 <h1 class="page-title">💵 {{ t.salaries }}</h1>
 
-<!-- 仅保留两个日期时间筛选 -->
 <form class="form" method="get" action="">
   <input type="datetime-local" name="start" value="{{ request.args.get('start','') }}">
   <input type="datetime-local" name="end"   value="{{ request.args.get('end','') }}">
@@ -13,14 +12,13 @@
   {% endif %}
 </form>
 
-<!-- 新增表单（保留不动） -->
+<!-- 新增表单：已移除发薪日期输入 -->
 <form class="form" method="post" action="{{ url_for('salaries_add') }}">
   <select name="worker_id" required>
     <option value="">{{ t.worker }}</option>
     {% for w in workers %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}
   </select>
   <input name="salary_amount" type="number" step="0.01" placeholder="{{ t.salary_amount }}" required>
-  <input name="pay_date" type="date" required>
   <input name="note" placeholder="{{ t.note }}">
   <button class="btn" type="submit">{{ t.add }}</button>
 </form>
@@ -37,16 +35,9 @@
     <tbody>
       {% for r in rows %}
       <tr>
-        <td>{{ r.id }}</td>
-        <td>{{ r.worker_name }}</td>
-        <td>{{ r.salary_amount }}</td>
-        <td>{{ r.pay_date }}</td>
-        <td>{{ r.note }}</td>
-        <td>{{ r.created_at }}</td>
-        <td>
-          {% if r.is_active %}<span class="badge on">{{ t.active }}</span>
-          {% else %}<span class="badge off">{{ t.inactive }}</span>{% endif %}
-        </td>
+        <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.salary_amount }}</td>
+        <td>{{ r.pay_date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
+        <td>{% if r.is_active %}<span class="badge on">{{ t.active }}</span>{% else %}<span class="badge off">{{ t.inactive }}</span>{% endif %}</td>
         <td>
           <form style="display:inline" method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}">
             <button class="btn" type="submit">{% if r.is_active %}{{ t.deactivate }}{% else %}{{ t.activate }}{% endif %}</button>
