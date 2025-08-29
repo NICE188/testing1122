@@ -7,16 +7,17 @@
   <button class="btn" id="openRentalModal">{{ t.add }}</button>
 </h1>
 
+<!-- 列表 -->
 <div class="panel">
   <table>
     <thead>
       <tr>
         <th>ID</th>
-        <th>{{ t.card_name|default('Card Name') }}</th>
-        <th>{{ '银行卡号码' }}</th>
-        <th>{{ '银行TAC' }}</th>
-        <th>{{ '电话设备' }}</th>
-        <th>{{ '国家' }}</th>
+        <th>{{ t.card_name }}</th>
+        <th>银行卡号码</th>
+        <th>银行TAC</th>
+        <th>电话设备</th>
+        <th>国家</th>
         <th>{{ t.rental_amount }}</th>
         <th>{{ t.date }}</th>
         <th>{{ t.note }}</th>
@@ -65,75 +66,168 @@
   </table>
 </div>
 
-<!-- ===== 弹窗 ===== -->
+<!-- ================== 美观弹窗 ================== -->
 <style>
-  .cr-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:50}
-  .cr-modal.show{display:flex}
-  .cr-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55)}
-  .cr-dialog{
-    position:relative; z-index:1; width:min(720px,92vw);
-    background:var(--panel); border:1px solid var(--line); border-radius:14px;
-    box-shadow:var(--shadow-1); padding:16px 16px 12px; backdrop-filter:blur(8px) saturate(1.05);
-  }
-  .cr-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-  .cr-title{font-weight:800}
-  .cr-close{background:transparent;border:0;color:var(--text);font-size:20px;line-height:1;cursor:pointer}
-  .cr-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-  .cr-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
-  @media (max-width:680px){.cr-grid{grid-template-columns:1fr}}
+/* —— 仅本页样式，避免影响全站 —— */
+.cr-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:60}
+.cr-modal.show{display:flex;animation:fadeIn .18s ease}
+.cr-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(3px)}
+.cr-dialog{
+  position:relative; z-index:1; width:min(780px,92vw);
+  border-radius:16px; padding:0; overflow:hidden;
+  /* 渐变描边容器 */
+  background:
+    linear-gradient(180deg, rgba(148,163,184,.08), rgba(148,163,184,.04)) padding-box,
+    linear-gradient(135deg, rgba(96,165,250,.75), rgba(167,139,250,.75), rgba(250,204,21,.55)) border-box;
+  border:1px solid transparent;
+  box-shadow:0 18px 60px rgba(0,0,0,.38);
+  animation:popIn .18s ease;
+}
+.cr-header{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:14px 16px;
+  background:linear-gradient(180deg, rgba(17,24,39,.92), rgba(17,24,39,.65));
+  border-bottom:1px solid rgba(148,163,184,.18);
+}
+.cr-title{display:flex;align-items:center;gap:10px;font-weight:800}
+.cr-sub{font-size:12px;color:var(--muted)}
+.cr-close{background:transparent;border:0;color:var(--text);font-size:20px;line-height:1;cursor:pointer;opacity:.9}
+.cr-close:hover{opacity:1;transform:scale(1.06)}
+
+.cr-body{padding:14px 16px}
+.cr-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media (max-width:720px){.cr-grid{grid-template-columns:1fr}}
+
+.fl{
+  display:flex;flex-direction:column;gap:6px;
+  background:rgba(14,20,35,.9); border:1px solid rgba(148,163,184,.28);
+  border-radius:12px; padding:10px 10px 9px;
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.fl:focus-within{
+  border-color:rgba(54,89,214,.55);
+  box-shadow:0 0 0 3px rgba(54,89,214,.18);
+  background:rgba(18,24,41,.95);
+}
+.fl label{font-size:12px;color:#cbd5e1;letter-spacing:.2px}
+.fl input{border:0;outline:none;background:transparent;color:var(--text)}
+.fl input::placeholder{color:#93a4c0}
+
+.cr-actions{
+  display:flex;gap:10px;justify-content:flex-end;
+  padding:12px 16px;
+  background:linear-gradient(180deg, rgba(17,24,39,.4), rgba(17,24,39,.25));
+  border-top:1px solid rgba(148,163,184,.12);
+}
+.btn.primary{
+  background:linear-gradient(180deg,#2b57f0,#274fe0);
+  border-color:rgba(147,163,184,.28);
+  color:#fff;
+}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{
+  background:transparent;border:1px solid rgba(148,163,184,.28)
+}
+
+@keyframes popIn{from{transform:translateY(8px) scale(.98);opacity:.0}to{transform:none;opacity:1}}
+@keyframes fadeIn{from{opacity:.0}to{opacity:1}}
 </style>
 
 <div class="cr-modal" id="rentalModal" aria-hidden="true">
   <div class="cr-backdrop" data-close></div>
+
   <div class="cr-dialog" role="dialog" aria-modal="true" aria-labelledby="cr_title">
     <div class="cr-header">
-      <div id="cr_title" class="cr-title">{{ t.add }} · {{ t.card_rentals }}</div>
+      <div>
+        <div id="cr_title" class="cr-title">💳 {{ t.add }} · {{ t.card_rentals }}</div>
+        <div class="cr-sub">{{ t.card_name }}、银行卡号码、TAC、设备、国家、金额、日期与备注</div>
+      </div>
       <button class="cr-close" type="button" title="Close" aria-label="Close" data-close>×</button>
     </div>
 
-    <!-- 提交到 /card-rentals/add -->
     <form method="post" action="{{ url_for('card_rentals_add') }}">
-      <div class="cr-grid">
-        <input name="card_name" placeholder="{{ t.card_name|default('Card Name') }}" required>
-        <input name="rental_amount" type="number" step="0.01" min="0" placeholder="{{ t.rental_amount }}" required>
+      <div class="cr-body">
+        <div class="cr-grid">
+          <div class="fl">
+            <label for="f_card_name">{{ t.card_name }}</label>
+            <input id="f_card_name" name="card_name" placeholder="例如：Maybank 主卡" required>
+          </div>
 
-        <input name="card_number" placeholder="银行卡号码" required>
-        <input name="tac_number"  placeholder="银行TAC 号码">
+          <div class="fl">
+            <label for="f_rental_amount">{{ t.rental_amount }}</label>
+            <input id="f_rental_amount" name="rental_amount" type="number" step="0.01" min="0" placeholder="0.00" required>
+          </div>
 
-        <input name="phone_device" placeholder="电话设备">
-        <input id="cr_date" name="date" type="date" placeholder="{{ t.date }}" required>
+          <div class="fl">
+            <label for="f_card_number">银行卡号码</label>
+            <input id="f_card_number" name="card_number" placeholder="**** **** **** 1234" required>
+          </div>
 
-        <input name="country" placeholder="国家">
-        <input name="note" placeholder="{{ t.note }}">
+          <div class="fl">
+            <label for="f_tac_number">银行TAC 号码</label>
+            <input id="f_tac_number" name="tac_number" placeholder="可留空">
+          </div>
+
+          <div class="fl">
+            <label for="f_phone_device">电话设备</label>
+            <input id="f_phone_device" name="phone_device" placeholder="iPhone / Android / 型号">
+          </div>
+
+          <div class="fl">
+            <label for="f_date">{{ t.date }}</label>
+            <input id="f_date" name="date" type="date" required>
+          </div>
+
+          <div class="fl">
+            <label for="f_country">国家</label>
+            <input id="f_country" name="country" placeholder="Malaysia / Singapore / ...">
+          </div>
+
+          <div class="fl">
+            <label for="f_note">{{ t.note }}</label>
+            <input id="f_note" name="note" placeholder="可填写备注信息">
+          </div>
+        </div>
       </div>
 
       <div class="cr-actions">
-        <button class="btn soft" type="button" data-close>{{ t.back }}</button>
-        <button class="btn" type="submit">{{ t.submit }}</button>
+        <button class="btn ghost" type="button" data-close>{{ t.back }}</button>
+        <button class="btn primary" type="submit">{{ t.submit }}</button>
       </div>
     </form>
   </div>
 </div>
 
 <script>
-  (function(){
-    const modal = document.getElementById('rentalModal');
-    const openBtn = document.getElementById('openRentalModal');
-    const dateInput = document.getElementById('cr_date');
+(function(){
+  const modal = document.getElementById('rentalModal');
+  const openBtn = document.getElementById('openRentalModal');
+  const dateInput = document.getElementById('f_date');
+  const nameInput = document.getElementById('f_card_name');
 
-    function openModal(){
-      modal.classList.add('show');
-      try{
-        const d=new Date(), yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
-        if(dateInput) dateInput.value = `${yyyy}-${mm}-${dd}`;
-      }catch(e){}
-    }
-    function closeModal(){ modal.classList.remove('show'); }
+  function todayISO(){
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
 
-    openBtn?.addEventListener('click', openModal);
-    modal?.addEventListener('click', (e)=>{ if(e.target.matches('[data-close]')) closeModal(); });
-    window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && modal.classList.contains('show')) closeModal(); });
-  })();
+  function openModal(){
+    modal.classList.add('show');
+    document.documentElement.style.overflow = 'hidden'; // 防止背景滚动
+    try{ if(dateInput && !dateInput.value) dateInput.value = todayISO(); }catch(e){}
+    setTimeout(()=> nameInput && nameInput.focus(), 40);
+  }
+  function closeModal(){
+    modal.classList.remove('show');
+    document.documentElement.style.overflow = '';
+  }
+
+  openBtn?.addEventListener('click', openModal);
+  modal?.addEventListener('click', (e)=>{ if(e.target.matches('[data-close]')) closeModal(); });
+  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && modal.classList.contains('show')) closeModal(); });
+})();
 </script>
 
 {% endblock %}
