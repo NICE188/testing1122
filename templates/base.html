@@ -5,69 +5,24 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>{{ t.app_name }} — {{ page_title if page_title else '' }}</title>
 
-  <!-- 你的主样式；加版本号避免缓存 -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=10">
-
-  <!-- Chart.js （如果首页图表需要） -->
+  <!-- 主样式（加版本号防缓存） -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=11">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
 
-  <!-- 侧栏：强制“图标 + 文字”一排，并用 ::after 生成名字（兜底） -->
+  <!-- 只做很小的保障样式：让侧栏一排显示“图标 + 文字” -->
   <style>
-    /* 让侧栏一排排显示（不依赖你之前是否是 tile 或 nav） */
-    .sidebar .nav-grid, .sidebar nav{ display:flex; flex-direction:column; gap:12px; }
-    .sidebar .nav-grid .tile, .sidebar nav a{
-      position:relative;
-      display:flex; align-items:center; justify-content:flex-start;
-      gap:10px; height:48px; padding:10px 12px; width:100%;
-      border-radius:12px; text-align:left; aspect-ratio:auto;
+    /* 侧栏：一排“图标 + 文字” */
+    .sidebar nav { display:flex; flex-direction:column; gap:12px; }
+    .sidebar nav a {
+      display:flex; align-items:center; gap:10px;
+      height:48px; padding:10px 12px; width:100%;
+      border-radius:12px; text-decoration:none;
     }
-    .sidebar .nav-grid .tile .tile-emoji, .sidebar nav a .tile-emoji{
-      width:22px; text-align:center; font-size:18px; line-height:1;
-    }
-
-    /* 正常情况：你也可以自己写 <span class="tile-label">文字</span> */
-    .sidebar .nav-grid .tile .tile-label, .sidebar nav a .tile-label{
-      display:inline-block; margin-left:8px; font-size:14px; color:#e5e7eb;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
-
-    /* 兜底：就算你没写 .tile-label，也会用 ::after 生成名称 */
-    .sidebar .nav-grid .tile::after, .sidebar nav a::after{
-      color:#e5e7eb; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      margin-left:8px;
-    }
-    /* 如果真的写了 .tile-label，就不再生成（避免重复） */
-    .sidebar .nav-grid .tile:has(.tile-label)::after,
-    .sidebar nav a:has(.tile-label)::after{ content:none; }
-
-    /* 逐个菜单匹配，生成文字（使用多语言字典） */
-    .sidebar .nav-grid a[href="{{ url_for('home') }}"]::after,
-    .sidebar nav a[href="{{ url_for('home') }}"]::after{
-      content:"{{ t.dashboard }}";
-    }
-    .sidebar .nav-grid a[href^="{{ url_for('workers_list') }}"]::after,
-    .sidebar nav a[href^="{{ url_for('workers_list') }}"]::after{
-      content:"{{ t.workers }}";
-    }
-    .sidebar .nav-grid a[href^="{{ url_for('bank_accounts_list') }}"]::after,
-    .sidebar nav a[href^="{{ url_for('bank_accounts_list') }}"]::after{
-      content:"{{ t.bank_accounts }}";
-    }
-    .sidebar .nav-grid a[href^="{{ url_for('card_rentals_list') }}"]::after,
-    .sidebar nav a[href^="{{ url_for('card_rentals_list') }}"]::after{
-      content:"{{ t.card_rentals }}";
-    }
-    .sidebar .nav-grid a[href^="{{ url_for('salaries_list') }}"]::after,
-    .sidebar nav a[href^="{{ url_for('salaries_list') }}"]::after{
-      content:"{{ t.salaries }}";
-    }
-    .sidebar .nav-grid a[href^="{{ url_for('expenses_list') }}"]::after,
-    .sidebar nav a[href^="{{ url_for('expenses_list') }}"]::after{
-      content:"{{ t.expenses }}";
-    }
-
-    /* 当前项左侧高亮条（可选）——你的 active 类已有就能显示 */
-    .sidebar .nav-grid .tile.active::before, .sidebar nav a.active::before{
+    .sidebar nav a .tile-emoji { width:22px; text-align:center; font-size:18px; line-height:1; }
+    .sidebar nav a .tile-text  { font-size:14px; color:#e5e7eb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    /* 当前项左边的高亮条（可选） */
+    .sidebar nav a.active{ position:relative; }
+    .sidebar nav a.active::before{
       content:""; position:absolute; left:0; top:-1px; bottom:-1px; width:3px;
       border-radius:12px 0 0 12px;
       background:linear-gradient(180deg, #60a5fa, #a78bfa);
@@ -77,44 +32,49 @@
 <body>
 <div class="layout">
   <aside class="sidebar">
-    <!-- 品牌（含尼泊尔🇳🇵） -->
-    <div class="brand">👹 {{ t.app_name }}👹</div>
+    <!-- 品牌：带 🇳🇵 -->
+    <div class="brand">👹{{ t.app_name }}👹</div>
 
-    <!-- 侧栏：只放图标也行；文字由上面的 CSS 自动生成 -->
-    <nav class="nav-grid" aria-label="Main">
-      <a href="{{ url_for('home') }}" class="tile {{ 'active' if request.path=='/' else '' }}">
+    <!-- 侧栏（注意：每个 a 里都写了“图标 + 文字”） -->
+    <nav aria-label="Main">
+      <a href="{{ url_for('home') }}"
+         class="{{ 'active' if request.path=='/' else '' }}">
         <span class="tile-emoji" aria-hidden="true">🎰</span>
-        <!-- 可选：想手写文字就解开下一行（多语言用 {{ t.dashboard }}） -->
-        <!-- <span class="tile-label">{{ t.dashboard }}</span> -->
+        <span class="tile-text">{{ t.dashboard }}</span>
       </a>
 
-      <a href="{{ url_for('workers_list') }}" class="tile {{ 'active' if request.path.startswith('/workers') else '' }}">
+      <a href="{{ url_for('workers_list') }}"
+         class="{{ 'active' if request.path.startswith('/workers') else '' }}">
         <span class="tile-emoji" aria-hidden="true">👨‍💼📲</span>
-        <!-- <span class="tile-label">{{ t.workers }}</span> -->
+        <span class="tile-text">{{ t.workers }}</span>
       </a>
 
-      <a href="{{ url_for('bank_accounts_list') }}" class="tile {{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
+      <a href="{{ url_for('bank_accounts_list') }}"
+         class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
         <span class="tile-emoji" aria-hidden="true">🏦</span>
-        <!-- <span class="tile-label">{{ t.bank_accounts }}</span> -->
+        <span class="tile-text">{{ t.bank_accounts }}</span>
       </a>
 
-      <a href="{{ url_for('card_rentals_list') }}" class="tile {{ 'active' if request.path.startswith('/card-rentals') else '' }}">
+      <a href="{{ url_for('card_rentals_list') }}"
+         class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">
         <span class="tile-emoji" aria-hidden="true">💳</span>
-        <!-- <span class="tile-label">{{ t.card_rentals }}</span> -->
+        <span class="tile-text">{{ t.card_rentals }}</span>
       </a>
 
-      <a href="{{ url_for('salaries_list') }}" class="tile {{ 'active' if request.path.startswith('/salaries') else '' }}">
+      <a href="{{ url_for('salaries_list') }}"
+         class="{{ 'active' if request.path.startswith('/salaries') else '' }}">
         <span class="tile-emoji" aria-hidden="true">💵</span>
-        <!-- <span class="tile-label">{{ t.salaries }}</span> -->
+        <span class="tile-text">{{ t.salaries }}</span>
       </a>
 
-      <a href="{{ url_for('expenses_list') }}" class="tile {{ 'active' if request.path.startswith('/expenses') else '' }}">
+      <a href="{{ url_for('expenses_list') }}"
+         class="{{ 'active' if request.path.startswith('/expenses') else '' }}">
         <span class="tile-emoji" aria-hidden="true">💸</span>
-        <!-- <span class="tile-label">{{ t.expenses }}</span> -->
+        <span class="tile-text">{{ t.expenses }}</span>
       </a>
     </nav>
 
-    <!-- 语言切换（加 🌐 图标） -->
+    <!-- 语言切换（🌐） -->
     <div class="lang">
       🌐 {{ t.language }}：
       <a href="?lang=zh">中文</a> | <a href="?lang=en">EN</a>
