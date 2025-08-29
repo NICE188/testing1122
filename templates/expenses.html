@@ -1,8 +1,7 @@
 {% extends "base.html" %}
 {% set page_title = t.expenses %}
 {% block body %}
-<h1 class="page-title">{{ t.expenses }}</h1>
-
+<h1 class="page-title"><span class="nav-emoji" aria-hidden="true">💸</span> {{ t.expenses }}</h1>
 <form class="form" method="post" action="{{ url_for('expenses_add') }}">
   <select name="worker_id">
     <option value="">{{ t.worker }} ({{ 'optional' if lang=='en' else '可选' }})</option>
