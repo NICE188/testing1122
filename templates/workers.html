@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% set page_title = t.workers %}
 {% block body %}
-<span class="nav-emoji" aria-hidden="true">👨‍💼</span>
+<h1 class="page-title">👨‍💼📲 {{ t.workers }}</h1>
 
+<!-- 新增表单 -->
 <form class="form" method="post" action="{{ url_for('workers_add') }}">
   <input name="name" placeholder="{{ t.name }}" required>
   <input name="company" placeholder="{{ t.company }}">
@@ -11,7 +12,7 @@
   <button class="btn" type="submit">{{ t.add }}</button>
 </form>
 
-<!-- 新增：日期筛选（按创建时间 created_at） -->
+<!-- 日期筛选（按 created_at） -->
 <form class="form" method="get" action="">
   <input type="date" name="start" value="{{ request.args.get('start','') }}" placeholder="{{ t.from_date }}">
   <input type="date" name="end"   value="{{ request.args.get('end','') }}"   placeholder="{{ t.to_date }}">
@@ -25,16 +26,44 @@
   <table>
     <thead>
       <tr>
-        <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expense_amount }}</th><th>{{ t.created_at }}</th>
+        <th>ID</th>
+        <th>{{ t.name }}</th>
+        <th>{{ t.company }}</th>
+        <th>{{ t.commission }}</th>
+        <th>{{ t.expense_amount }}</th>
+        <th>{{ t.created_at }}</th>
+        <th>{{ t.status }}</th>
+        <th>{{ t.actions }}</th>
       </tr>
     </thead>
     <tbody>
       {% for r in rows %}
       <tr>
-        <td>{{ r.id }}</td><td>{{ r.name }}</td><td>{{ r.company }}</td><td>{{ r.commission }}</td><td>{{ r.expenses }}</td><td>{{ r.created_at }}</td>
+        <td>{{ r.id }}</td>
+        <td>{{ r.name }}</td>
+        <td>{{ r.company }}</td>
+        <td>{{ r.commission }}</td>
+        <td>{{ r.expenses }}</td>
+        <td>{{ r.created_at }}</td>
+        <td>
+          {% if r.is_active %}<span class="badge on">{{ t.active }}</span>
+          {% else %}<span class="badge off">{{ t.inactive }}</span>{% endif %}
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('workers_toggle', wid=r.id) }}" style="display:inline">
+            <button class="btn soft" type="submit">
+              {{ t.deactivate if r.is_active else t.activate }}
+            </button>
+          </form>
+          <a class="btn" href="{{ url_for('workers_edit_form', wid=r.id) }}">{{ t.edit }}</a>
+          <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" style="display:inline"
+                onsubmit="return confirm('{{ t.confirm_delete }}')">
+            <button class="btn danger" type="submit">{{ t.delete }}</button>
+          </form>
+        </td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="empty">{{ t.empty }}</td></tr>
+      <tr><td colspan="8" class="empty">{{ t.empty }}</td></tr>
       {% endfor %}
     </tbody>
   </table>
