@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set page_title = t.bank_accounts %}
 {% block body %}
-<h1 class="page-title">{{ t.bank_accounts }}</h1>
+class="page-title"><span class="nav-emoji" aria-hidden="true">🏦</span> {{ t.bank_accounts }}</h1>
 
 <form class="form" method="post" action="{{ url_for('bank_accounts_add') }}">
   <select name="worker_id" required>
