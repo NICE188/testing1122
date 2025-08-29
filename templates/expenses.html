@@ -3,23 +3,21 @@
 {% block body %}
 <h1 class="page-title">💸 {{ t.expenses }}</h1>
 
-<form class="form" method="get" action="">
+<form class="form" method="get" action="{{ url_for('expenses_list') }}">
   <input type="datetime-local" name="start" value="{{ request.args.get('start','') }}">
   <input type="datetime-local" name="end"   value="{{ request.args.get('end','') }}">
-  <button class="btn" type="submit">{{ t.filter }}</button>
-  {% if request.args.get('start') or request.args.get('end') %}
-    <a class="btn soft" href="{{ request.path }}">{{ t.clear }}</a>
-  {% endif %}
+  <button class="btn" type="submit">Filter</button>
 </form>
 
-<!-- 新增表单：已移除日期输入 -->
 <form class="form" method="post" action="{{ url_for('expenses_add') }}">
   <select name="worker_id">
     <option value="">{{ t.worker }} ({{ 'optional' if lang=='en' else '可选' }})</option>
-    {% for w in workers %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}
+    {% for w in workers %}
+    <option value="{{ w.id }}">{{ w.name }}</option>
+    {% endfor %}
   </select>
   <input name="amount" type="number" step="0.01" placeholder="{{ t.expense_amount }}" required>
-  <input name="note" placeholder="{{ t.note }}">
+  <input name="note" placeholder="{{ t.expenses_note }}">
   <button class="btn" type="submit">{{ t.add }}</button>
 </form>
 
@@ -27,20 +25,33 @@
   <table>
     <thead>
       <tr>
-        <th>ID</th><th>{{ t.worker }}</th><th>{{ t.expense_amount }}</th>
-        <th>{{ t.date }}</th><th>{{ t.note }}</th><th>{{ t.created_at }}</th>
-        <th>{{ t.status }}</th><th>{{ t.actions }}</th>
+        <th>ID</th>
+        <th>{{ t.worker }}</th>
+        <th>{{ t.expense_amount }}</th>
+        <th>{{ t.date }}</th>
+        <th>{{ t.note }}</th>
+        <th>{{ t.status }}</th>
+        <th>{{ t.created_at }}</th>
+        <th>{{ t.actions }}</th>
       </tr>
     </thead>
     <tbody>
       {% for r in rows %}
       <tr>
-        <td>{{ r.id }}</td><td>{{ r.worker_name or '-' }}</td><td>{{ r.amount }}</td>
-        <td>{{ r.date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
-        <td>{% if r.is_active %}<span class="badge on">{{ t.active }}</span>{% else %}<span class="badge off">{{ t.inactive }}</span>{% endif %}</td>
+        <td>{{ r.id }}</td>
+        <td>{{ r.worker_name or '-' }}</td>
+        <td>{{ r.amount }}</td>
+        <td>{{ r.date }}</td>
+        <td>{{ r.note }}</td>
+        <td>
+          <span class="badge {{ 'on' if r.is_active else 'off' }}">
+            {{ t.active if r.is_active else t.inactive }}
+          </span>
+        </td>
+        <td>{{ r.created_at }}</td>
         <td>
           <form style="display:inline" method="post" action="{{ url_for('expenses_toggle', eid=r.id) }}">
-            <button class="btn" type="submit">{% if r.is_active %}{{ t.deactivate }}{% else %}{{ t.activate }}{% endif %}</button>
+            <button class="btn soft" type="submit">{{ t.deactivate if r.is_active else t.activate }}</button>
           </form>
           <a class="btn" href="{{ url_for('expenses_edit_form', eid=r.id) }}">{{ t.edit }}</a>
           <form style="display:inline" method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
