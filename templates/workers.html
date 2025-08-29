@@ -1,21 +1,8 @@
 {% extends "base.html" %}
 {% set page_title = t.workers %}
 {% block body %}
-<h1 class="page-title">
-  <span class="nav-emoji" aria-hidden="true">👨‍💼</span>
-  <span class="nav-emoji" aria-hidden="true">📲</span>
-  {{ t.workers }}
-</h1>
-{% if edit_row %}
-<form class="form" method="post" action="{{ url_for('workers_update', wid=edit_row.id) }}">
-  <input name="name" value="{{ edit_row.name }}" placeholder="{{ t.name }}" required>
-  <input name="company" value="{{ edit_row.company }}" placeholder="{{ t.company }}">
-  <input name="commission" type="number" step="0.01" value="{{ edit_row.commission }}" placeholder="{{ t.commission }}">
-  <input name="expenses" type="number" step="0.01" value="{{ edit_row.expenses }}" placeholder="{{ t.expenses }}">
-  <button class="btn" type="submit">{{ t.save }}</button>
-  <a class="btn" href="{{ url_for('workers_list') }}">{{ t.cancel }}</a>
-</form>
-{% else %}
+<h1 class="page-title">{{ t.workers }}</h1>
+
 <form class="form" method="post" action="{{ url_for('workers_add') }}">
   <input name="name" placeholder="{{ t.name }}" required>
   <input name="company" placeholder="{{ t.company }}">
@@ -23,28 +10,32 @@
   <input name="expenses" type="number" step="0.01" placeholder="{{ t.expenses }}">
   <button class="btn" type="submit">{{ t.add }}</button>
 </form>
-{% endif %}
 
 <div class="panel">
   <table>
     <thead>
       <tr>
-        <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+        <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
       </tr>
     </thead>
     <tbody>
       {% for r in rows %}
       <tr>
-        <td>{{ r.id }}</td><td>{{ r.name }}</td><td>{{ r.company }}</td><td>{{ r.commission }}</td><td>{{ r.expenses }}</td><td>{{ r.created_at }}</td>
+        <td>{{ r.id }}</td>
+        <td>{{ r.name }}</td>
+        <td>{{ r.company }}</td>
+        <td>{{ r.commission }}</td>
+        <td>{{ r.expenses }}</td>
+        <td><span class="badge {{ 'on' if r.is_active else 'off' }}">{{ t.active if r.is_active else t.inactive }}</span></td>
+        <td>{{ r.created_at }}</td>
         <td>
-          <a class="btn" href="{{ url_for('workers_edit', wid=r.id) }}">{{ t.edit }}</a>
-          <form style="display:inline" method="post" action="{{ url_for('workers_delete', wid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
-            <button class="btn danger" type="submit">{{ t.delete }}</button>
+          <form style="display:inline" method="post" action="{{ url_for('workers_toggle', wid=r.id) }}">
+            <button class="btn {{ '' if r.is_active else 'soft' }}" type="submit">{{ t.deactivate if r.is_active else t.activate }}</button>
           </form>
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="7" class="empty">{{ t.empty }}</td></tr>
+      <tr><td colspan="8" class="empty">{{ t.empty }}</td></tr>
       {% endfor %}
     </tbody>
   </table>
