@@ -1,51 +1,40 @@
 {% extends "base.html" %}
 {% set page_title = t.bank_accounts %}
 {% block body %}
-<h1 class="page-title"><span class="nav-emoji" aria-hidden="true">🏦</span> {{ t.bank_accounts }}</h1>
-{% if edit_row %}
-<form class="form" method="post" action="{{ url_for('bank_accounts_update', bid=edit_row.id) }}">
-  <select name="worker_id" required>
-    {% for w in workers %}
-      <option value="{{ w.id }}" {% if w.id==edit_row.worker_id %}selected{% endif %}>{{ w.name }}</option>
-    {% endfor %}
-  </select>
-  <input name="account_number" value="{{ edit_row.account_number }}" placeholder="{{ t.account_number }}" required>
-  <input name="bank_name" value="{{ edit_row.bank_name }}" placeholder="{{ t.bank_name }}" required>
-  <button class="btn" type="submit">{{ t.save }}</button>
-  <a class="btn" href="{{ url_for('bank_accounts_list') }}">{{ t.cancel }}</a>
-</form>
-{% else %}
+<h1 class="page-title">{{ t.bank_accounts }}</h1>
+
 <form class="form" method="post" action="{{ url_for('bank_accounts_add') }}">
   <select name="worker_id" required>
     <option value="">{{ t.worker }}</option>
-    {% for w in workers %}
-    <option value="{{ w.id }}">{{ w.name }}</option>
-    {% endfor %}
+    {% for w in workers %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}
   </select>
   <input name="account_number" placeholder="{{ t.account_number }}" required>
   <input name="bank_name" placeholder="{{ t.bank_name }}" required>
   <button class="btn" type="submit">{{ t.add }}</button>
 </form>
-{% endif %}
 
 <div class="panel">
   <table>
     <thead>
-      <tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.account_number }}</th><th>{{ t.bank_name }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr>
+      <tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.account_number }}</th><th>{{ t.bank_name }}</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr>
     </thead>
     <tbody>
       {% for r in rows %}
       <tr>
-        <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.account_number }}</td><td>{{ r.bank_name }}</td><td>{{ r.created_at }}</td>
+        <td>{{ r.id }}</td>
+        <td>{{ r.worker_name }}</td>
+        <td>{{ r.account_number }}</td>
+        <td>{{ r.bank_name }}</td>
+        <td><span class="badge {{ 'on' if r.is_active else 'off' }}">{{ t.active if r.is_active else t.inactive }}</span></td>
+        <td>{{ r.created_at }}</td>
         <td>
-          <a class="btn" href="{{ url_for('bank_accounts_edit', bid=r.id) }}">{{ t.edit }}</a>
-          <form style="display:inline" method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
-            <button class="btn danger" type="submit">{{ t.delete }}</button>
+          <form style="display:inline" method="post" action="{{ url_for('bank_accounts_toggle', bid=r.id) }}">
+            <button class="btn {{ '' if r.is_active else 'soft' }}" type="submit">{{ t.deactivate if r.is_active else t.activate }}</button>
           </form>
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="empty">{{ t.empty }}</td></tr>
+      <tr><td colspan="7" class="empty">{{ t.empty }}</td></tr>
       {% endfor %}
     </tbody>
   </table>
