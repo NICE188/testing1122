@@ -1,7 +1,8 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, send_file, session, abort
 import sqlite3, csv, io, os
 from datetime import datetime
-from functools import wraps
+from werkzeug.exceptions import HTTPException
+import traceback
 
 APP_DB = os.environ.get("APP_DB", "data.db")
 
@@ -143,14 +144,16 @@ def is_logged_in():
 @app.before_request
 def require_login():
     # 放行的端点（无需登录）
-    open_endpoints = {
-        "login", "login_post", "logout", "health", "static"
-    }
+    open_endpoints = {"login", "login_post", "logout", "health", "static"}
+    # endpoint 可能为 None（例如 404），这种情况直接放过
+    if request.endpoint is None:
+        return
     if request.endpoint in open_endpoints:
         return
     # 未登录则跳去 /login
     if not is_logged_in():
-        next_url = request.path
+        # 带上原始访问路径（含查询串），方便登录后回跳
+        next_url = request.full_path if request.query_string else request.path
         return redirect(url_for("login", next=next_url))
 
 # ---------------- DB helpers ----------------
@@ -248,6 +251,10 @@ def login_post():
     password = (request.form.get("password") or "").strip()
     next_url = request.form.get("next") or url_for("home")
 
+    # 防止开放重定向：如果 next 是外站，忽略
+    if next_url.startswith("http://") or next_url.startswith("https://") or next_url.startswith("//"):
+        next_url = url_for("home")
+
     if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
         session["user_id"] = username
         return redirect(next_url)
@@ -320,7 +327,7 @@ def _toggle_active(table, rid):
 @app.route("/workers")
 def workers_list():
     con = get_db()
-    # 支持可选时间过滤（开始/结束）
+    # 可选时间过滤（开始/结束）
     dt_from = request.args.get("from")
     dt_to   = request.args.get("to")
     sql = "SELECT * FROM workers WHERE 1=1"
@@ -712,5 +719,14 @@ def export_expenses():
         "expenses.csv"
     )
 
+# ------- 友好的 500 错误页 + 打日志 -------
+@app.errorhandler(Exception)
+def on_any_exception(e):
+    if isinstance(e, HTTPException):
+        return e
+    app.logger.error("Unhandled Exception:\n%s", traceback.format_exc())
+    return render_template("error.html", message=str(e)), 500
+
 if __name__ == "__main__":
+    # 本地调试
     app.run(debug=True)
