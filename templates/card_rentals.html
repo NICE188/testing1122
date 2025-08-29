@@ -1,14 +1,12 @@
 {% extends "base.html" %}
 {% set page_title = t.card_rentals %}
 {% block body %}
-<h1 class="page-title"><span class="nav-emoji" aria-hidden="true">💳</span> {{ t.card_rentals }}</h1>
+<h1 class="page-title">💳 {{ t.card_rentals }}</h1>
 
 <form class="form" method="post" action="{{ url_for('card_rentals_add') }}">
   <select name="worker_id" required>
     <option value="">{{ t.worker }}</option>
-    {% for w in workers %}
-    <option value="{{ w.id }}">{{ w.name }}</option>
-    {% endfor %}
+    {% for w in workers %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}
   </select>
   <input name="rental_amount" type="number" step="0.01" placeholder="{{ t.rental_amount }}" required>
   <input name="date" type="date" required>
@@ -16,10 +14,10 @@
   <button class="btn" type="submit">{{ t.add }}</button>
 </form>
 
-<!-- 新增：日期筛选（按业务日期 c.date） -->
+<!-- 日期筛选（c.date） -->
 <form class="form" method="get" action="">
-  <input type="date" name="start" value="{{ request.args.get('start','') }}" placeholder="{{ t.from_date }}">
-  <input type="date" name="end"   value="{{ request.args.get('end','') }}"   placeholder="{{ t.to_date }}">
+  <input type="date" name="start" value="{{ request.args.get('start','') }}">
+  <input type="date" name="end"   value="{{ request.args.get('end','') }}">
   <button class="btn" type="submit">{{ t.filter }}</button>
   {% if request.args.get('start') or request.args.get('end') %}
     <a class="btn soft" href="{{ request.path }}">{{ t.clear }}</a>
@@ -29,15 +27,34 @@
 <div class="panel">
   <table>
     <thead>
-      <tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.rental_amount }}</th><th>{{ t.date }}</th><th>{{ t.note }}</th><th>{{ t.created_at }}</th></tr>
+      <tr>
+        <th>ID</th><th>{{ t.worker }}</th><th>{{ t.rental_amount }}</th><th>{{ t.date }}</th>
+        <th>{{ t.note }}</th><th>{{ t.created_at }}</th><th>{{ t.status }}</th><th>{{ t.actions }}</th>
+      </tr>
     </thead>
     <tbody>
       {% for r in rows %}
       <tr>
-        <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.rental_amount }}</td><td>{{ r.date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
+        <td>{{ r.id }}</td>
+        <td>{{ r.worker_name }}</td>
+        <td>{{ r.rental_amount }}</td>
+        <td>{{ r.date }}</td>
+        <td>{{ r.note }}</td>
+        <td>{{ r.created_at }}</td>
+        <td>{% if r.is_active %}<span class="badge on">{{ t.active }}</span>{% else %}<span class="badge off">{{ t.inactive }}</span>{% endif %}</td>
+        <td>
+          <form method="post" action="{{ url_for('card_rentals_toggle', cid=r.id) }}" style="display:inline">
+            <button class="btn soft" type="submit">{{ t.deactivate if r.is_active else t.activate }}</button>
+          </form>
+          <a class="btn" href="{{ url_for('card_rentals_edit_form', cid=r.id) }}">{{ t.edit }}</a>
+          <form method="post" action="{{ url_for('card_rentals_delete', cid=r.id) }}" style="display:inline"
+                onsubmit="return confirm('{{ t.confirm_delete }}')">
+            <button class="btn danger" type="submit">{{ t.delete }}</button>
+          </form>
+        </td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="empty">{{ t.empty }}</td></tr>
+      <tr><td colspan="8" class="empty">{{ t.empty }}</td></tr>
       {% endfor %}
     </tbody>
   </table>
