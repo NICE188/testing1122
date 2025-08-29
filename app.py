@@ -57,6 +57,10 @@ I18N = {
         "back": "返回",
         "confirm_delete": "确认删除？",
         "cannot_delete_worker_with_refs": "该工人存在关联记录，不能删除。",
+        "filter": "筛选",
+        "clear": "清除",
+        "from_date": "开始日期",
+        "to_date": "结束日期",
     },
     "en": {
         "app_name": "Nepwin88",
@@ -106,6 +110,10 @@ I18N = {
         "back": "Back",
         "confirm_delete": "Confirm delete?",
         "cannot_delete_worker_with_refs": "Cannot delete worker because related records exist.",
+        "filter": "Filter",
+        "clear": "Clear",
+        "from_date": "From date",
+        "to_date": "To date",
     }
 }
 
@@ -197,6 +205,20 @@ if not os.path.exists(APP_DB):
     init_db()
 ensure_is_active_columns()
 
+# -------- 通用：日期范围筛选（GET ?start=YYYY-MM-DD&end=YYYY-MM-DD） --------
+def _date_where(col_name: str):
+    start = request.args.get("start") or ""
+    end = request.args.get("end") or ""
+    sql = ""
+    params = []
+    if start:
+        sql += f" AND date({col_name}) >= date(?)"
+        params.append(start)
+    if end:
+        sql += f" AND date({col_name}) <= date(?)"
+        params.append(end)
+    return sql, params
+
 # ---------------- Health ----------------
 @app.get("/health")
 def health():
@@ -262,7 +284,11 @@ def _toggle_active(table, rid):
 @app.route("/workers")
 def workers_list():
     con = get_db()
-    rows = con.execute("SELECT * FROM workers ORDER BY id DESC").fetchall()
+    extra, params = _date_where("created_at")
+    rows = con.execute(
+        f"SELECT * FROM workers WHERE 1=1{extra} ORDER BY id DESC",
+        params
+    ).fetchall()
     con.close()
     return render_template("workers.html", rows=rows)
 
@@ -324,11 +350,13 @@ def workers_delete(wid):
 @app.route("/bank-accounts")
 def bank_accounts_list():
     con = get_db()
-    rows = con.execute("""
+    extra, params = _date_where("b.created_at")
+    rows = con.execute(f"""
       SELECT b.*, w.name AS worker_name
       FROM bank_accounts b JOIN workers w ON w.id=b.worker_id
+      WHERE 1=1{extra}
       ORDER BY b.id DESC
-    """).fetchall()
+    """, params).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     return render_template("bank_accounts.html", rows=rows, workers=workers)
@@ -369,7 +397,7 @@ def bank_accounts_edit(bid):
     bank_name = (d.get("bank_name") or "").strip()
     con = get_db()
     con.execute("UPDATE bank_accounts SET worker_id=?, account_number=?, bank_name=? WHERE id=?",
-                (worker_id, account_number, bank_name, bid))
+        (worker_id, account_number, bank_name, bid))
     con.commit(); con.close()
     return redirect(url_for("bank_accounts_list"))
 
@@ -384,11 +412,13 @@ def bank_accounts_delete(bid):
 @app.route("/card-rentals")
 def card_rentals_list():
     con = get_db()
-    rows = con.execute("""
+    extra, params = _date_where("c.date")
+    rows = con.execute(f"""
       SELECT c.*, w.name AS worker_name
       FROM card_rentals c JOIN workers w ON w.id=c.worker_id
+      WHERE 1=1{extra}
       ORDER BY c.date DESC, c.id DESC
-    """).fetchall()
+    """, params).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     return render_template("card_rentals.html", rows=rows, workers=workers)
@@ -448,11 +478,13 @@ def card_rentals_delete(cid):
 @app.route("/salaries")
 def salaries_list():
     con = get_db()
-    rows = con.execute("""
+    extra, params = _date_where("s.pay_date")
+    rows = con.execute(f"""
       SELECT s.*, w.name AS worker_name
       FROM salary_payments s JOIN workers w ON w.id=s.worker_id
+      WHERE 1=1{extra}
       ORDER BY s.pay_date DESC, s.id DESC
-    """).fetchall()
+    """, params).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     return render_template("salaries.html", rows=rows, workers=workers)
@@ -512,12 +544,14 @@ def salaries_delete(sid):
 @app.route("/expenses")
 def expenses_list():
     con = get_db()
-    rows = con.execute("""
+    extra, params = _date_where("e.date")
+    rows = con.execute(f"""
       SELECT e.*, w.name AS worker_name
       FROM expense_records e
       LEFT JOIN workers w ON w.id=e.worker_id
+      WHERE 1=1{extra}
       ORDER BY e.date DESC, e.id DESC
-    """).fetchall()
+    """, params).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     return render_template("expenses.html", rows=rows, workers=workers)
@@ -575,10 +609,10 @@ def expenses_delete(eid):
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
 
-# ---------------- Export CSV ----------------
-def export_csv(query, headers, filename):
+# ---------------- Export CSV（支持 start/end） ----------------
+def export_csv(query, headers, filename, params=()):
     con = get_db()
-    rows = con.execute(query).fetchall()
+    rows = con.execute(query, params).fetchall()
     con.close()
     si = io.StringIO()
     cw = csv.writer(si)
@@ -590,46 +624,64 @@ def export_csv(query, headers, filename):
 
 @app.get("/export/workers.csv")
 def export_workers():
+    extra, params = _date_where("created_at")
     return export_csv(
-        "SELECT id,name,company,commission,expenses,created_at FROM workers ORDER BY id",
+        f"SELECT id,name,company,commission,expenses,created_at FROM workers WHERE 1=1{extra} ORDER BY id",
         ["id","name","company","commission","expenses","created_at"],
-        "workers.csv"
+        "workers.csv",
+        params
     )
 
 @app.get("/export/bank_accounts.csv")
 def export_bank():
+    extra, params = _date_where("b.created_at")
     return export_csv(
-        """SELECT b.id, w.name as worker_name, b.account_number, b.bank_name, b.created_at
-           FROM bank_accounts b JOIN workers w ON w.id=b.worker_id ORDER BY b.id""",
+        f"""SELECT b.id, w.name as worker_name, b.account_number, b.bank_name, b.created_at
+            FROM bank_accounts b JOIN workers w ON w.id=b.worker_id
+            WHERE 1=1{extra}
+            ORDER BY b.id""",
         ["id","worker_name","account_number","bank_name","created_at"],
-        "bank_accounts.csv"
+        "bank_accounts.csv",
+        params
     )
 
 @app.get("/export/card_rentals.csv")
 def export_rentals():
+    extra, params = _date_where("c.date")
     return export_csv(
-        """SELECT c.id, w.name as worker_name, c.rental_amount, c.date, c.note, c.created_at
-           FROM card_rentals c JOIN workers w ON w.id=c.worker_id ORDER BY c.date DESC, c.id""",
+        f"""SELECT c.id, w.name as worker_name, c.rental_amount, c.date, c.note, c.created_at
+            FROM card_rentals c JOIN workers w ON w.id=c.worker_id
+            WHERE 1=1{extra}
+            ORDER BY c.date DESC, c.id""",
         ["id","worker_name","rental_amount","date","note","created_at"],
-        "card_rentals.csv"
+        "card_rentals.csv",
+        params
     )
 
 @app.get("/export/salaries.csv")
 def export_salaries():
+    extra, params = _date_where("s.pay_date")
     return export_csv(
-        """SELECT s.id, w.name as worker_name, s.salary_amount, s.pay_date, s.note, s.created_at
-           FROM salary_payments s JOIN workers w ON w.id=s.worker_id ORDER BY s.pay_date DESC, s.id""",
+        f"""SELECT s.id, w.name as worker_name, s.salary_amount, s.pay_date, s.note, s.created_at
+            FROM salary_payments s JOIN workers w ON w.id=s.worker_id
+            WHERE 1=1{extra}
+            ORDER BY s.pay_date DESC, s.id""",
         ["id","worker_name","salary_amount","pay_date","note","created_at"],
-        "salaries.csv"
+        "salaries.csv",
+        params
     )
 
 @app.get("/export/expenses.csv")
 def export_expenses():
+    extra, params = _date_where("e.date")
     return export_csv(
-        """SELECT e.id, w.name as worker_name, e.amount, e.date, e.note, e.created_at
-           FROM expense_records e LEFT JOIN workers w ON w.id=e.worker_id ORDER BY e.date DESC, e.id""",
+        f"""SELECT e.id, w.name as worker_name, e.amount, e.date, e.note, e.created_at
+            FROM expense_records e LEFT JOIN workers w ON w.id=e.worker_id
+            WHERE 1=1{extra}
+            ORDER BY e.date DESC, e.id""",
         ["id","worker_name","amount","date","note","created_at"],
-        "expenses.csv"
+        "expenses.csv",
+        params
     )
 
 if __name__ == "__main__":
