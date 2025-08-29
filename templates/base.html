@@ -3,69 +3,72 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{{ t.app_name }} — {{ page_title if page_title else '' }}</title>
+  <title>{{ t.app_name }}{% if page_title %} — {{ page_title }}{% endif %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
 </head>
-<body class="has-corner-bg">
+<body>
 <div class="layout">
-  <aside class="sidebar">
-    <!-- 品牌位 -->
-    <div class="brand">
-      <span style="font-size:18px">🇳🇵</span>
-      <span>{{ t.app_name }}</span>
-    </div>
 
-    <!-- 导航（列表样式，含图标与名称） -->
+  <!-- 左侧侧栏 -->
+  <aside class="sidebar">
+    <div class="brand">🇳🇵 {{ t.app_name }}</div>
+
+    <!-- 一排排：图标 + 名称 -->
     <nav class="nav-grid">
-      <a class="tile {% if request.path=='/' %}active{% endif %}" href="{{ url_for('home') }}">
-        <span class="tile-emoji">🎰</span><span class="tile-label">{{ t.dashboard }}</span>
+      <a href="{{ url_for('home') }}" class="tile {{ 'active' if request.path=='/' else '' }}">
+        <span class="tile-emoji" aria-hidden="true">🎰</span>
+        <span class="tile-label">{{ t.dashboard }}</span>
       </a>
-      <a class="tile {% if request.path.startswith('/workers') %}active{% endif %}" href="{{ url_for('workers_list') }}">
-        <span class="tile-emoji">👨‍💼</span><span class="tile-label">{{ t.workers }}</span>
+
+      <a href="{{ url_for('workers_list') }}" class="tile {{ 'active' if request.path.startswith('/workers') else '' }}">
+        <span class="tile-emoji" aria-hidden="true">👨‍💼</span>
+        <span class="tile-label">{{ t.workers }}</span>
       </a>
-      <a class="tile {% if request.path.startswith('/bank-accounts') %}active{% endif %}" href="{{ url_for('bank_accounts_list') }}">
-        <span class="tile-emoji">🏦</span><span class="tile-label">{{ t.bank_accounts }}</span>
+
+      <a href="{{ url_for('bank_accounts_list') }}" class="tile {{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
+        <span class="tile-emoji" aria-hidden="true">🏦</span>
+        <span class="tile-label">{{ t.bank_accounts }}</span>
       </a>
-      <a class="tile {% if request.path.startswith('/card-rentals') %}active{% endif %}" href="{{ url_for('card_rentals_list') }}">
-        <span class="tile-emoji">💳</span><span class="tile-label">{{ t.card_rentals }}</span>
+
+      <a href="{{ url_for('card_rentals_list') }}" class="tile {{ 'active' if request.path.startswith('/card-rentals') else '' }}">
+        <span class="tile-emoji" aria-hidden="true">💳</span>
+        <span class="tile-label">{{ t.card_rentals }}</span>
       </a>
-      <a class="tile {% if request.path.startswith('/salaries') %}active{% endif %}" href="{{ url_for('salaries_list') }}">
-        <span class="tile-emoji">💵</span><span class="tile-label">{{ t.salaries }}</span>
+
+      <a href="{{ url_for('salaries_list') }}" class="tile {{ 'active' if request.path.startswith('/salaries') else '' }}">
+        <span class="tile-emoji" aria-hidden="true">💵</span>
+        <span class="tile-label">{{ t.salaries }}</span>
       </a>
-      <a class="tile {% if request.path.startswith('/expenses') %}active{% endif %}" href="{{ url_for('expenses_list') }}">
-        <span class="tile-emoji">💸</span><span class="tile-label">{{ t.expenses }}</span>
+
+      <a href="{{ url_for('expenses_list') }}" class="tile {{ 'active' if request.path.startswith('/expenses') else '' }}">
+        <span class="tile-emoji" aria-hidden="true">💸</span>
+        <span class="tile-label">{{ t.expenses }}</span>
       </a>
     </nav>
 
-    <div class="lang" style="display:flex;align-items:center;gap:6px">
-      <span>🌐 {{ t.language }}：</span>
+    <div class="lang">
+      🌐 {{ t.language }}：
       <a href="?lang=zh">中文</a> | <a href="?lang=en">EN</a>
     </div>
   </aside>
 
+  <!-- 右侧主内容 -->
   <main class="content">
     <header class="topbar">
       <div></div>
-
-      <div class="exports" style="display:flex;align-items:center;gap:8px">
+      <div class="exports">
         <a class="btn" href="{{ url_for('export_workers') }}">{{ t.export_workers }}</a>
         <a class="btn" href="{{ url_for('export_bank') }}">{{ t.export_bank }}</a>
         <a class="btn" href="{{ url_for('export_rentals') }}">{{ t.export_rentals }}</a>
         <a class="btn" href="{{ url_for('export_salaries') }}">{{ t.export_salaries }}</a>
         <a class="btn" href="{{ url_for('export_expenses') }}">{{ t.export_expenses }}</a>
 
-        <!-- 登录状态 / 登出 -->
-        <div class="right" style="margin-left:10px">
-          {% if session.get('user_id') %}
-            <span class="muted" style="margin-right:8px">👤 {{ session.get('username') }}</span>
-            <form method="post" action="{{ url_for('logout') }}" style="display:inline">
-              <button class="btn" type="submit">Logout</button>
-            </form>
-          {% else %}
-            <a class="btn" href="{{ url_for('login') }}">Login</a>
-          {% endif %}
-        </div>
+        {% if session.get('user_id') %}
+          <a class="btn" href="{{ url_for('logout') }}">{{ t.logout }}</a>
+        {% else %}
+          <a class="btn" href="{{ url_for('login', next=request.full_path or request.path) }}">{{ t.login }}</a>
+        {% endif %}
       </div>
     </header>
 
