@@ -17,42 +17,43 @@
 
     <!-- 侧栏导航：图标 + 名称（一定要有 tile-label 才会显示文字） -->
     <nav class="nav-grid" aria-label="Main">
-      <a href="{{ url_for('home') }}"
-         class="tile {{ 'active' if request.path=='/' else '' }}">
-        <span class="tile-emoji">🎰</span>
-        <span class="tile-label">{{ t.dashboard }}</span>
-      </a>
+  <a href="{{ url_for('home') }}"
+     class="tile {{ 'active' if request.path=='/' else '' }}">
+    <span class="tile-emoji">🎰</span>
+    <span class="tile-label">Dashboard</span>
+  </a>
 
-      <a href="{{ url_for('workers_list') }}"
-         class="tile {{ 'active' if request.path.startswith('/workers') else '' }}">
-        <span class="tile-emoji">👨‍💼📲</span>
-        <span class="tile-label">{{ t.workers }}</span>
-      </a>
+  <a href="{{ url_for('workers_list') }}"
+     class="tile {{ 'active' if request.path.startswith('/workers') else '' }}">
+    <span class="tile-emoji">👨‍💼📲</span>
+    <span class="tile-label">工人 / 平台</span>
+  </a>
 
-      <a href="{{ url_for('bank_accounts_list') }}"
-         class="tile {{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
-        <span class="tile-emoji">🏦</span>
-        <span class="tile-label">{{ t.bank_accounts }}</span>
-      </a>
+  <a href="{{ url_for('bank_accounts_list') }}"
+     class="tile {{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
+    <span class="tile-emoji">🏦</span>
+    <span class="tile-label">银行账户</span>
+  </a>
 
-      <a href="{{ url_for('card_rentals_list') }}"
-         class="tile {{ 'active' if request.path.startswith('/card-rentals') else '' }}">
-        <span class="tile-emoji">💳</span>
-        <span class="tile-label">{{ t.card_rentals }}</span>
-      </a>
+  <a href="{{ url_for('card_rentals_list') }}"
+     class="tile {{ 'active' if request.path.startswith('/card-rentals') else '' }}">
+    <span class="tile-emoji">💳</span>
+    <span class="tile-label">银行卡租金</span>
+  </a>
 
-      <a href="{{ url_for('salaries_list') }}"
-         class="tile {{ 'active' if request.path.startswith('/salaries') else '' }}">
-        <span class="tile-emoji">💵</span>
-        <span class="tile-label">{{ t.salaries }}</span>
-      </a>
+  <a href="{{ url_for('salaries_list') }}"
+     class="tile {{ 'active' if request.path.startswith('/salaries') else '' }}">
+    <span class="tile-emoji">💵</span>
+    <span class="tile-label">出粮记录</span>
+  </a>
 
-      <a href="{{ url_for('expenses_list') }}"
-         class="tile {{ 'active' if request.path.startswith('/expenses') else '' }}">
-        <span class="tile-emoji">💸</span>
-        <span class="tile-label">{{ t.expenses }}</span>
-      </a>
-    </nav>
+  <a href="{{ url_for('expenses_list') }}"
+     class="tile {{ 'active' if request.path.startswith('/expenses') else '' }}">
+    <span class="tile-emoji">💸</span>
+    <span class="tile-label">开销记录</span>
+  </a>
+</nav>
+
 
     <div class="lang">
       🌐 {{ t.language }}：
