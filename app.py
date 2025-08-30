@@ -1,16 +1,30 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, send_file, session, abort
+# app.py  —— 完整版（已修好模板路径 / 登录拦截 / 健康检查）
+from flask import (
+    Flask, request, jsonify, render_template, redirect,
+    url_for, send_file, session, abort
+)
 import sqlite3, csv, io, os
 from datetime import datetime
-from werkzeug.exceptions import HTTPException
-import traceback
 
-APP_DB = os.environ.get("APP_DB", "data.db")
+# ====== 绝对路径，确保在 Railway / Docker / 任何目录都能找到模板与静态文件 ======
+BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR   = os.path.join(BASE_DIR, "static")
+
+# ====== SQLite 文件（也用绝对路径，避免工作目录变化导致创建到奇怪位置）======
+APP_DB = os.environ.get("APP_DB", os.path.join(BASE_DIR, "data.db"))
 
 # ====== 简单账号（可用环境变量覆盖）======
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+# ====== Flask 初始化（关键：显式指定 template_folder / static_folder）======
+app = Flask(
+    __name__,
+    template_folder=TEMPLATE_DIR,
+    static_folder=STATIC_DIR,
+    static_url_path="/static",
+)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
 
 # ---------------- I18N（含状态/编辑/删除文案） ----------------
@@ -143,18 +157,24 @@ def is_logged_in():
 
 @app.before_request
 def require_login():
-    # 放行的端点（无需登录）
-    open_endpoints = {"login", "login_post", "logout", "health", "static"}
-    # endpoint 可能为 None（例如 404），这种情况直接放过
-    if request.endpoint is None:
+    """
+    未登录自动跳到 /login 。
+    放行的端点：静态文件、健康检查、登录/登出。
+    注意：某些情况下 request.endpoint 可能为 None，需要兜底。
+    """
+    # 放行静态资源与公开路由
+    if request.path.startswith("/static/") or request.path == "/favicon.ico":
         return
+    open_endpoints = {"login", "login_post", "logout", "health"}
     if request.endpoint in open_endpoints:
+        return
+    # 有些框架/代理下 endpoint 可能是 None，做个兜底：如果是 /login 自身也放行
+    if (request.endpoint is None) and request.path.startswith("/login"):
         return
     # 未登录则跳去 /login
     if not is_logged_in():
-        # 带上原始访问路径（含查询串），方便登录后回跳
-        next_url = request.full_path if request.query_string else request.path
-        return redirect(url_for("login", next=next_url))
+        nxt = request.path or url_for("home")
+        return redirect(url_for("login", next=nxt))
 
 # ---------------- DB helpers ----------------
 def get_db():
@@ -228,7 +248,10 @@ def ensure_is_active_columns():
             con.execute(f"ALTER TABLE {tname} ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
     con.commit(); con.close()
 
+# 初始化数据库文件
 if not os.path.exists(APP_DB):
+    # 确保父目录存在
+    os.makedirs(os.path.dirname(APP_DB), exist_ok=True) if os.path.dirname(APP_DB) else None
     init_db()
 ensure_is_active_columns()
 
@@ -240,6 +263,14 @@ def health():
 # ---------------- Auth: login / logout ----------------
 @app.get("/login")
 def login():
+    # 如果模板不存在，直接给出明确提示（避免 500 “Internal Server Error”）
+    login_tpl = os.path.join(TEMPLATE_DIR, "login.html")
+    if not os.path.exists(login_tpl):
+        return (
+            f"Oops, template not found: <b>{login_tpl}</b><br>"
+            f"请在 <code>templates/login.html</code> 放置登录页面（我之前给你的 login.html 直接复制即可）。",
+            500,
+        )
     if is_logged_in():
         return redirect(url_for("home"))
     next_url = request.args.get("next", url_for("home"))
@@ -250,10 +281,6 @@ def login_post():
     username = (request.form.get("username") or "").strip()
     password = (request.form.get("password") or "").strip()
     next_url = request.form.get("next") or url_for("home")
-
-    # 防止开放重定向：如果 next 是外站，忽略
-    if next_url.startswith("http://") or next_url.startswith("https://") or next_url.startswith("//"):
-        next_url = url_for("home")
 
     if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
         session["user_id"] = username
@@ -271,8 +298,8 @@ def logout():
 @app.route("/")
 def home():
     con = get_db()
-    total_workers = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
-    total_rentals = con.execute("SELECT IFNULL(SUM(rental_amount),0) s FROM card_rentals").fetchone()["s"]
+    total_workers  = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
+    total_rentals  = con.execute("SELECT IFNULL(SUM(rental_amount),0) s FROM card_rentals").fetchone()["s"]
     total_salaries = con.execute("SELECT IFNULL(SUM(salary_amount),0) s FROM salary_payments").fetchone()["s"]
     total_expenses = con.execute("SELECT IFNULL(SUM(amount),0) s FROM expense_records").fetchone()["s"]
     con.close()
@@ -306,9 +333,9 @@ def api_summary():
         """)
         d = {r["ym"]: r["total"] for r in rows}
         return [float(d.get(m, 0)) for m in months]
-    rentals = series("card_rentals", "rental_amount", "date")
-    salaries = series("salary_payments", "salary_amount", "pay_date")
-    expenses = series("expense_records", "amount", "date")
+    rentals  = series("card_rentals",   "rental_amount", "date")
+    salaries = series("salary_payments","salary_amount", "pay_date")
+    expenses = series("expense_records","amount",        "date")
     con.close()
     return jsonify({"months": months, "rentals": rentals, "salaries": salaries, "expenses": expenses})
 
@@ -327,7 +354,7 @@ def _toggle_active(table, rid):
 @app.route("/workers")
 def workers_list():
     con = get_db()
-    # 可选时间过滤（开始/结束）
+    # 支持可选时间过滤（开始/结束）
     dt_from = request.args.get("from")
     dt_to   = request.args.get("to")
     sql = "SELECT * FROM workers WHERE 1=1"
@@ -346,9 +373,9 @@ def workers_add():
     d = request.form or request.json
     name = (d.get("name") or "").strip()
     if not name: return "Name is required", 400
-    company = d.get("company") or ""
+    company    = d.get("company") or ""
     commission = float(d.get("commission") or 0)
-    expenses = float(d.get("expenses") or 0)
+    expenses   = float(d.get("expenses") or 0)
     con = get_db()
     con.execute("INSERT INTO workers (name, company, commission, expenses) VALUES (?,?,?,?)",
                 (name, company, commission, expenses))
@@ -372,9 +399,9 @@ def workers_edit_form(wid):
 def workers_edit(wid):
     d = request.form or request.json
     name = (d.get("name") or "").strip()
-    company = d.get("company") or ""
+    company    = d.get("company") or ""
     commission = float(d.get("commission") or 0)
-    expenses = float(d.get("expenses") or 0)
+    expenses   = float(d.get("expenses") or 0)
     con = get_db()
     con.execute("UPDATE workers SET name=?, company=?, commission=?, expenses=? WHERE id=?",
                 (name, company, commission, expenses, wid))
@@ -411,9 +438,9 @@ def bank_accounts_list():
 @app.post("/bank-accounts/add")
 def bank_accounts_add():
     d = request.form or request.json
-    worker_id = int(d.get("worker_id"))
+    worker_id      = int(d.get("worker_id"))
     account_number = (d.get("account_number") or "").strip()
-    bank_name = (d.get("bank_name") or "").strip()
+    bank_name      = (d.get("bank_name") or "").strip()
     if not (worker_id and account_number and bank_name):
         return "worker_id, account_number, bank_name required", 400
     con = get_db()
@@ -439,9 +466,9 @@ def bank_accounts_edit_form(bid):
 @app.post("/bank-accounts/<int:bid>/edit")
 def bank_accounts_edit(bid):
     d = request.form or request.json
-    worker_id = int(d.get("worker_id"))
+    worker_id      = int(d.get("worker_id"))
     account_number = (d.get("account_number") or "").strip()
-    bank_name = (d.get("bank_name") or "").strip()
+    bank_name      = (d.get("bank_name") or "").strip()
     con = get_db()
     con.execute("UPDATE bank_accounts SET worker_id=?, account_number=?, bank_name=? WHERE id=?",
                 (worker_id, account_number, bank_name, bid))
@@ -471,10 +498,10 @@ def card_rentals_list():
 @app.post("/card-rentals/add")
 def card_rentals_add():
     d = request.form or request.json
-    worker_id = int(d.get("worker_id"))
+    worker_id     = int(d.get("worker_id"))
     rental_amount = float(d.get("rental_amount"))
-    date = (d.get("date") or "").strip()
-    note = d.get("note") or ""
+    date          = (d.get("date") or "").strip()
+    note          = d.get("note") or ""
     try:
         datetime.fromisoformat(date)
     except Exception:
@@ -502,10 +529,10 @@ def card_rentals_edit_form(cid):
 @app.post("/card-rentals/<int:cid>/edit")
 def card_rentals_edit(cid):
     d = request.form or request.json
-    worker_id = int(d.get("worker_id"))
+    worker_id     = int(d.get("worker_id"))
     rental_amount = float(d.get("rental_amount"))
-    date = (d.get("date") or "").strip()
-    note = d.get("note") or ""
+    date          = (d.get("date") or "").strip()
+    note          = d.get("note") or ""
     try:
         datetime.fromisoformat(date)
     except Exception:
@@ -539,10 +566,10 @@ def salaries_list():
 @app.post("/salaries/add")
 def salaries_add():
     d = request.form or request.json
-    worker_id = int(d.get("worker_id"))
+    worker_id     = int(d.get("worker_id"))
     salary_amount = float(d.get("salary_amount"))
-    pay_date = (d.get("pay_date") or "").strip()
-    note = d.get("note") or ""
+    pay_date      = (d.get("pay_date") or "").strip()
+    note          = d.get("note") or ""
     try:
         datetime.fromisoformat(pay_date)
     except Exception:
@@ -570,10 +597,10 @@ def salaries_edit_form(sid):
 @app.post("/salaries/<int:sid>/edit")
 def salaries_edit(sid):
     d = request.form or request.json
-    worker_id = int(d.get("worker_id"))
+    worker_id     = int(d.get("worker_id"))
     salary_amount = float(d.get("salary_amount"))
-    pay_date = (d.get("pay_date") or "").strip()
-    note = d.get("note") or ""
+    pay_date      = (d.get("pay_date") or "").strip()
+    note          = d.get("note") or ""
     try:
         datetime.fromisoformat(pay_date)
     except Exception:
@@ -611,8 +638,8 @@ def expenses_add():
     worker_id = d.get("worker_id")
     worker_id = int(worker_id) if worker_id else None
     amount = float(d.get("amount"))
-    date = (d.get("date") or "").strip()
-    note = d.get("note") or ""
+    date   = (d.get("date") or "").strip()
+    note   = d.get("note") or ""
     try:
         datetime.fromisoformat(date)
     except Exception:
@@ -643,8 +670,8 @@ def expenses_edit(eid):
     worker_id = d.get("worker_id")
     worker_id = int(worker_id) if worker_id else None
     amount = float(d.get("amount"))
-    date = (d.get("date") or "").strip()
-    note = d.get("note") or ""
+    date   = (d.get("date") or "").strip()
+    note   = d.get("note") or ""
     try:
         datetime.fromisoformat(date)
     except Exception:
@@ -719,14 +746,15 @@ def export_expenses():
         "expenses.csv"
     )
 
-# ------- 友好的 500 错误页 + 打日志 -------
-@app.errorhandler(Exception)
-def on_any_exception(e):
-    if isinstance(e, HTTPException):
-        return e
-    app.logger.error("Unhandled Exception:\n%s", traceback.format_exc())
-    return render_template("error.html", message=str(e)), 500
+# ---- 简单 404/500 文本（避免白屏）----
+@app.errorhandler(404)
+def not_found(_):
+    return "404 Not Found", 404
+
+@app.errorhandler(500)
+def server_error(e):
+    return f"500 Internal Server Error\n\n{e}", 500
 
 if __name__ == "__main__":
-    # 本地调试
-    app.run(debug=True)
+    # 本地开发可看到详细报错
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
