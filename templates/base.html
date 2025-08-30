@@ -17,7 +17,7 @@
     </div>
 
     <div class="user-line">
-      用户：<strong>{{ session.get('user_id', 'guest') }}</strong>
+      {{ '用户' if lang=='zh' else 'User' }}：<strong>{{ session.get('user_id', 'guest') }}</strong>
     </div>
 
     <nav class="nav">
@@ -53,16 +53,28 @@
       </a>
 
       <!-- 分组标题 -->
-      <div class="nav-group-title">安全设置</div>
+      <div class="nav-group-title">{{ '安全设置' if lang=='zh' else 'Security' }}</div>
 
-      <!-- 你要求新增的入口：修改登录账号/密码 -->
-      <a href="/account-credentials"
-         class="{% if request.path == '/account-credentials' %}active{% endif %}">
-        <span class="emoji">🧑‍💻</span> 修改登录账号/密码
+      <!-- 账号安全（重置为默认账号/密码） -->
+      <a href="/account-security"
+         class="{% if request.path == '/account-security' %}active{% endif %}">
+        <span class="emoji">🔒</span> {{ '账号安全（重置密码）' if lang=='zh' else 'Account Security (Reset PW)' }}
       </a>
 
-      <!-- 退出登录 -->
-      <div class="nav-group-title">会话</div>
+      <!-- 修改密码 -->
+      <a href="/change-password"
+         class="{% if request.path == '/change-password' %}active{% endif %}">
+        <span class="emoji">🗝️</span> {{ '修改密码' if lang=='zh' else 'Change Password' }}
+      </a>
+
+      <!-- 修改用户名 -->
+      <a href="/change-username"
+         class="{% if request.path == '/change-username' %}active{% endif %}">
+        <span class="emoji">🆔</span> {{ '修改用户名' if lang=='zh' else 'Change Username' }}
+      </a>
+
+      <!-- 会话 -->
+      <div class="nav-group-title">{{ '会话' if lang=='zh' else 'Session' }}</div>
       <a href="{{ url_for('logout') }}">
         <span class="emoji">🚪</span> {{ t.logout }}
       </a>
@@ -88,6 +100,17 @@
       </div>
     </header>
 
+    <!-- 全局消息（可选） -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-wrap">
+          {% for cat, msg in messages %}
+            <div class="flash {{ cat }}">{{ msg }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
     <section class="page-content">
       {% block content %}
       <!-- 页面内容 -->
@@ -95,6 +118,7 @@
     </section>
   </main>
 
+  {% block modals %}{% endblock %}
   {% block scripts %}{% endblock %}
 </body>
 </html>
