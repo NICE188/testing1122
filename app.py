@@ -1,18 +1,49 @@
-# app.py  —— 完整版（含“修改登录账号/密码”）
-from flask import Flask, request, jsonify, render_template, redirect, url_for, send_file, session, abort
-import sqlite3, csv, io, os
+from flask import Flask, request, jsonify, render_template, render_template_string, redirect, url_for, send_file, session, abort
+import sqlite3, csv, io, os, logging, traceback
 from datetime import datetime
-from functools import wraps
-from werkzeug.security import generate_password_hash, check_password_hash
 
 APP_DB = os.environ.get("APP_DB", "data.db")
 
-# ====== 可用环境变量覆盖的默认管理员（仅用于首次建库时种子）======
+# ====== 简单账号（可用环境变量覆盖）======
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
+
+# -----------------------------------------------------------------------------
+# 日志 + 统一错误处理（避免只看到“Internal Server Error”）
+# -----------------------------------------------------------------------------
+logging.basicConfig(level=logging.INFO)
+
+from jinja2 import TemplateNotFound
+
+@app.errorhandler(TemplateNotFound)
+def handle_tpl_not_found(e):
+    return (
+        f"Oops, template not found: <b>templates/{e.name}</b><br>"
+        "请确认文件存在且文件名大小写一致（Linux 区分大小写）。",
+        500,
+    )
+
+@app.errorhandler(Exception)
+def handle_any_error(e):
+    app.logger.exception("Unhandled error")
+    return (
+        f"Error: <b>{e.__class__.__name__}</b><br>"
+        f"Message: {str(e)}<br>"
+        "请打开 Railway（或你的部署平台）日志查看完整堆栈。",
+        500,
+    )
+
+@app.get("/__diag__")
+def __diag():
+    # 迷你诊断：确认模板上下文(t/lang)与 Jinja 能正常工作
+    return render_template_string("OK — lang={{lang}}, app={{t.app_name}}")
+
+@app.get("/favicon.ico")
+def favicon():
+    return ("", 204)
 
 # ---------------- I18N（含状态/编辑/删除文案） ----------------
 I18N = {
@@ -69,6 +100,7 @@ I18N = {
         "username": "用户名",
         "password": "密码",
         "login_failed": "用户名或密码错误",
+        "login_tip": "请输入管理员账号登录系统",
     },
     "en": {
         "app_name": "Nepwin88",
@@ -123,6 +155,7 @@ I18N = {
         "username": "Username",
         "password": "Password",
         "login_failed": "Wrong username or password",
+        "login_tip": "Please enter admin credentials to sign in",
     }
 }
 
@@ -146,7 +179,8 @@ def is_logged_in():
 def require_login():
     # 放行的端点（无需登录）
     open_endpoints = {
-        "login", "login_post", "logout", "health", "static"
+        "login", "login_post", "logout",
+        "health", "static", "__diag__", "favicon"
     }
     if request.endpoint in open_endpoints:
         return
@@ -212,14 +246,6 @@ def init_db():
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
-
-    -- 登录账号表（仅一条或少量管理员账号）
-    CREATE TABLE IF NOT EXISTS auth_user (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    );
     """)
     con.commit()
     con.close()
@@ -234,22 +260,9 @@ def ensure_is_active_columns():
             con.execute(f"ALTER TABLE {tname} ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
     con.commit(); con.close()
 
-def ensure_default_admin_user():
-    """若无任何账号，则用环境变量的用户名/密码创建一个默认管理员"""
-    con = get_db()
-    row = con.execute("SELECT COUNT(*) c FROM auth_user").fetchone()
-    if row["c"] == 0:
-        con.execute(
-            "INSERT INTO auth_user (username, password_hash) VALUES (?, ?)",
-            (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD))
-        )
-        con.commit()
-    con.close()
-
 if not os.path.exists(APP_DB):
     init_db()
 ensure_is_active_columns()
-ensure_default_admin_user()
 
 # ---------------- Health ----------------
 @app.get("/health")
@@ -269,13 +282,8 @@ def login_post():
     username = (request.form.get("username") or "").strip()
     password = (request.form.get("password") or "").strip()
     next_url = request.form.get("next") or url_for("home")
-
-    con = get_db()
-    user = con.execute("SELECT * FROM auth_user WHERE username=?", (username,)).fetchone()
-    con.close()
-
-    if user and check_password_hash(user["password_hash"], password):
-        session["user_id"] = user["username"]
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        session["user_id"] = username
         return redirect(next_url)
     # 登录失败
     return render_template("login.html", next_url=next_url,
@@ -680,63 +688,6 @@ def expenses_delete(eid):
     con.execute("DELETE FROM expense_records WHERE id=?", (eid,))
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
-
-# ---------------- 修改登录账号/密码（单页合并） ----------------
-@app.get("/account-credentials")
-def account_credentials_form():
-    if not session.get("user_id"):
-        return redirect(url_for("login", next=request.path))
-    current_username = session["user_id"]
-    return render_template("account_credentials.html",
-                           current_username=current_username,
-                           ok=request.args.get("ok"),
-                           err=request.args.get("err"))
-
-@app.post("/account-credentials")
-def account_credentials_save():
-    if not session.get("user_id"):
-        return redirect(url_for("login", next=request.path))
-
-    current_username = session["user_id"]
-    new_username = (request.form.get("new_username") or "").strip()
-    old_pwd = request.form.get("old_pwd") or ""
-    new_pwd = request.form.get("new_pwd") or ""
-    new_pwd2 = request.form.get("new_pwd2") or ""
-
-    con = get_db()
-    user = con.execute("SELECT * FROM auth_user WHERE username=?", (current_username,)).fetchone()
-    if not user:
-        con.close()
-        return redirect(url_for("account_credentials_form", err="user_missing"))
-
-    # 验证旧密码
-    if not check_password_hash(user["password_hash"], old_pwd):
-        con.close()
-        return redirect(url_for("account_credentials_form", err="bad_old"))
-
-    # 改用户名（可选）
-    if new_username and new_username != current_username:
-        dup = con.execute("SELECT 1 FROM auth_user WHERE username=?", (new_username,)).fetchone()
-        if dup:
-            con.close()
-            return redirect(url_for("account_credentials_form", err="dup_name"))
-        con.execute("UPDATE auth_user SET username=? WHERE id=?", (new_username, user["id"]))
-        session["user_id"] = new_username  # 同步会话
-
-    # 改密码（可选，需两次一致）
-    if new_pwd or new_pwd2:
-        if new_pwd != new_pwd2:
-            con.close()
-            return redirect(url_for("account_credentials_form", err="pwd_mismatch"))
-        if len(new_pwd) < 6:
-            con.close()
-            return redirect(url_for("account_credentials_form", err="pwd_short"))
-        con.execute("UPDATE auth_user SET password_hash=? WHERE id=?",
-                    (generate_password_hash(new_pwd), user["id"]))
-
-    con.commit()
-    con.close()
-    return redirect(url_for("account_credentials_form", ok="1"))
 
 # ---------------- Export CSV ----------------
 def export_csv(query, headers, filename):
