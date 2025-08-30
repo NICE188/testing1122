@@ -2,63 +2,60 @@
 <html lang="{{ 'zh' if lang=='zh' else 'en' }}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{{ t.login }} — {{ t.app_name }}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ t.app_name }} — {{ t.login }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
-    .auth-wrap{
-      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
-      background:
-        url("https://i.imgur.com/RUhZHD9.jpeg") center/cover fixed no-repeat,
-        linear-gradient(180deg,#0c1220,#0b1220);
-      position:relative;
+    /* 仅登录页的小样式，尽量复用你现有的色系 */
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0c1220}
+    .login-wrap{width:100%;max-width:440px;padding:24px}
+    .login-card{
+      background:rgba(16,22,39,.65);
+      border:1px solid rgba(148,163,184,.18);
+      border-radius:14px;
+      box-shadow:0 6px 24px rgba(0,0,0,.25);
+      padding:22px 18px 18px;
+      color:#e7ebf3;
     }
-    .auth-wrap::before{
-      content:""; position:fixed; inset:0; background:rgba(10,14,25,.55); pointer-events:none;
+    .login-title{font-size:20px;font-weight:800;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+    .login-desc{color:#93a4c0;margin:0 0 14px;font-size:13px}
+    .form{display:flex;flex-direction:column;gap:10px;margin:0}
+    .form input{
+      background:rgba(14,20,35,.9);
+      border:1px solid rgba(148,163,184,.28);
+      border-radius:10px;padding:10px;color:#e7ebf3;outline:none;
     }
-    .auth-card{
-      position:relative; z-index:1; width:100%; max-width:420px;
-      background:rgba(16,22,39,.6); border:1px solid rgba(148,163,184,.18);
-      border-radius:16px; padding:22px; box-shadow:0 6px 24px rgba(0,0,0,.25); color:#e7ebf3;
-      backdrop-filter: blur(10px) saturate(1.05);
-    }
-    .auth-title{font-weight:800; font-size:20px; margin-bottom:14px}
-    .auth-form{display:flex; flex-direction:column; gap:12px}
-    .auth-form input{
-      background:rgba(14,20,35,.9); border:1px solid rgba(148,163,184,.28);
-      border-radius:10px; padding:10px; color:#e7ebf3; outline:none; width:100%;
-    }
-    .auth-form input:focus{border-color:#3659d6; box-shadow:0 0 0 3px rgba(54,89,214,.18)}
-    .auth-btn{display:block; width:100%; text-align:center; padding:10px 12px; border-radius:10px;
-      background:linear-gradient(180deg,#1e2638,#1a2233); border:1px solid rgba(148,163,184,.28); color:#e7ebf3}
-    .auth-error{background:rgba(239,68,68,.14); border:1px solid rgba(239,68,68,.4); color:#fecaca;
-      padding:10px; border-radius:10px; margin-bottom:8px}
-    .brand-mini{display:flex; align-items:center; gap:8px; margin-bottom:8px; color:#fff; font-weight:700}
+    .form input:focus{border-color:rgba(54,89,214,.55);box-shadow:0 0 0 3px rgba(54,89,214,.18)}
+    .btn{padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,#1e2638,#1a2233);
+         border:1px solid rgba(148,163,184,.28);color:#e7ebf3;cursor:pointer}
+    .btn:hover{filter:brightness(1.06)}
+    .tip{background:#0b1220;border:1px dashed #273245;color:#cbd5e1;padding:10px;border-radius:10px;margin-bottom:12px}
+    .lang{margin-top:12px;color:#93a4c0;text-align:center}
+    .lang a{color:#e7ebf3;text-decoration:none;margin:0 4px}
   </style>
 </head>
 <body>
-<div class="auth-wrap">
-  <div class="auth-card">
-    <div class="brand-mini">🇳🇵 {{ t.app_name }}</div>
-    <div class="auth-title">{{ t.login }}</div>
+  <div class="login-wrap">
+    <div class="login-card">
+      <h1 class="login-title">🔐 {{ t.login }}</h1>
+      <p class="login-desc">{{ t.app_name }} — {{ '请输入管理员账号登录' if lang=='zh' else 'Please sign in with admin account' }}</p>
 
-    {% if error %}
-      <div class="auth-error">{{ error }}</div>
-    {% endif %}
+      {% if error %}
+      <div class="tip">{{ error }}</div>
+      {% endif %}
 
-    <form class="auth-form" method="post" action="{{ url_for('login_post') }}">
-      <input type="hidden" name="next" value="{{ next_url or url_for('home') }}">
-      <label>
-        <div style="font-size:12px;opacity:.85;margin-bottom:4px">{{ t.username }}</div>
-        <input type="text" name="username" placeholder="{{ t.username }}" required>
-      </label>
-      <label>
-        <div style="font-size:12px;opacity:.85;margin-bottom:4px">{{ t.password }}</div>
-        <input type="password" name="password" placeholder="{{ t.password }}" required>
-      </label>
-      <button class="auth-btn" type="submit">{{ t.login }}</button>
-    </form>
+      <form class="form" method="post" action="{{ url_for('login_post') }}">
+        <input type="text" name="username" placeholder="{{ t.username }}" autocomplete="username" required>
+        <input type="password" name="password" placeholder="{{ t.password }}" autocomplete="current-password" required>
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <button class="btn" type="submit">{{ t.login }}</button>
+      </form>
+
+      <div class="lang">
+        {{ t.language }}：
+        <a href="?lang=zh">中文</a> | <a href="?lang=en">EN</a>
+      </div>
+    </div>
   </div>
-</div>
 </body>
 </html>
