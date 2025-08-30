@@ -1,3 +1,4 @@
+# app.py  —— 你的原有逻辑 + 稳健增强版
 from flask import Flask, request, jsonify, render_template, render_template_string, redirect, url_for, send_file, session, abort
 import sqlite3, csv, io, os, logging, traceback
 from datetime import datetime
@@ -10,6 +11,8 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
+# 改模板自动生效（开发期友好）
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 # -----------------------------------------------------------------------------
 # 日志 + 统一错误处理（避免只看到“Internal Server Error”）
@@ -275,6 +278,14 @@ def login():
     if is_logged_in():
         return redirect(url_for("home"))
     next_url = request.args.get("next", url_for("home"))
+    # 友好检查：避免 login.html 缺失导致 500
+    tpl = os.path.join(app.template_folder or "templates", "login.html")
+    if not os.path.isfile(tpl):
+        return (
+            "Oops, template not found: <b>templates/login.html</b><br>"
+            "请把登录页文件放到 <code>templates/</code> 目录，文件名严格为 <code>login.html</code>（小写）。",
+            500,
+        )
     return render_template("login.html", next_url=next_url, error=None)
 
 @app.post("/login")
@@ -297,17 +308,28 @@ def logout():
 # ---------------- Home / Dashboard ----------------
 @app.route("/")
 def home():
-    con = get_db()
-    total_workers = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
-    total_rentals = con.execute("SELECT IFNULL(SUM(rental_amount),0) s FROM card_rentals").fetchone()["s"]
-    total_salaries = con.execute("SELECT IFNULL(SUM(salary_amount),0) s FROM salary_payments").fetchone()["s"]
-    total_expenses = con.execute("SELECT IFNULL(SUM(amount),0) s FROM expense_records").fetchone()["s"]
-    con.close()
-    return render_template("index.html",
-                           total_workers=total_workers,
-                           total_rentals=total_rentals,
-                           total_salaries=total_salaries,
-                           total_expenses=total_expenses)
+    # 优先使用你的 index.html；如果缺失，不报 500，给个占位页
+    try:
+        con = get_db()
+        total_workers = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
+        total_rentals = con.execute("SELECT IFNULL(SUM(rental_amount),0) s FROM card_rentals").fetchone()["s"]
+        total_salaries = con.execute("SELECT IFNULL(SUM(salary_amount),0) s FROM salary_payments").fetchone()["s"]
+        total_expenses = con.execute("SELECT IFNULL(SUM(amount),0) s FROM expense_records").fetchone()["s"]
+        con.close()
+        return render_template("index.html",
+                               total_workers=total_workers,
+                               total_rentals=total_rentals,
+                               total_salaries=total_salaries,
+                               total_expenses=total_expenses)
+    except TemplateNotFound:
+        user = session.get("user_id", "?")
+        return f"""
+        <html><body style="font-family:Inter,Arial,Helvetica,sans-serif;padding:24px;color:#e6ecf5;background:#0b1324">
+            <h2>Hi, {user}</h2>
+            <p>你已成功登录。当前缺少 <code>templates/index.html</code>，这是临时首页占位。</p>
+            <p><a href="{url_for('logout')}" style="color:#9dd1ff">退出登录</a></p>
+        </body></html>
+        """
 
 # 近 6 个月图表数据
 @app.get("/api/summary")
@@ -747,4 +769,5 @@ def export_expenses():
     )
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Railway 会注入 PORT；本地默认 5000
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
