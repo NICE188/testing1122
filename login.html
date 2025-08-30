@@ -1,266 +1,196 @@
 <!doctype html>
 <html lang="{{ 'zh' if lang=='zh' else 'en' }}">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{ t['login'] }} · {{ t['app_name'] }}</title>
-<style>
-  :root{
-    --bg:#0a0f1c;
-    --panel:rgba(15,19,32,.7);
-    --text:#e8eef7;
-    --muted:#9fb3c9;
-    --line:rgba(148,163,184,.22);
-    --ring:#6ea8ff;
-    --glow1:#7c3aed;  /* 紫 */
-    --glow2:#22d3ee;  /* 青 */
-    --glow3:#facc15;  /* 金 */
-    --ok:#22c55e;
-    --danger:#ef4444;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0; color:var(--text);
-    font:15px/1.65 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif;
-    background: var(--bg);
-    overflow:auto;
-  }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ t["login"] }} · {{ t["app_name"] }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0b1020; --glass:#0f172aee; --text:#e7ebf3; --muted:#9fb0cc;
+      --brand:#7c9dff; --brand2:#c19cff; --gold:#f7c948;
+      --ring: rgba(124,157,255,.45); --ring2: rgba(193,156,255,.35);
+      --error:#ef4444; --line: rgba(148,163,184,.15);
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{
+      margin:0; color:var(--text);
+      font:15px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+      background: radial-gradient(1200px 800px at 10% -10%, rgba(124,157,255,.20), transparent 45%),
+                  radial-gradient(1200px 800px at 110% 0%, rgba(193,156,255,.14), transparent 50%),
+                  linear-gradient(180deg, #0a0f1e, #0b1224 40%, #0a0f1e);
+      overflow:auto;
+    }
+    /* 动态极光 */
+    .aurora{
+      position:fixed; inset:0; z-index:-1; pointer-events:none;
+    }
+    .aurora::before{
+      content:""; position:absolute; inset:-40%; filter:blur(40px);
+      background:
+        conic-gradient(from 0deg, rgba(124,157,255,.22), rgba(193,156,255,.22), rgba(247,201,72,.18), rgba(124,157,255,.22));
+      animation:spin 26s linear infinite;
+      opacity:.75;
+    }
+    @keyframes spin { to { transform:rotate(1turn)}}
 
-  /* ============ 极光背景（高质感） ============ */
-  .aurora{
-    position:fixed; inset:-10vmax; z-index:0; filter: blur(48px) saturate(1.2);
-    pointer-events:none; opacity:.9;
-  }
-  .aurora::before,
-  .aurora::after{
-    content:""; position:absolute; inset:-20vmax;
-    background:
-      conic-gradient(from 120deg at 30% 30%, rgba(124,58,237,.30), transparent 55%),
-      conic-gradient(from -50deg at 70% 70%, rgba(34,211,238,.28), transparent 60%),
-      radial-gradient(40vmax 35vmax at 85% 20%, rgba(250,204,21,.20), transparent 60%);
-    animation: swirl 26s linear infinite;
-  }
-  .aurora::after{
-    mix-blend-mode:screen; opacity:.65;
-    background:
-      conic-gradient(from 210deg at 65% 35%, rgba(99,102,241,.30), transparent 55%),
-      radial-gradient(50vmax 40vmax at 10% 85%, rgba(34,197,94,.18), transparent 60%);
-    animation-duration: 32s;
-    animation-direction: reverse;
-  }
-  @keyframes swirl{
-    from{ transform: rotate(0deg) }
-    to  { transform: rotate(360deg) }
-  }
+    /* 居中容器 */
+    .wrap{ min-height:100dvh; display:grid; place-items:center; padding:32px; }
 
-  /* ============ 居中容器 ============ */
-  .wrap{min-height:100%; display:grid; place-items:center; padding:60px 18px; position:relative; z-index:1}
+    /* 玻璃拟态卡片 + 霓虹描边 */
+    .card{
+      position:relative; width:min(560px, 92vw);
+      background:var(--glass); backdrop-filter: blur(14px) saturate(1.05);
+      border:1px solid var(--line); border-radius:18px; padding:26px 28px 18px;
+      box-shadow:
+        0 12px 50px rgba(0,0,0,.45),
+        inset 0 1px 0 rgba(255,255,255,.06);
+      transform: perspective(900px) rotateX(.5deg);
+    }
+    .card::before{
+      content:""; position:absolute; inset:-1px; border-radius:18px;
+      padding:1px; background:
+        linear-gradient(180deg, rgba(124,157,255,.45), rgba(193,156,255,.25), rgba(247,201,72,.25));
+      -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      pointer-events:none;
+    }
+    .title{
+      display:flex; align-items:center; gap:10px;
+      font-size:22px; font-weight:800; letter-spacing:.3px; margin:2px 0 14px;
+    }
+    .title .dot{ width:10px; height:10px; border-radius:50%;
+      background:radial-gradient(circle at 30% 30%, #fff, #fff0 45%),
+                 linear-gradient(135deg, var(--brand), var(--brand2));
+      box-shadow:0 0 18px rgba(124,157,255,.65);
+    }
 
-  /* ============ 立体卡片（玻璃拟态 + 霓虹描边） ============ */
-  .card{
-    width:520px; max-width:95vw; position:relative;
-    border-radius:22px; padding:28px 26px 20px;
-    background: linear-gradient(180deg, rgba(18,24,41,.78), rgba(18,24,41,.55));
-    backdrop-filter: blur(14px) saturate(1.05);
-    border:1px solid var(--line);
-    box-shadow:
-      0 18px 60px rgba(0,0,0,.45),
-      inset 0 1px 0 rgba(255,255,255,.06);
-    overflow:hidden;
-    animation: pop .28s ease-out both;
-  }
-  /* 外圈渐变光晕 */
-  .card::before{
-    content:""; position:absolute; inset:-1px; border-radius:23px; z-index:-1;
-    background: linear-gradient(130deg, var(--glow1), var(--glow2), var(--glow3));
-    filter: blur(14px); opacity:.28;
-  }
-  /* 顶部彩带 */
-  .ribbon{
-    position:absolute; left:-10%; right:-10%; top:-120px; height:220px; z-index:0;
-    background:
-      radial-gradient(60% 180% at 50% 140%, rgba(255,255,255,.08), transparent 60%),
-      linear-gradient(90deg, rgba(124,58,237,.25), rgba(34,211,238,.25), rgba(250,204,21,.22));
-    transform: rotate(-4.5deg);
-    filter: blur(18px);
-    opacity:.6; pointer-events:none;
-  }
-  @keyframes pop{ from{ transform: translateY(14px) scale(.985); opacity:.0 } to{ transform:none; opacity:1 }}
+    /* 表单字段 */
+    .field{ margin-bottom:12px; }
+    .label{ font-size:12px; color:var(--muted); margin:0 0 6px 2px; letter-spacing:.2px; }
+    .control{
+      display:flex; align-items:center; gap:10px;
+      border:1px solid var(--line); border-radius:12px; padding:10px 12px;
+      background:linear-gradient(180deg, rgba(13,20,40,.9), rgba(10,16,30,.85));
+      transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    .control:focus-within{
+      border-color: rgba(124,157,255,.55);
+      box-shadow: 0 0 0 4px rgba(124,157,255,.14), 0 0 0 1px rgba(193,156,255,.25) inset;
+      background:linear-gradient(180deg, rgba(16,24,48,.96), rgba(12,18,36,.92));
+    }
+    .icon{ width:18px; height:18px; opacity:.8 }
+    input{
+      all:unset; color:var(--text); flex:1; min-height:22px;
+      caret-color: var(--brand); letter-spacing:.2px;
+    }
+    input::placeholder{ color:#95a3bd; opacity:.9 }
 
-  .brand{position:relative; z-index:1; display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:8px}
-  .title{
-    display:flex; align-items:center; gap:12px;
-  }
-  .logo{
-    width:44px; height:44px; border-radius:14px; display:grid; place-items:center; font-size:22px;
-    background:linear-gradient(180deg,#1f2937,#0f172a); border:1px solid var(--line);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
-  }
-  .text h1{
-    margin:0; font-size:26px; letter-spacing:.4px; line-height:1.15; font-weight:900;
-    background: linear-gradient(90deg,#c7d2fe, #93c5fd, #fef08a); -webkit-background-clip:text; color:transparent;
-  }
-  .text p{margin:4px 0 0; color:var(--muted); font-size:13px}
+    /* 错误提示 */
+    .error{
+      display:flex; align-items:center; gap:8px;
+      margin:8px 2px 2px; padding:8px 10px;
+      border-radius:10px; border:1px solid rgba(239,68,68,.35);
+      background: linear-gradient(180deg, rgba(239,68,68,.18), rgba(239,68,68,.10));
+      color:#fecaca; font-size:13px;
+    }
 
-  /* 表单 */
-  label{display:block; margin:14px 2px 6px; color:var(--muted); font-size:13px}
-  .field{position:relative}
-  .field input{
-    width:100%; height:48px; border-radius:14px; outline:none; color:var(--text);
-    padding:12px 14px 12px 46px; background:rgba(9,14,25,.92);
-    border:1px solid var(--line);
-    transition:border-color .15s ease, box-shadow .15s ease, background .15s ease, transform .06s ease;
-  }
-  .field input::placeholder{color:#8fa6c2}
-  .field input:focus{
-    border-color:var(--ring);
-    box-shadow: 0 0 0 4px rgba(110,168,255,.22), inset 0 1px 0 rgba(255,255,255,.04);
-    background:rgba(14,20,35,.96);
-  }
-  .ic{
-    position:absolute; left:12px; top:50%; transform:translateY(-50%); width:20px; height:20px; opacity:.82
-  }
+    /* 提交按钮 */
+    .actions{ margin-top:10px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:10px; padding:10px 14px; border-radius:12px;
+      border:1px solid rgba(148,163,184,.28);
+      color:#0b1020; cursor:pointer; font-weight:700; letter-spacing:.2px;
+      background:linear-gradient(135deg, var(--brand), var(--brand2) 60%, var(--gold));
+      box-shadow: 0 8px 28px rgba(124,157,255,.35);
+      transition: transform .12s ease, filter .12s ease;
+    }
+    .btn:hover{ filter:brightness(1.05) }
+    .btn:active{ transform:translateY(1px) }
 
-  .pw-toggle{
-    position:absolute; right:10px; top:50%; transform:translateY(-50%);
-    width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
-    border:1px solid var(--line); background:rgba(17,24,39,.72); cursor:pointer;
-  }
-  .pw-toggle:hover{ filter:brightness(1.06) }
+    /* 语言切换（分段选择） */
+    .lang{
+      margin-top:12px; color:var(--muted); display:flex; align-items:center; gap:10px;
+    }
+    .seg{
+      display:inline-grid; grid-auto-flow:column; gap:0; padding:3px; border-radius:999px;
+      background:rgba(148,163,184,.12); border:1px solid rgba(148,163,184,.22);
+    }
+    .seg a{
+      padding:6px 10px; border-radius:999px; text-decoration:none; color:#cbd5e1; font-weight:600;
+    }
+    .seg a.active{ background:linear-gradient(135deg, rgba(124,157,255,.35), rgba(193,156,255,.25)); color:#fff; }
 
-  .btn{
-    width:100%; height:48px; margin-top:16px; border-radius:14px; cursor:pointer;
-    color:#0b1220; font-weight:900; letter-spacing:.3px; border:1px solid rgba(148,163,184,.28);
-    background:
-      radial-gradient(120% 180% at 50% -60%, #ffffff 0%, rgba(255,255,255,.4) 25%, transparent 26%),
-      linear-gradient(100deg, #60a5fa, #a78bfa 55%, #facc15);
-    box-shadow: 0 18px 32px rgba(96,165,250,.25), inset 0 1px 0 rgba(255,255,255,.5);
-    transition: transform .06s ease, filter .15s ease, box-shadow .15s ease;
-  }
-  .btn:hover{ filter:brightness(1.03) }
-  .btn:active{ transform: translateY(1px) }
+    /* 顶部柔光 */
+    .card::after{
+      content:""; position:absolute; left:16px; right:16px; top:-2px; height:80px; pointer-events:none;
+      background: radial-gradient(160px 60px at 14% 0, rgba(124,157,255,.45), transparent 70%),
+                  radial-gradient(180px 70px at 82% 0, rgba(193,156,255,.35), transparent 70%),
+                  linear-gradient(180deg, rgba(255,255,255,.10), transparent 60%);
+      border-top-left-radius:16px; border-top-right-radius:16px; opacity:.9;
+    }
 
-  .lang{
-    margin-top:16px; color:var(--muted); font-size:13px; display:flex; align-items:center; gap:8px;
-  }
-  .seg{
-    display:inline-flex; border:1px solid var(--line); border-radius:12px; overflow:hidden;
-    background:rgba(14,20,35,.7)
-  }
-  .seg a, .seg b{ padding:7px 12px; display:block; text-decoration:none; font-weight:800; font-size:12.5px }
-  .seg a{ color:#93c5fd }
-  .seg b{ color:#fff; background:linear-gradient(180deg, rgba(148,163,184,.18), rgba(148,163,184,.08)) }
-  a{ color:#93c5fd; text-decoration:none }
-
-  .err{
-    margin-top:12px; color:#fff;
-    background:linear-gradient(180deg,#7f1d1d,#5f1414);
-    border:1px solid rgba(239,68,68,.5); padding:10px 12px; border-radius:12px; font-size:14px;
-    box-shadow: inset 0 10px 26px rgba(239,68,68,.22);
-    animation: shake .28s;
-  }
-  @keyframes shake{
-    10%,90%{transform:translateX(-1px)} 20%,80%{transform:translateX(2px)}
-    30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)}
-  }
-
-  footer{
-    position:fixed; right:10px; bottom:10px; color:#8aa0be; font-size:12px; z-index:1;
-    background:rgba(17,24,39,.55); padding:6px 10px; border-radius:10px; border:1px solid var(--line)
-  }
-
-  /* 光标进入卡片的微倾斜效果（高端小交互） */
-  .tilt{ transform-style:preserve-3d; transition: transform .15s ease }
-  .tilt:hover{ transform: perspective(900px) rotateX(1.2deg) rotateY(-1.2deg) }
-
-  @media (max-width:520px){
-    .card{ padding:24px 18px }
-    .text h1{ font-size:22px }
-  }
-</style>
+    /* 小屏优化 */
+    @media (max-width:480px){
+      .card{ padding:22px 18px 14px; }
+      .title{ font-size:20px }
+      .btn{ width:100% }
+      .actions{ flex-direction:column; align-items:stretch }
+    }
+  </style>
 </head>
 <body>
   <div class="aurora"></div>
 
   <div class="wrap">
-    <form class="card tilt" method="post" action="{{ url_for('login') }}" id="loginForm" novalidate>
-      <div class="ribbon"></div>
-
-      <div class="brand">
-        <div class="title">
-          <div class="logo">🔐</div>
-          <div class="text">
-            <h1>{{ t['login'] }}</h1>
-            <p>{{ t['app_name'] }} · {{ '安全访问' if lang=='zh' else 'Secure Access' }}</p>
-          </div>
-        </div>
+    <div class="card" role="dialog" aria-labelledby="title">
+      <div class="title" id="title">
+        <span class="dot"></span>
+        <span>{{ t["login"] }}</span>
       </div>
-
-      <!-- 用户名 -->
-      <label for="username">{{ t['username'] }}</label>
-      <div class="field">
-        <svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5 0-9 2.5-9 5.5A1.5 1.5 0 0 0 4.5 21h15A1.5 1.5 0 0 0 21 19.5C21 16.5 17 14 12 14Z"/></svg>
-        <input id="username" name="username" placeholder="{{ t['username'] }}" autocomplete="username" required autofocus>
-      </div>
-
-      <!-- 密码 -->
-      <label for="password">{{ t['password'] }}</label>
-      <div class="field">
-        <svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M17 8V6A5 5 0 0 0 7 6v2H5v12h14V8Zm-8 0V6a3 3 0 0 1 6 0v2Z"/></svg>
-        <input id="password" type="password" name="password" placeholder="{{ t['password'] }}" autocomplete="current-password" required>
-        <button class="pw-toggle" type="button" id="togglePw" aria-label="toggle password">👁️</button>
-      </div>
-
-      <input type="hidden" name="next" value="{{ next_url or '/' }}">
-      <button class="btn" type="submit">{{ t['login'] }}</button>
 
       {% if error %}
-        <div class="err">{{ error }}</div>
+      <div class="error">
+        <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M12 3l9 9-9 9-9-9 9-9Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>{{ error }}</span>
+      </div>
       {% endif %}
 
-      <!-- 语言分段切换 -->
+      <form method="post" action="{{ url_for('login') }}" novalidate>
+        <input type="hidden" name="next" value="{{ next_url or '/' }}" />
+
+        <div class="field">
+          <div class="label">{{ t["username"] }}</div>
+          <div class="control">
+            <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5 0-9 2.5-9 5.5V21h18v-1.5C21 16.5 17 14 12 14Z" stroke="currentColor" stroke-width="1.2" opacity=".85"/></svg>
+            <input name="username" autocomplete="username" placeholder="{{ t['username'] }}" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label">{{ t["password"] }}</div>
+          <div class="control">
+            <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3M6 10h12v10H6Z" stroke="currentColor" stroke-width="1.2" opacity=".85"/></svg>
+            <input name="password" type="password" autocomplete="current-password" placeholder="{{ t['password'] }}" required />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn" type="submit">{{ t["login"] }}</button>
+        </div>
+      </form>
+
       <div class="lang">
-        {{ t['language'] }}：
+        <span>{{ t["language"] }}：</span>
         <span class="seg">
-          {% if lang=='zh' %}
-            <b>中文</b>
-            <a href="{{ url_for('login', lang='en', next=next_url or '/') }}">English</a>
-          {% else %}
-            <a href="{{ url_for('login', lang='zh', next=next_url or '/') }}">中文</a>
-            <b>English</b>
-          {% endif %}
+          <a href="{{ url_for('login', next=next_url, lang='zh') }}" class="{{ 'active' if lang=='zh' else '' }}">中文</a>
+          <a href="{{ url_for('login', next=next_url, lang='en') }}" class="{{ 'active' if lang=='en' else '' }}">English</a>
         </span>
       </div>
-    </form>
+    </div>
   </div>
-
-  <footer>© {{ t['app_name'] }}</footer>
-
-  <script>
-    // 密码显隐
-    (function(){
-      const pw = document.getElementById('password');
-      const btn = document.getElementById('togglePw');
-      btn.addEventListener('click', () => {
-        const show = pw.type === 'password';
-        pw.type = show ? 'text' : 'password';
-        btn.textContent = show ? '🙈' : '👁️';
-        pw.focus();
-      });
-    })();
-
-    // 防重复提交 + 简易前端校验
-    document.getElementById('loginForm').addEventListener('submit', function(e){
-      const u = this.username.value.trim();
-      const p = this.password.value.trim();
-      if(!u || !p){
-        e.preventDefault();
-        alert('{{ "请输入用户名和密码" if lang=="zh" else "Please enter username and password" }}');
-        return;
-      }
-      this.querySelector('button[type="submit"]').disabled = true;
-    });
-  </script>
 </body>
 </html>
