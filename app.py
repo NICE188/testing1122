@@ -1,33 +1,111 @@
-# app.py  —— 完整版（已修好模板路径 / 登录拦截 / 健康检查）
-from flask import (
-    Flask, request, jsonify, render_template, redirect,
-    url_for, send_file, session, abort
-)
+# app.py  —— 完整可用版（含自动创建 login.html）
+
+from flask import Flask, request, jsonify, render_template, redirect, url_for, send_file, session, abort
+from jinja2 import TemplateNotFound
 import sqlite3, csv, io, os
 from datetime import datetime
 
-# ====== 绝对路径，确保在 Railway / Docker / 任何目录都能找到模板与静态文件 ======
-BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
-STATIC_DIR   = os.path.join(BASE_DIR, "static")
-
-# ====== SQLite 文件（也用绝对路径，避免工作目录变化导致创建到奇怪位置）======
-APP_DB = os.environ.get("APP_DB", os.path.join(BASE_DIR, "data.db"))
-
-# ====== 简单账号（可用环境变量覆盖）======
+# ================= 基本配置 =================
+APP_DB = os.environ.get("APP_DB", "data.db")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
-# ====== Flask 初始化（关键：显式指定 template_folder / static_folder）======
-app = Flask(
-    __name__,
-    template_folder=TEMPLATE_DIR,
-    static_folder=STATIC_DIR,
-    static_url_path="/static",
-)
+BASE_DIR      = os.path.abspath(os.path.dirname(__file__))
+TEMPLATE_DIR  = os.path.join(BASE_DIR, "templates")
+STATIC_DIR    = os.path.join(BASE_DIR, "static")
+
+app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
 
-# ---------------- I18N（含状态/编辑/删除文案） ----------------
+# 确保模板/静态目录存在
+os.makedirs(TEMPLATE_DIR, exist_ok=True)
+os.makedirs(STATIC_DIR, exist_ok=True)
+
+# --------- 如果缺少 login.html，就自动创建一份美观可用的 ----------
+LOGIN_HTML_PATH = os.path.join(TEMPLATE_DIR, "login.html")
+if not os.path.exists(LOGIN_HTML_PATH):
+    LOGIN_HTML_CONTENT = """<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login · Nepwin88</title>
+  <style>
+    :root{
+      --bg:#0c1220;--panel:#111827;--text:#e7ebf3;--muted:#93a4c0;--brand:#facc15;--line:rgba(148,163,184,.18)
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;font:14px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+      color:var(--text);
+      background:
+        url("https://i.imgur.com/RUhZHD9.jpeg") center/cover fixed no-repeat,
+        linear-gradient(180deg,#0c1220,#0b1220);
+    }
+    body::before{
+      content:"";position:fixed;inset:0;background:
+        radial-gradient(1100px 600px at 70% -200px, rgba(54,89,214,.22), transparent 60%),
+        radial-gradient(900px 500px at -200px 70%, rgba(250,204,21,.08), transparent 60%),
+        rgba(10,14,25,.52);
+      pointer-events:none;
+    }
+    .wrap{min-height:100%;display:grid;place-items:center;padding:32px;position:relative;z-index:1}
+    .card{
+      width:min(420px,92vw);background:rgba(16,22,39,.75);border:1px solid var(--line);
+      border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.25);backdrop-filter: blur(10px) saturate(1.05);
+      padding:22px 20px;
+    }
+    h1{margin:2px 0 14px;font-size:20px;font-weight:800;letter-spacing:.2px}
+    .muted{color:var(--muted);font-size:13px;margin-bottom:18px}
+    label{display:block;font-size:13px;margin:10px 0 6px;color:#cbd5e1}
+    input{
+      width:100%;padding:10px 12px;border-radius:12px;border:1px solid rgba(148,163,184,.28);
+      background:rgba(14,20,35,.9);color:var(--text);outline:none;
+      transition:box-shadow .15s ease, border-color .15s ease;
+    }
+    input:focus{border-color:rgba(54,89,214,.55);box-shadow:0 0 0 3px rgba(54,89,214,.18)}
+    .btn{
+      width:100%;margin-top:14px;padding:11px 12px;border-radius:12px;border:1px solid rgba(148,163,184,.28);
+      background:linear-gradient(180deg,#1e2638,#1a2233);color:#e7ebf3;cursor:pointer;
+      box-shadow:inset 0 2px 10px rgba(0,0,0,.2);
+    }
+    .error{
+      margin-top:10px;border-radius:12px;padding:10px 12px;font-size:13px;
+      color:#ef4444;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.35)
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <form class="card" method="post" action="/login">
+    <h1>登录</h1>
+    <div class="muted">请输入管理员账号登录系统</div>
+
+    <label>用户名</label>
+    <input type="text" name="username" placeholder="admin" required>
+
+    <label>密码</label>
+    <input type="password" name="password" placeholder="••••••••" required>
+
+    <input type="hidden" name="next" value="{{ next_url or '/' }}">
+    <button class="btn" type="submit">登录</button>
+
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+  </form>
+</div>
+</body>
+</html>"""
+    try:
+        with open(LOGIN_HTML_PATH, "w", encoding="utf-8") as f:
+            f.write(LOGIN_HTML_CONTENT)
+    except Exception:
+        # 即使写失败也不阻断应用启动
+        pass
+
+# ================== I18N ==================
 I18N = {
     "zh": {
         "app_name": "Nepwin88",
@@ -151,32 +229,21 @@ def inject_i18n():
     t = I18N[lang]
     return dict(t=t, lang=lang)
 
-# ----------------- 简易登录保护 -----------------
+# ================= 登录保护 =================
 def is_logged_in():
     return bool(session.get("user_id"))
 
 @app.before_request
 def require_login():
-    """
-    未登录自动跳到 /login 。
-    放行的端点：静态文件、健康检查、登录/登出。
-    注意：某些情况下 request.endpoint 可能为 None，需要兜底。
-    """
-    # 放行静态资源与公开路由
-    if request.path.startswith("/static/") or request.path == "/favicon.ico":
-        return
-    open_endpoints = {"login", "login_post", "logout", "health"}
+    # 无需登录的端点
+    open_endpoints = {"login", "login_post", "logout", "health", "static"}
     if request.endpoint in open_endpoints:
         return
-    # 有些框架/代理下 endpoint 可能是 None，做个兜底：如果是 /login 自身也放行
-    if (request.endpoint is None) and request.path.startswith("/login"):
-        return
-    # 未登录则跳去 /login
+    # 未登录则跳转
     if not is_logged_in():
-        nxt = request.path or url_for("home")
-        return redirect(url_for("login", next=nxt))
+        return redirect(url_for("login", next=request.path))
 
-# ---------------- DB helpers ----------------
+# ================= DB helpers =================
 def get_db():
     con = sqlite3.connect(APP_DB)
     con.row_factory = sqlite3.Row
@@ -239,7 +306,6 @@ def init_db():
     con.close()
 
 def ensure_is_active_columns():
-    """五张表补 is_active 列（默认 1）"""
     tables = ["workers", "bank_accounts", "card_rentals", "salary_payments", "expense_records"]
     con = get_db()
     for tname in tables:
@@ -248,33 +314,26 @@ def ensure_is_active_columns():
             con.execute(f"ALTER TABLE {tname} ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
     con.commit(); con.close()
 
-# 初始化数据库文件
 if not os.path.exists(APP_DB):
-    # 确保父目录存在
-    os.makedirs(os.path.dirname(APP_DB), exist_ok=True) if os.path.dirname(APP_DB) else None
     init_db()
 ensure_is_active_columns()
 
-# ---------------- Health ----------------
+# ================= Health =================
 @app.get("/health")
 def health():
     return "ok", 200
 
-# ---------------- Auth: login / logout ----------------
+# ================= Auth: login / logout =================
 @app.get("/login")
 def login():
-    # 如果模板不存在，直接给出明确提示（避免 500 “Internal Server Error”）
-    login_tpl = os.path.join(TEMPLATE_DIR, "login.html")
-    if not os.path.exists(login_tpl):
-        return (
-            f"Oops, template not found: <b>{login_tpl}</b><br>"
-            f"请在 <code>templates/login.html</code> 放置登录页面（我之前给你的 login.html 直接复制即可）。",
-            500,
-        )
     if is_logged_in():
         return redirect(url_for("home"))
     next_url = request.args.get("next", url_for("home"))
-    return render_template("login.html", next_url=next_url, error=None)
+    try:
+        return render_template("login.html", next_url=next_url, error=None)
+    except TemplateNotFound:
+        # 理论上不会发生（已自动生成），以防万一：
+        return f"Oops, template not found: templates/login.html", 500
 
 @app.post("/login")
 def login_post():
@@ -285,7 +344,7 @@ def login_post():
     if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
         session["user_id"] = username
         return redirect(next_url)
-    # 登录失败
+    # 失败
     return render_template("login.html", next_url=next_url,
                            error=I18N[get_lang()]["login_failed"]), 401
 
@@ -294,20 +353,28 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
-# ---------------- Home / Dashboard ----------------
+# ================= Home / Dashboard =================
 @app.route("/")
 def home():
     con = get_db()
-    total_workers  = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
-    total_rentals  = con.execute("SELECT IFNULL(SUM(rental_amount),0) s FROM card_rentals").fetchone()["s"]
+    total_workers = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
+    total_rentals = con.execute("SELECT IFNULL(SUM(rental_amount),0) s FROM card_rentals").fetchone()["s"]
     total_salaries = con.execute("SELECT IFNULL(SUM(salary_amount),0) s FROM salary_payments").fetchone()["s"]
     total_expenses = con.execute("SELECT IFNULL(SUM(amount),0) s FROM expense_records").fetchone()["s"]
     con.close()
-    return render_template("index.html",
-                           total_workers=total_workers,
-                           total_rentals=total_rentals,
-                           total_salaries=total_salaries,
-                           total_expenses=total_expenses)
+    # 你的 index.html 应该已经存在；如果不存在会抛错，这里给个兜底文本
+    try:
+        return render_template("index.html",
+                               total_workers=total_workers,
+                               total_rentals=total_rentals,
+                               total_salaries=total_salaries,
+                               total_expenses=total_expenses)
+    except TemplateNotFound:
+        return f"""
+        <h3>Nepwin88</h3>
+        <p>Dashboard 模板缺失：<code>templates/index.html</code></p>
+        <p>统计：workers={total_workers}, rentals={total_rentals}, salaries={total_salaries}, expenses={total_expenses}</p>
+        """, 200
 
 # 近 6 个月图表数据
 @app.get("/api/summary")
@@ -333,9 +400,9 @@ def api_summary():
         """)
         d = {r["ym"]: r["total"] for r in rows}
         return [float(d.get(m, 0)) for m in months]
-    rentals  = series("card_rentals",   "rental_amount", "date")
-    salaries = series("salary_payments","salary_amount", "pay_date")
-    expenses = series("expense_records","amount",        "date")
+    rentals = series("card_rentals", "rental_amount", "date")
+    salaries = series("salary_payments", "salary_amount", "pay_date")
+    expenses = series("expense_records", "amount", "date")
     con.close()
     return jsonify({"months": months, "rentals": rentals, "salaries": salaries, "expenses": expenses})
 
@@ -350,11 +417,10 @@ def _toggle_active(table, rid):
     con.commit(); con.close()
     return True
 
-# ---------------- Workers ----------------
+# ================= Workers =================
 @app.route("/workers")
 def workers_list():
     con = get_db()
-    # 支持可选时间过滤（开始/结束）
     dt_from = request.args.get("from")
     dt_to   = request.args.get("to")
     sql = "SELECT * FROM workers WHERE 1=1"
@@ -366,16 +432,19 @@ def workers_list():
     sql += " ORDER BY id DESC"
     rows = con.execute(sql, args).fetchall()
     con.close()
-    return render_template("workers.html", rows=rows)
+    try:
+        return render_template("workers.html", rows=rows)
+    except TemplateNotFound:
+        return "缺少模板：templates/workers.html", 500
 
 @app.post("/workers/add")
 def workers_add():
     d = request.form or request.json
     name = (d.get("name") or "").strip()
     if not name: return "Name is required", 400
-    company    = d.get("company") or ""
+    company = d.get("company") or ""
     commission = float(d.get("commission") or 0)
-    expenses   = float(d.get("expenses") or 0)
+    expenses = float(d.get("expenses") or 0)
     con = get_db()
     con.execute("INSERT INTO workers (name, company, commission, expenses) VALUES (?,?,?,?)",
                 (name, company, commission, expenses))
@@ -393,15 +462,18 @@ def workers_edit_form(wid):
     r = con.execute("SELECT * FROM workers WHERE id=?", (wid,)).fetchone()
     con.close()
     if not r: abort(404)
-    return render_template("workers_edit.html", r=r)
+    try:
+        return render_template("workers_edit.html", r=r)
+    except TemplateNotFound:
+        return "缺少模板：templates/workers_edit.html", 500
 
 @app.post("/workers/<int:wid>/edit")
 def workers_edit(wid):
     d = request.form or request.json
     name = (d.get("name") or "").strip()
-    company    = d.get("company") or ""
+    company = d.get("company") or ""
     commission = float(d.get("commission") or 0)
-    expenses   = float(d.get("expenses") or 0)
+    expenses = float(d.get("expenses") or 0)
     con = get_db()
     con.execute("UPDATE workers SET name=?, company=?, commission=?, expenses=? WHERE id=?",
                 (name, company, commission, expenses, wid))
@@ -422,7 +494,7 @@ def workers_delete(wid):
     con.commit(); con.close()
     return redirect(url_for("workers_list"))
 
-# ---------------- Bank Accounts ----------------
+# ================= Bank Accounts =================
 @app.route("/bank-accounts")
 def bank_accounts_list():
     con = get_db()
@@ -433,14 +505,17 @@ def bank_accounts_list():
     """).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
-    return render_template("bank_accounts.html", rows=rows, workers=workers)
+    try:
+        return render_template("bank_accounts.html", rows=rows, workers=workers)
+    except TemplateNotFound:
+        return "缺少模板：templates/bank_accounts.html", 500
 
 @app.post("/bank-accounts/add")
 def bank_accounts_add():
     d = request.form or request.json
-    worker_id      = int(d.get("worker_id"))
+    worker_id = int(d.get("worker_id"))
     account_number = (d.get("account_number") or "").strip()
-    bank_name      = (d.get("bank_name") or "").strip()
+    bank_name = (d.get("bank_name") or "").strip()
     if not (worker_id and account_number and bank_name):
         return "worker_id, account_number, bank_name required", 400
     con = get_db()
@@ -461,14 +536,17 @@ def bank_accounts_edit_form(bid):
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     if not r: abort(404)
-    return render_template("bank_accounts_edit.html", r=r, workers=workers)
+    try:
+        return render_template("bank_accounts_edit.html", r=r, workers=workers)
+    except TemplateNotFound:
+        return "缺少模板：templates/bank_accounts_edit.html", 500
 
 @app.post("/bank-accounts/<int:bid>/edit")
 def bank_accounts_edit(bid):
     d = request.form or request.json
-    worker_id      = int(d.get("worker_id"))
+    worker_id = int(d.get("worker_id"))
     account_number = (d.get("account_number") or "").strip()
-    bank_name      = (d.get("bank_name") or "").strip()
+    bank_name = (d.get("bank_name") or "").strip()
     con = get_db()
     con.execute("UPDATE bank_accounts SET worker_id=?, account_number=?, bank_name=? WHERE id=?",
                 (worker_id, account_number, bank_name, bid))
@@ -482,7 +560,7 @@ def bank_accounts_delete(bid):
     con.commit(); con.close()
     return redirect(url_for("bank_accounts_list"))
 
-# ---------------- Card Rentals ----------------
+# ================= Card Rentals =================
 @app.route("/card-rentals")
 def card_rentals_list():
     con = get_db()
@@ -493,15 +571,18 @@ def card_rentals_list():
     """).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
-    return render_template("card_rentals.html", rows=rows, workers=workers)
+    try:
+        return render_template("card_rentals.html", rows=rows, workers=workers)
+    except TemplateNotFound:
+        return "缺少模板：templates/card_rentals.html", 500
 
 @app.post("/card-rentals/add")
 def card_rentals_add():
     d = request.form or request.json
-    worker_id     = int(d.get("worker_id"))
+    worker_id = int(d.get("worker_id"))
     rental_amount = float(d.get("rental_amount"))
-    date          = (d.get("date") or "").strip()
-    note          = d.get("note") or ""
+    date = (d.get("date") or "").strip()
+    note = d.get("note") or ""
     try:
         datetime.fromisoformat(date)
     except Exception:
@@ -524,15 +605,18 @@ def card_rentals_edit_form(cid):
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     if not r: abort(404)
-    return render_template("card_rentals_edit.html", r=r, workers=workers)
+    try:
+        return render_template("card_rentals_edit.html", r=r, workers=workers)
+    except TemplateNotFound:
+        return "缺少模板：templates/card_rentals_edit.html", 500
 
 @app.post("/card-rentals/<int:cid>/edit")
 def card_rentals_edit(cid):
     d = request.form or request.json
-    worker_id     = int(d.get("worker_id"))
+    worker_id = int(d.get("worker_id"))
     rental_amount = float(d.get("rental_amount"))
-    date          = (d.get("date") or "").strip()
-    note          = d.get("note") or ""
+    date = (d.get("date") or "").strip()
+    note = d.get("note") or ""
     try:
         datetime.fromisoformat(date)
     except Exception:
@@ -550,7 +634,7 @@ def card_rentals_delete(cid):
     con.commit(); con.close()
     return redirect(url_for("card_rentals_list"))
 
-# ---------------- Salaries ----------------
+# ================= Salaries =================
 @app.route("/salaries")
 def salaries_list():
     con = get_db()
@@ -561,15 +645,18 @@ def salaries_list():
     """).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
-    return render_template("salaries.html", rows=rows, workers=workers)
+    try:
+        return render_template("salaries.html", rows=rows, workers=workers)
+    except TemplateNotFound:
+        return "缺少模板：templates/salaries.html", 500
 
 @app.post("/salaries/add")
 def salaries_add():
     d = request.form or request.json
-    worker_id     = int(d.get("worker_id"))
+    worker_id = int(d.get("worker_id"))
     salary_amount = float(d.get("salary_amount"))
-    pay_date      = (d.get("pay_date") or "").strip()
-    note          = d.get("note") or ""
+    pay_date = (d.get("pay_date") or "").strip()
+    note = d.get("note") or ""
     try:
         datetime.fromisoformat(pay_date)
     except Exception:
@@ -592,15 +679,18 @@ def salaries_edit_form(sid):
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     if not r: abort(404)
-    return render_template("salaries_edit.html", r=r, workers=workers)
+    try:
+        return render_template("salaries_edit.html", r=r, workers=workers)
+    except TemplateNotFound:
+        return "缺少模板：templates/salaries_edit.html", 500
 
 @app.post("/salaries/<int:sid>/edit")
 def salaries_edit(sid):
     d = request.form or request.json
-    worker_id     = int(d.get("worker_id"))
+    worker_id = int(d.get("worker_id"))
     salary_amount = float(d.get("salary_amount"))
-    pay_date      = (d.get("pay_date") or "").strip()
-    note          = d.get("note") or ""
+    pay_date = (d.get("pay_date") or "").strip()
+    note = d.get("note") or ""
     try:
         datetime.fromisoformat(pay_date)
     except Exception:
@@ -618,7 +708,7 @@ def salaries_delete(sid):
     con.commit(); con.close()
     return redirect(url_for("salaries_list"))
 
-# ---------------- Expenses ----------------
+# ================= Expenses =================
 @app.route("/expenses")
 def expenses_list():
     con = get_db()
@@ -630,7 +720,10 @@ def expenses_list():
     """).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
-    return render_template("expenses.html", rows=rows, workers=workers)
+    try:
+        return render_template("expenses.html", rows=rows, workers=workers)
+    except TemplateNotFound:
+        return "缺少模板：templates/expenses.html", 500
 
 @app.post("/expenses/add")
 def expenses_add():
@@ -638,8 +731,8 @@ def expenses_add():
     worker_id = d.get("worker_id")
     worker_id = int(worker_id) if worker_id else None
     amount = float(d.get("amount"))
-    date   = (d.get("date") or "").strip()
-    note   = d.get("note") or ""
+    date = (d.get("date") or "").strip()
+    note = d.get("note") or ""
     try:
         datetime.fromisoformat(date)
     except Exception:
@@ -662,7 +755,10 @@ def expenses_edit_form(eid):
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     if not r: abort(404)
-    return render_template("expenses_edit.html", r=r, workers=workers)
+    try:
+        return render_template("expenses_edit.html", r=r, workers=workers)
+    except TemplateNotFound:
+        return "缺少模板：templates/expenses_edit.html", 500
 
 @app.post("/expenses/<int:eid>/edit")
 def expenses_edit(eid):
@@ -670,8 +766,8 @@ def expenses_edit(eid):
     worker_id = d.get("worker_id")
     worker_id = int(worker_id) if worker_id else None
     amount = float(d.get("amount"))
-    date   = (d.get("date") or "").strip()
-    note   = d.get("note") or ""
+    date = (d.get("date") or "").strip()
+    note = d.get("note") or ""
     try:
         datetime.fromisoformat(date)
     except Exception:
@@ -689,7 +785,7 @@ def expenses_delete(eid):
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
 
-# ---------------- Export CSV ----------------
+# ================= Export CSV =================
 def export_csv(query, headers, filename):
     con = get_db()
     rows = con.execute(query).fetchall()
@@ -746,15 +842,7 @@ def export_expenses():
         "expenses.csv"
     )
 
-# ---- 简单 404/500 文本（避免白屏）----
-@app.errorhandler(404)
-def not_found(_):
-    return "404 Not Found", 404
-
-@app.errorhandler(500)
-def server_error(e):
-    return f"500 Internal Server Error\n\n{e}", 500
-
+# ================= main =================
 if __name__ == "__main__":
-    # 本地开发可看到详细报错
+    # 本地开发可直接运行；线上平台会忽略这个分支
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
