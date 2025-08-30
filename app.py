@@ -1,14 +1,13 @@
-from flask import (
-    Flask, request, jsonify, render_template, render_template_string,
-    redirect, url_for, send_file, session, abort
-)
-import sqlite3, csv, io, os, traceback
+# app.py  —— 完整版（含“修改登录账号/密码”）
+from flask import Flask, request, jsonify, render_template, redirect, url_for, send_file, session, abort
+import sqlite3, csv, io, os
 from datetime import datetime
-from jinja2 import TemplateNotFound
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 
 APP_DB = os.environ.get("APP_DB", "data.db")
 
-# ====== 简单账号（可用环境变量覆盖）======
+# ====== 可用环境变量覆盖的默认管理员（仅用于首次建库时种子）======
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
@@ -147,8 +146,7 @@ def is_logged_in():
 def require_login():
     # 放行的端点（无需登录）
     open_endpoints = {
-        "login", "login_post", "logout", "health", "static",
-        "_debug_template_paths"
+        "login", "login_post", "logout", "health", "static"
     }
     if request.endpoint in open_endpoints:
         return
@@ -214,6 +212,14 @@ def init_db():
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
+
+    -- 登录账号表（仅一条或少量管理员账号）
+    CREATE TABLE IF NOT EXISTS auth_user (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
     """)
     con.commit()
     con.close()
@@ -228,116 +234,35 @@ def ensure_is_active_columns():
             con.execute(f"ALTER TABLE {tname} ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
     con.commit(); con.close()
 
+def ensure_default_admin_user():
+    """若无任何账号，则用环境变量的用户名/密码创建一个默认管理员"""
+    con = get_db()
+    row = con.execute("SELECT COUNT(*) c FROM auth_user").fetchone()
+    if row["c"] == 0:
+        con.execute(
+            "INSERT INTO auth_user (username, password_hash) VALUES (?, ?)",
+            (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD))
+        )
+        con.commit()
+    con.close()
+
 if not os.path.exists(APP_DB):
     init_db()
 ensure_is_active_columns()
+ensure_default_admin_user()
 
 # ---------------- Health ----------------
 @app.get("/health")
 def health():
     return "ok", 200
 
-# ---------------- 调试端点：查看模板检索目录 ----------------
-@app.get("/__debug/template_paths")
-def _debug_template_paths():
-    paths = getattr(app.jinja_loader, "searchpath", [])
-    return {"template_searchpath": paths}, 200
-
-# ---------------- 全局错误处理：开发时显示堆栈 ----------------
-@app.errorhandler(Exception)
-def _handle_any_error(e):
-    app.logger.exception("Unhandled exception")
-    if os.environ.get("SHOW_ERRORS", "0") == "1":
-        return "<pre style='white-space:pre-wrap;line-height:1.4;font-family:ui-monospace,Menlo,Consolas,monospace'>" + \
-               traceback.format_exc() + "</pre>", 500
-    try:
-        return render_template("500.html", error=str(e)), 500
-    except Exception:
-        # 兜底 500 模板（防止 500.html 缺失时再次 500）
-        return render_template_string("""
-        <!doctype html><meta charset="utf-8">
-        <title>Internal Server Error</title>
-        <style>body{background:#0b1220;color:#e7ebf3;font:16px/1.6 system-ui;padding:40px}</style>
-        <h1>服务器开小差了（500）</h1>
-        <p>{{ error }}</p>
-        """, error=str(e)), 500
-
 # ---------------- Auth: login / logout ----------------
-def _inline_login_template():
-    """当 templates/login.html 缺失时的兜底模板（视觉统一、可用）"""
-    return """
-<!doctype html>
-<html lang="{{ 'zh' if lang=='zh' else 'en' }}">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{{ '登录' if lang=='zh' else 'Login' }} · Nepwin88</title>
-  <style>
-    :root{--card:rgba(16,22,39,.78);--line:rgba(148,163,184,.25);--txt:#e7ebf3}
-    *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0;color:var(--txt);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;
-      background:url("https://i.imgur.com/RUhZHD9.jpeg") center/cover fixed no-repeat,
-                 linear-gradient(180deg,#0c1220,#0b1220);}
-    body::before{content:"";position:fixed;inset:0;pointer-events:none;
-      background:radial-gradient(1100px 600px at 70% -220px, rgba(54,89,214,.22), transparent 60%),
-                 radial-gradient(900px 500px at -200px 70%, rgba(250,204,21,.09), transparent 60%),
-                 rgba(10,14,25,.55);}
-    .wrap{min-height:100%;display:grid;place-items:center;padding:32px}
-    .card{width:min(480px,92vw);background:var(--card);border:1px solid var(--line);border-radius:20px;
-      box-shadow:0 20px 40px rgba(0,0,0,.35);backdrop-filter: blur(10px);padding:26px}
-    h1{margin:0 0 10px;font-size:22px}
-    .muted{color:#9fb0ca;margin:0 0 18px}
-    .field{display:grid;gap:6px;margin:12px 0}
-    input{width:100%;padding:12px 14px;border-radius:12px;background:#0e1626;border:1px solid rgba(148,163,184,.32);color:#e7ebf3;outline:none}
-    input:focus{border-color:#3659d6;box-shadow:0 0 0 3px rgba(54,89,214,.20)}
-    .actions{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
-    button{padding:10px 14px;border-radius:12px;background:linear-gradient(180deg,#1e2638,#1a2233);
-      border:1px solid rgba(148,163,184,.32);color:#e7ebf3;cursor:pointer}
-    .lang a{color:#60a5fa;text-decoration:none;margin-left:8px}
-    .err{background:#3b1a1a;border:1px solid rgba(239,68,68,.45);padding:10px 12px;border-radius:12px;margin-bottom:10px}
-  </style>
-</head>
-<body>
-<div class="wrap">
-  <div class="card">
-    <h1>{{ '登录' if lang=='zh' else 'Login' }}</h1>
-    <p class="muted">{{ '请输入管理员账号登录系统' if lang=='zh' else 'Enter admin credentials' }}</p>
-    {% if error %}<div class="err">{{ error }}</div>{% endif %}
-    <form method="post" action="{{ url_for('login_post') }}">
-      <input type="hidden" name="next" value="{{ next_url }}">
-      <div class="field">
-        <label>{{ t.username if lang=='zh' else 'Username' }}</label>
-        <input name="username" autocomplete="username" required>
-      </div>
-      <div class="field">
-        <label>{{ t.password if lang=='zh' else 'Password' }}</label>
-        <input type="password" name="password" autocomplete="current-password" required>
-      </div>
-      <div class="actions">
-        <div class="lang">
-          {{ t.language }}:
-          <a href="?lang=zh">中文</a>|
-          <a href="?lang=en">English</a>
-        </div>
-        <button type="submit">{{ t.login if lang=='zh' else 'Login' }}</button>
-      </div>
-    </form>
-  </div>
-</div>
-</body>
-</html>
-"""
-
 @app.get("/login")
 def login():
     if is_logged_in():
         return redirect(url_for("home"))
     next_url = request.args.get("next", url_for("home"))
-    try:
-        return render_template("login.html", next_url=next_url, error=None)
-    except TemplateNotFound:
-        # 兜底模板，保证不会 500
-        return render_template_string(_inline_login_template(), next_url=next_url, error=None)
+    return render_template("login.html", next_url=next_url, error=None)
 
 @app.post("/login")
 def login_post():
@@ -345,16 +270,16 @@ def login_post():
     password = (request.form.get("password") or "").strip()
     next_url = request.form.get("next") or url_for("home")
 
-    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-        session["user_id"] = username
+    con = get_db()
+    user = con.execute("SELECT * FROM auth_user WHERE username=?", (username,)).fetchone()
+    con.close()
+
+    if user and check_password_hash(user["password_hash"], password):
+        session["user_id"] = user["username"]
         return redirect(next_url)
     # 登录失败
-    try:
-        return render_template("login.html", next_url=next_url,
-                               error=I18N[get_lang()]["login_failed"]), 401
-    except TemplateNotFound:
-        return render_template_string(_inline_login_template(), next_url=next_url,
-                                      error=I18N[get_lang()]["login_failed"]), 401
+    return render_template("login.html", next_url=next_url,
+                           error=I18N[get_lang()]["login_failed"]), 401
 
 @app.get("/logout")
 def logout():
@@ -370,27 +295,11 @@ def home():
     total_salaries = con.execute("SELECT IFNULL(SUM(salary_amount),0) s FROM salary_payments").fetchone()["s"]
     total_expenses = con.execute("SELECT IFNULL(SUM(amount),0) s FROM expense_records").fetchone()["s"]
     con.close()
-    # 主页模板你已有；若缺失，给个简单占位，避免 500
-    try:
-        return render_template("index.html",
-                               total_workers=total_workers,
-                               total_rentals=total_rentals,
-                               total_salaries=total_salaries,
-                               total_expenses=total_expenses)
-    except TemplateNotFound:
-        return render_template_string("""
-        <!doctype html><meta charset="utf-8">
-        <title>Dashboard</title>
-        <style>body{background:#0b1220;color:#e7ebf3;font:16px/1.6 system-ui;padding:24px}</style>
-        <h1>Dashboard</h1>
-        <ul>
-          <li>Total Workers: {{ total_workers }}</li>
-          <li>Total Card Rentals: {{ total_rentals }}</li>
-          <li>Total Salaries: {{ total_salaries }}</li>
-          <li>Total Expenses: {{ total_expenses }}</li>
-        </ul>
-        """, total_workers=total_workers, total_rentals=total_rentals,
-           total_salaries=total_salaries, total_expenses=total_expenses)
+    return render_template("index.html",
+                           total_workers=total_workers,
+                           total_rentals=total_rentals,
+                           total_salaries=total_salaries,
+                           total_expenses=total_expenses)
 
 # 近 6 个月图表数据
 @app.get("/api/summary")
@@ -449,10 +358,7 @@ def workers_list():
     sql += " ORDER BY id DESC"
     rows = con.execute(sql, args).fetchall()
     con.close()
-    try:
-        return render_template("workers.html", rows=rows)
-    except TemplateNotFound:
-        return render_template_string("<pre>{{ rows|length }} workers</pre>", rows=rows)
+    return render_template("workers.html", rows=rows)
 
 @app.post("/workers/add")
 def workers_add():
@@ -479,10 +385,7 @@ def workers_edit_form(wid):
     r = con.execute("SELECT * FROM workers WHERE id=?", (wid,)).fetchone()
     con.close()
     if not r: abort(404)
-    try:
-        return render_template("workers_edit.html", r=r)
-    except TemplateNotFound:
-        return render_template_string("<pre>edit worker {{ r['id'] }}</pre>", r=r)
+    return render_template("workers_edit.html", r=r)
 
 @app.post("/workers/<int:wid>/edit")
 def workers_edit(wid):
@@ -522,10 +425,7 @@ def bank_accounts_list():
     """).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
-    try:
-        return render_template("bank_accounts.html", rows=rows, workers=workers)
-    except TemplateNotFound:
-        return render_template_string("<pre>{{ rows|length }} bank accounts</pre>", rows=rows)
+    return render_template("bank_accounts.html", rows=rows, workers=workers)
 
 @app.post("/bank-accounts/add")
 def bank_accounts_add():
@@ -553,10 +453,7 @@ def bank_accounts_edit_form(bid):
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     if not r: abort(404)
-    try:
-        return render_template("bank_accounts_edit.html", r=r, workers=workers)
-    except TemplateNotFound:
-        return render_template_string("<pre>edit bank account {{ r['id'] }}</pre>", r=r)
+    return render_template("bank_accounts_edit.html", r=r, workers=workers)
 
 @app.post("/bank-accounts/<int:bid>/edit")
 def bank_accounts_edit(bid):
@@ -588,10 +485,7 @@ def card_rentals_list():
     """).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
-    try:
-        return render_template("card_rentals.html", rows=rows, workers=workers)
-    except TemplateNotFound:
-        return render_template_string("<pre>{{ rows|length }} card rentals</pre>", rows=rows)
+    return render_template("card_rentals.html", rows=rows, workers=workers)
 
 @app.post("/card-rentals/add")
 def card_rentals_add():
@@ -622,10 +516,7 @@ def card_rentals_edit_form(cid):
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     if not r: abort(404)
-    try:
-        return render_template("card_rentals_edit.html", r=r, workers=workers)
-    except TemplateNotFound:
-        return render_template_string("<pre>edit card rental {{ r['id'] }}</pre>", r=r)
+    return render_template("card_rentals_edit.html", r=r, workers=workers)
 
 @app.post("/card-rentals/<int:cid>/edit")
 def card_rentals_edit(cid):
@@ -662,10 +553,7 @@ def salaries_list():
     """).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
-    try:
-        return render_template("salaries.html", rows=rows, workers=workers)
-    except TemplateNotFound:
-        return render_template_string("<pre>{{ rows|length }} salaries</pre>", rows=rows)
+    return render_template("salaries.html", rows=rows, workers=workers)
 
 @app.post("/salaries/add")
 def salaries_add():
@@ -696,10 +584,7 @@ def salaries_edit_form(sid):
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     if not r: abort(404)
-    try:
-        return render_template("salaries_edit.html", r=r, workers=workers)
-    except TemplateNotFound:
-        return render_template_string("<pre>edit salary {{ r['id'] }}</pre>", r=r)
+    return render_template("salaries_edit.html", r=r, workers=workers)
 
 @app.post("/salaries/<int:sid>/edit")
 def salaries_edit(sid):
@@ -737,10 +622,7 @@ def expenses_list():
     """).fetchall()
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
-    try:
-        return render_template("expenses.html", rows=rows, workers=workers)
-    except TemplateNotFound:
-        return render_template_string("<pre>{{ rows|length }} expenses</pre>", rows=rows)
+    return render_template("expenses.html", rows=rows, workers=workers)
 
 @app.post("/expenses/add")
 def expenses_add():
@@ -772,10 +654,7 @@ def expenses_edit_form(eid):
     workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
     con.close()
     if not r: abort(404)
-    try:
-        return render_template("expenses_edit.html", r=r, workers=workers)
-    except TemplateNotFound:
-        return render_template_string("<pre>edit expense {{ r['id'] }}</pre>", r=r)
+    return render_template("expenses_edit.html", r=r, workers=workers)
 
 @app.post("/expenses/<int:eid>/edit")
 def expenses_edit(eid):
@@ -801,6 +680,63 @@ def expenses_delete(eid):
     con.execute("DELETE FROM expense_records WHERE id=?", (eid,))
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
+
+# ---------------- 修改登录账号/密码（单页合并） ----------------
+@app.get("/account-credentials")
+def account_credentials_form():
+    if not session.get("user_id"):
+        return redirect(url_for("login", next=request.path))
+    current_username = session["user_id"]
+    return render_template("account_credentials.html",
+                           current_username=current_username,
+                           ok=request.args.get("ok"),
+                           err=request.args.get("err"))
+
+@app.post("/account-credentials")
+def account_credentials_save():
+    if not session.get("user_id"):
+        return redirect(url_for("login", next=request.path))
+
+    current_username = session["user_id"]
+    new_username = (request.form.get("new_username") or "").strip()
+    old_pwd = request.form.get("old_pwd") or ""
+    new_pwd = request.form.get("new_pwd") or ""
+    new_pwd2 = request.form.get("new_pwd2") or ""
+
+    con = get_db()
+    user = con.execute("SELECT * FROM auth_user WHERE username=?", (current_username,)).fetchone()
+    if not user:
+        con.close()
+        return redirect(url_for("account_credentials_form", err="user_missing"))
+
+    # 验证旧密码
+    if not check_password_hash(user["password_hash"], old_pwd):
+        con.close()
+        return redirect(url_for("account_credentials_form", err="bad_old"))
+
+    # 改用户名（可选）
+    if new_username and new_username != current_username:
+        dup = con.execute("SELECT 1 FROM auth_user WHERE username=?", (new_username,)).fetchone()
+        if dup:
+            con.close()
+            return redirect(url_for("account_credentials_form", err="dup_name"))
+        con.execute("UPDATE auth_user SET username=? WHERE id=?", (new_username, user["id"]))
+        session["user_id"] = new_username  # 同步会话
+
+    # 改密码（可选，需两次一致）
+    if new_pwd or new_pwd2:
+        if new_pwd != new_pwd2:
+            con.close()
+            return redirect(url_for("account_credentials_form", err="pwd_mismatch"))
+        if len(new_pwd) < 6:
+            con.close()
+            return redirect(url_for("account_credentials_form", err="pwd_short"))
+        con.execute("UPDATE auth_user SET password_hash=? WHERE id=?",
+                    (generate_password_hash(new_pwd), user["id"]))
+
+    con.commit()
+    con.close()
+    return redirect(url_for("account_credentials_form", ok="1"))
 
 # ---------------- Export CSV ----------------
 def export_csv(query, headers, filename):
@@ -860,5 +796,4 @@ def export_expenses():
     )
 
 if __name__ == "__main__":
-    # 本地调试：可设置 SHOW_ERRORS=1 查看堆栈
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(debug=True)
