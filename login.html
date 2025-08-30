@@ -1,3 +1,4 @@
+<!-- templates/login.html -->
 <!doctype html>
 <html lang="{{ 'zh' if lang == 'zh' else 'en' }}">
 <head>
@@ -27,7 +28,7 @@
         radial-gradient(1200px 600px at 80% -120px, rgba(54,89,214,.22), transparent 55%),
         radial-gradient(900px 520px at -200px 80%, rgba(250,204,21,.10), transparent 60%),
         linear-gradient(180deg, #0b1324, #0a1220);
-      /* 想用“几何三角形大图”可打开下两行：
+      /* 想用“几何三角形大图”可打开下两行（去掉注释）：
       background:
         url("https://i.imgur.com/RUhZHD9.jpeg") center/cover fixed no-repeat,
         radial-gradient(1200px 600px at 80% -120px, rgba(54,89,214,.22), transparent 55%),
@@ -100,10 +101,10 @@
     .lang a{color:#cfe1ff; text-decoration:none}
     .lang a:hover{text-decoration:underline}
 
-    .meta{ margin-top:14px; font-size:12px; color:#94a3b8 }
+    .meta{ margin-top:14px; font-size:12px; color:#94a3b8; text-align:center }
     .meta .dot{opacity:.65}
-    .center{ text-align:center; }
 
+    /* 更好的移动端体验 */
     @media (max-width:560px){
       .card{ padding:22px 18px; border-radius:16px; }
       .title{ font-size:20px }
@@ -111,11 +112,11 @@
   </style>
 </head>
 <body>
-  <!-- 模板版本：{{ version_tag or 'LOGIN-TPL-V7' }} -->
+  <!-- 模板版本：LOGIN-TPL-V7（已整理） -->
   <div class="grid">
-    <form class="card" action="{{ url_for('login_post') }}" method="post" novalidate>
+    <form class="card" action="{{ url_for('login_post') }}" method="post" novalidate aria-label="Sign in form">
       <div class="brand">
-        <div class="logo">
+        <div class="logo" aria-label="{{ t['app_name'] }}">
           <div class="logo-badge" aria-hidden="true"></div>
           <div class="logo-title">{{ t['app_name'] }}</div>
         </div>
@@ -123,33 +124,33 @@
 
       <div class="title">{{ '登录' if lang=='zh' else 'Login' }}</div>
       <div class="subtitle">
-        {% if lang=='zh' %} 请输入管理员账号登录系统 {% else %} Please sign in with admin account {% endif %}
+        {% if lang=='zh' %} {{ t['login_tip'] }} {% else %} {{ t['login_tip'] }} {% endif %}
       </div>
 
-      {% if error %}<div class="error">{{ error }}</div>{% endif %}
+      {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
       <input type="hidden" name="next" value="{{ next_url or url_for('home') }}">
 
       <div class="field">
-        <label class="label">{{ t['username'] }}</label>
-        <input class="input" type="text" name="username" autocomplete="username" autofocus required>
+        <label class="label" for="username">{{ t['username'] }}</label>
+        <input id="username" class="input" type="text" name="username" autocomplete="username" autofocus required>
       </div>
 
       <div class="field">
-        <label class="label">{{ t['password'] }}</label>
-        <input class="input" type="password" name="password" autocomplete="current-password" required>
+        <label class="label" for="password">{{ t['password'] }}</label>
+        <input id="password" class="input" type="password" name="password" autocomplete="current-password" required>
       </div>
 
       <div class="actions">
         <button class="btn" type="submit">{{ t['login'] }}</button>
       </div>
 
-      <div class="lang">
+      <div class="lang" aria-label="Language switcher">
         {{ '语言' if lang=='zh' else 'Language' }}：
         <a href="{{ url_for('login', next=next_url, lang='zh') }}">中文</a> |
         <a href="{{ url_for('login', next=next_url, lang='en') }}">English</a>
       </div>
 
-      <div class="meta center">
+      <div class="meta">
         © {{ t['app_name'] }} · <span class="dot">●</span>
         <span>{{ '安全登录' if lang=='zh' else 'Secure Sign In' }}</span>
       </div>
