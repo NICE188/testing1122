@@ -1,82 +1,100 @@
+<!-- templates/base.html -->
 <!doctype html>
-<html lang="{{ 'zh' if lang=='zh' else 'en' }}">
+<html lang="{{ 'zh' if lang == 'zh' else 'en' }}">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{{ t.app_name }}{% if page_title %} — {{ page_title }}{% endif %}</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}{{ t.app_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  {% block extra_head %}{% endblock %}
 </head>
-<body>
-<div class="layout">
-
-  <!-- 左侧侧栏 -->
+<body class="app">
+  <!-- Sidebar -->
   <aside class="sidebar">
-    <div class="brand">🇳🇵 {{ t.app_name }}</div>
-
-    <!-- 一排排：图标 + 名称 -->
-    <nav class="nav-grid">
-      <a href="{{ url_for('home') }}" class="tile {{ 'active' if request.path=='/' else '' }}">
-        <span class="tile-emoji" aria-hidden="true">🎰</span>
-        <span class="tile-label">{{ t.dashboard }}</span>
-      </a>
-
-      <a href="{{ url_for('workers_list') }}" class="tile {{ 'active' if request.path.startswith('/workers') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">👨‍💼</span>
-        <span class="tile-label">{{ t.workers }}</span>
-      </a>
-
-      <a href="{{ url_for('bank_accounts_list') }}" class="tile {{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">🏦</span>
-        <span class="tile-label">{{ t.bank_accounts }}</span>
-      </a>
-
-      <a href="{{ url_for('card_rentals_list') }}" class="tile {{ 'active' if request.path.startswith('/card-rentals') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">💳</span>
-        <span class="tile-label">{{ t.card_rentals }}</span>
-      </a>
-
-      <a href="{{ url_for('salaries_list') }}" class="tile {{ 'active' if request.path.startswith('/salaries') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">💵</span>
-        <span class="tile-label">{{ t.salaries }}</span>
-      </a>
-
-      <a href="{{ url_for('expenses_list') }}" class="tile {{ 'active' if request.path.startswith('/expenses') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">💸</span>
-        <span class="tile-label">{{ t.expenses }}</span>
-      </a>
-<a href="/account-credentials" class="{% if request.path == '/account-credentials' %}active{% endif %}">
-  <span class="emoji">🧑‍💻</span> 修改登录账号/密码
-</a>
-    </nav>
-
-    <div class="lang">
-      🌐 {{ t.language }}：
-      <a href="?lang=zh">中文</a> | <a href="?lang=en">EN</a>
+    <div class="brand">
+      <span class="emoji">😈</span>
+      <span class="brand-name">{{ t.app_name }}</span>
     </div>
+
+    <div class="user-line">
+      用户：<strong>{{ session.get('user_id', 'guest') }}</strong>
+    </div>
+
+    <nav class="nav">
+      <!-- 主导航 -->
+      <a href="{{ url_for('home') }}"
+         class="{% if request.path == '/' %}active{% endif %}">
+        <span class="emoji">🏠</span> Dashboard
+      </a>
+
+      <a href="{{ url_for('workers_list') }}"
+         class="{% if request.path.startswith('/workers') %}active{% endif %}">
+        <span class="emoji">👨‍💼</span> {{ t.workers }}
+      </a>
+
+      <a href="{{ url_for('bank_accounts_list') }}"
+         class="{% if request.path.startswith('/bank-accounts') %}active{% endif %}">
+        <span class="emoji">🏦</span> {{ t.bank_accounts }}
+      </a>
+
+      <a href="{{ url_for('card_rentals_list') }}"
+         class="{% if request.path.startswith('/card-rentals') %}active{% endif %}">
+        <span class="emoji">💳</span> {{ t.card_rentals }}
+      </a>
+
+      <a href="{{ url_for('salaries_list') }}"
+         class="{% if request.path.startswith('/salaries') %}active{% endif %}">
+        <span class="emoji">💵</span> {{ t.salaries }}
+      </a>
+
+      <a href="{{ url_for('expenses_list') }}"
+         class="{% if request.path.startswith('/expenses') %}active{% endif %}">
+        <span class="emoji">💸</span> {{ t.expenses }}
+      </a>
+
+      <!-- 分组标题 -->
+      <div class="nav-group-title">安全设置</div>
+
+      <!-- 你要求新增的入口：修改登录账号/密码 -->
+      <a href="/account-credentials"
+         class="{% if request.path == '/account-credentials' %}active{% endif %}">
+        <span class="emoji">🧑‍💻</span> 修改登录账号/密码
+      </a>
+
+      <!-- 退出登录 -->
+      <div class="nav-group-title">会话</div>
+      <a href="{{ url_for('logout') }}">
+        <span class="emoji">🚪</span> {{ t.logout }}
+      </a>
+
+      <!-- 语言切换 -->
+      <div class="nav-group-title">{{ t.language }}</div>
+      <div class="lang-switch">
+        <a href="{{ request.path }}?lang=zh">中文</a>
+        <span class="sep">|</span>
+        <a href="{{ request.path }}?lang=en">English</a>
+      </div>
+    </nav>
   </aside>
 
-  <!-- 右侧主内容 -->
-  <main class="content">
-    <header class="topbar">
-      <div></div>
-      <div class="exports">
-        <a class="btn" href="{{ url_for('export_workers') }}">{{ t.export_workers }}</a>
-        <a class="btn" href="{{ url_for('export_bank') }}">{{ t.export_bank }}</a>
-        <a class="btn" href="{{ url_for('export_rentals') }}">{{ t.export_rentals }}</a>
-        <a class="btn" href="{{ url_for('export_salaries') }}">{{ t.export_salaries }}</a>
-        <a class="btn" href="{{ url_for('export_expenses') }}">{{ t.export_expenses }}</a>
-
-        {% if session.get('user_id') %}
-          <a class="btn" href="{{ url_for('logout') }}">{{ t.logout }}</a>
-        {% else %}
-          <a class="btn" href="{{ url_for('login', next=request.full_path or request.path) }}">{{ t.login }}</a>
-        {% endif %}
+  <!-- Main -->
+  <main class="main">
+    <header class="page-header">
+      <h1 class="page-title">
+        {% block page_title %}{% endblock %}
+      </h1>
+      <div class="page-actions">
+        {% block page_actions %}{% endblock %}
       </div>
     </header>
 
-    {% block body %}{% endblock %}
+    <section class="page-content">
+      {% block content %}
+      <!-- 页面内容 -->
+      {% endblock %}
+    </section>
   </main>
-</div>
+
+  {% block scripts %}{% endblock %}
 </body>
 </html>
