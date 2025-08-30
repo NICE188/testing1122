@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ 'zh' if lang=='zh' else 'en' }}">
+<html lang="{{ html_lang }}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -64,10 +64,10 @@
 <div class="wrap">
   <form class="card" method="post" action="{{ url_for('login_post') }}">
     <div class="langs">
-      <a class="{{ 'on' if lang=='zh' else '' }}"
+      <a class="{% if lang=='zh' %}on{% endif %}"
          href="{{ url_for('set_lang') }}?lang=zh&next={{ request.path }}">中文</a>
       <span>|</span>
-      <a class="{{ 'on' if lang=='en' else '' }}"
+      <a class="{% if lang=='en' %}on{% endif %}"
          href="{{ url_for('set_lang') }}?lang=en&next={{ request.path }}">EN</a>
     </div>
 
