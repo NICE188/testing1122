@@ -2,20 +2,21 @@ from flask import (
     Flask, request, jsonify, render_template, render_template_string,
     redirect, url_for, send_file, session, abort
 )
-import sqlite3, csv, io, os, traceback
+import sqlite3, csv, io, os, traceback, secrets, string
 from datetime import datetime
 from jinja2 import TemplateNotFound
+from werkzeug.security import generate_password_hash, check_password_hash
 
 APP_DB = os.environ.get("APP_DB", "data.db")
 
-# ====== 简单账号（可用环境变量覆盖）======
+# ====== 简单账号（初始化时写入 users 表；后续改动都在 DB）======
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
 
-# ---------------- I18N（含状态/编辑/删除文案） ----------------
+# ---------------- I18N（含账号安全相关文案） ----------------
 I18N = {
     "zh": {
         "app_name": "Nepwin88",
@@ -70,6 +71,23 @@ I18N = {
         "username": "用户名",
         "password": "密码",
         "login_failed": "用户名或密码错误",
+
+        # account / security
+        "account_security": "账号安全",
+        "reset_pw": "重置密码",
+        "change_pw": "修改密码",
+        "change_user_id": "修改用户名",
+        "current_password": "当前密码",
+        "new_password": "新密码",
+        "confirm_password": "确认新密码",
+        "new_username": "新用户名",
+        "submit_change": "提交修改",
+        "reset_done": "已重置密码",
+        "new_pw_is": "新的密码是",
+        "wrong_password": "当前密码不正确",
+        "pw_not_match": "两次输入的新密码不一致",
+        "username_taken": "该用户名已被占用",
+        "update_ok": "更新成功",
     },
     "en": {
         "app_name": "Nepwin88",
@@ -124,6 +142,23 @@ I18N = {
         "username": "Username",
         "password": "Password",
         "login_failed": "Wrong username or password",
+
+        # account / security
+        "account_security": "Account Security",
+        "reset_pw": "Reset Password",
+        "change_pw": "Change Password",
+        "change_user_id": "Change Username",
+        "current_password": "Current Password",
+        "new_password": "New Password",
+        "confirm_password": "Confirm New Password",
+        "new_username": "New Username",
+        "submit_change": "Submit",
+        "reset_done": "Password has been reset",
+        "new_pw_is": "New password is",
+        "wrong_password": "Current password is incorrect",
+        "pw_not_match": "New passwords do not match",
+        "username_taken": "Username already taken",
+        "update_ok": "Updated successfully",
     }
 }
 
@@ -145,7 +180,6 @@ def is_logged_in():
 
 @app.before_request
 def require_login():
-    # 放行的端点（无需登录）
     open_endpoints = {
         "login", "login_post", "logout", "health", "static",
         "_debug_template_paths"
@@ -214,12 +248,27 @@ def init_db():
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
+
+    -- 新增 users 表（仅 1 条管理员记录）
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
     """)
     con.commit()
+    # 初始化管理员
+    row = con.execute("SELECT COUNT(*) c FROM users").fetchone()
+    if row["c"] == 0:
+        con.execute(
+            "INSERT INTO users (username, password_hash) VALUES (?,?)",
+            (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD))
+        )
+        con.commit()
     con.close()
 
 def ensure_is_active_columns():
-    """五张表补 is_active 列（默认 1）"""
     tables = ["workers", "bank_accounts", "card_rentals", "salary_payments", "expense_records"]
     con = get_db()
     for tname in tables:
@@ -230,6 +279,8 @@ def ensure_is_active_columns():
 
 if not os.path.exists(APP_DB):
     init_db()
+else:
+    init_db()  # 安全起见，确保 users 表存在
 ensure_is_active_columns()
 
 # ---------------- Health ----------------
@@ -243,7 +294,7 @@ def _debug_template_paths():
     paths = getattr(app.jinja_loader, "searchpath", [])
     return {"template_searchpath": paths}, 200
 
-# ---------------- 全局错误处理：开发时显示堆栈 ----------------
+# ---------------- 全局错误处理 ----------------
 @app.errorhandler(Exception)
 def _handle_any_error(e):
     app.logger.exception("Unhandled exception")
@@ -253,35 +304,27 @@ def _handle_any_error(e):
     try:
         return render_template("500.html", error=str(e)), 500
     except Exception:
-        # 兜底 500 模板（防止 500.html 缺失时再次 500）
         return render_template_string("""
         <!doctype html><meta charset="utf-8">
         <title>Internal Server Error</title>
         <style>body{background:#0b1220;color:#e7ebf3;font:16px/1.6 system-ui;padding:40px}</style>
-        <h1>服务器开小差了（500）</h1>
+        <h1>Server Error (500)</h1>
         <p>{{ error }}</p>
         """, error=str(e)), 500
 
-# ---------------- Auth: login / logout ----------------
+# =============== 账号安全（登录 / 退出 / 安全中心）================
 def _inline_login_template():
-    """当 templates/login.html 缺失时的兜底模板（视觉统一、可用）"""
     return """
 <!doctype html>
 <html lang="{{ 'zh' if lang=='zh' else 'en' }}">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{{ '登录' if lang=='zh' else 'Login' }} · Nepwin88</title>
   <style>
     :root{--card:rgba(16,22,39,.78);--line:rgba(148,163,184,.25);--txt:#e7ebf3}
     *{box-sizing:border-box} html,body{height:100%}
     body{margin:0;color:var(--txt);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;
-      background:url("https://i.imgur.com/RUhZHD9.jpeg") center/cover fixed no-repeat,
-                 linear-gradient(180deg,#0c1220,#0b1220);}
-    body::before{content:"";position:fixed;inset:0;pointer-events:none;
-      background:radial-gradient(1100px 600px at 70% -220px, rgba(54,89,214,.22), transparent 60%),
-                 radial-gradient(900px 500px at -200px 70%, rgba(250,204,21,.09), transparent 60%),
-                 rgba(10,14,25,.55);}
+      background:#0b1220;}
     .wrap{min-height:100%;display:grid;place-items:center;padding:32px}
     .card{width:min(480px,92vw);background:var(--card);border:1px solid var(--line);border-radius:20px;
       box-shadow:0 20px 40px rgba(0,0,0,.35);backdrop-filter: blur(10px);padding:26px}
@@ -328,6 +371,78 @@ def _inline_login_template():
 </html>
 """
 
+def _inline_account_security_template():
+    return """
+<!doctype html>
+<html lang="{{ 'zh' if lang=='zh' else 'en' }}">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ t.account_security }}</title>
+  <style>
+    body{background:#0b1220;color:#e7ebf3;font:15px/1.6 system-ui;margin:0}
+    .wrap{max-width:900px;margin:40px auto;padding:0 16px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+    .card{background:rgba(16,22,39,.78);border:1px solid rgba(148,163,184,.25);border-radius:16px;padding:16px}
+    h1{font-size:22px;margin:0 0 16px}
+    h2{font-size:16px;margin:0 0 10px}
+    input{width:100%;padding:10px;border-radius:10px;background:#0e1626;border:1px solid rgba(148,163,184,.32);color:#e7ebf3;margin:6px 0}
+    button{padding:10px 12px;border-radius:10px;background:#1c2436;border:1px solid rgba(148,163,184,.32);color:#e7ebf3;cursor:pointer}
+    .msg{margin:12px 0;padding:10px;border-radius:10px;background:#0d1b2a;border:1px solid rgba(148,163,184,.25)}
+    .ok{border-color:rgba(34,197,94,.4);background:#0f2a1a}
+    .warn{border-color:rgba(250,204,21,.4);background:#2a230f}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>{{ t.account_security }}</h1>
+    {% if msg %}<div class="msg ok">{{ msg|safe }}</div>{% endif %}
+    <div class="grid">
+      <div class="card">
+        <h2>🔁 {{ t.reset_pw }}</h2>
+        <form method="post" action="{{ url_for('account_reset_password') }}">
+          <button type="submit">RESET</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>🔒 {{ t.change_pw }}</h2>
+        <form method="post" action="{{ url_for('account_change_password') }}">
+          <label>{{ t.current_password }}</label>
+          <input type="password" name="old_pw" required>
+          <label>{{ t.new_password }}</label>
+          <input type="password" name="new_pw" required>
+          <label>{{ t.confirm_password }}</label>
+          <input type="password" name="new_pw2" required>
+          <button type="submit">{{ t.submit_change }}</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>🆔 {{ t.change_user_id }}</h2>
+        <form method="post" action="{{ url_for('account_change_username') }}">
+          <label>{{ t.new_username }}</label>
+          <input name="new_username" required>
+          <label>{{ t.current_password }}</label>
+          <input type="password" name="pw" required>
+          <button type="submit">{{ t.submit_change }}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+"""
+
+def _current_user():
+    con = get_db()
+    u = None
+    if session.get("user_id"):
+        u = con.execute("SELECT * FROM users WHERE username=?", (session["user_id"],)).fetchone()
+    if not u:
+        u = con.execute("SELECT * FROM users ORDER BY id LIMIT 1").fetchone()
+    con.close()
+    return u
+
 @app.get("/login")
 def login():
     if is_logged_in():
@@ -336,7 +451,6 @@ def login():
     try:
         return render_template("login.html", next_url=next_url, error=None)
     except TemplateNotFound:
-        # 兜底模板，保证不会 500
         return render_template_string(_inline_login_template(), next_url=next_url, error=None)
 
 @app.post("/login")
@@ -345,7 +459,11 @@ def login_post():
     password = (request.form.get("password") or "").strip()
     next_url = request.form.get("next") or url_for("home")
 
-    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+    con = get_db()
+    u = con.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
+    con.close()
+    ok = bool(u and check_password_hash(u["password_hash"], password))
+    if ok:
         session["user_id"] = username
         return redirect(next_url)
     # 登录失败
@@ -361,7 +479,62 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
-# ---------------- Home / Dashboard ----------------
+@app.get("/account")
+def account_security():
+    msg = request.args.get("msg")
+    try:
+        return render_template("account_security.html", msg=msg)
+    except TemplateNotFound:
+        return render_template_string(_inline_account_security_template(), msg=msg)
+
+@app.post("/account/reset-password")
+def account_reset_password():
+    # 生成随机 12 位密码
+    alphabet = string.ascii_letters + string.digits
+    new_pw = "".join(secrets.choice(alphabet) for _ in range(12))
+    con = get_db()
+    con.execute("UPDATE users SET password_hash=? WHERE id=(SELECT id FROM users ORDER BY id LIMIT 1)",
+                (generate_password_hash(new_pw),))
+    con.commit(); con.close()
+    # 同步 session（仍然有效，不强制登出）
+    msg = f"{I18N[get_lang()]['reset_done']} · {I18N[get_lang()]['new_pw_is']}: <b>{new_pw}</b>"
+    return redirect(url_for("account_security", msg=msg))
+
+@app.post("/account/change-password")
+def account_change_password():
+    old_pw = request.form.get("old_pw") or ""
+    new_pw = request.form.get("new_pw") or ""
+    new_pw2 = request.form.get("new_pw2") or ""
+    if new_pw != new_pw2:
+        return redirect(url_for("account_security", msg=I18N[get_lang()]["pw_not_match"]))
+    u = _current_user()
+    if not u or not check_password_hash(u["password_hash"], old_pw):
+        return redirect(url_for("account_security", msg=I18N[get_lang()]["wrong_password"]))
+    con = get_db()
+    con.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new_pw), u["id"]))
+    con.commit(); con.close()
+    return redirect(url_for("account_security", msg=I18N[get_lang()]["update_ok"]))
+
+@app.post("/account/change-username")
+def account_change_username():
+    new_username = (request.form.get("new_username") or "").strip()
+    pw = request.form.get("pw") or ""
+    if not new_username:
+        return redirect(url_for("account_security", msg="Username required"))
+    u = _current_user()
+    if not u or not check_password_hash(u["password_hash"], pw):
+        return redirect(url_for("account_security", msg=I18N[get_lang()]["wrong_password"]))
+    con = get_db()
+    exists = con.execute("SELECT 1 FROM users WHERE username=? AND id<>?", (new_username, u["id"])).fetchone()
+    if exists:
+        con.close()
+        return redirect(url_for("account_security", msg=I18N[get_lang()]["username_taken"]))
+    con.execute("UPDATE users SET username=? WHERE id=?", (new_username, u["id"]))
+    con.commit(); con.close()
+    session["user_id"] = new_username
+    return redirect(url_for("account_security", msg=I18N[get_lang()]["update_ok"]))
+
+# ================= Home / Dashboard & 业务原有路由（保持不变）=================
 @app.route("/")
 def home():
     con = get_db()
@@ -370,7 +543,6 @@ def home():
     total_salaries = con.execute("SELECT IFNULL(SUM(salary_amount),0) s FROM salary_payments").fetchone()["s"]
     total_expenses = con.execute("SELECT IFNULL(SUM(amount),0) s FROM expense_records").fetchone()["s"]
     con.close()
-    # 主页模板你已有；若缺失，给个简单占位，避免 500
     try:
         return render_template("index.html",
                                total_workers=total_workers,
@@ -392,7 +564,6 @@ def home():
         """, total_workers=total_workers, total_rentals=total_rentals,
            total_salaries=total_salaries, total_expenses=total_expenses)
 
-# 近 6 个月图表数据
 @app.get("/api/summary")
 def api_summary():
     con = get_db()
@@ -422,7 +593,6 @@ def api_summary():
     con.close()
     return jsonify({"months": months, "rentals": rentals, "salaries": salaries, "expenses": expenses})
 
-# -------- 通用：切换 is_active --------
 def _toggle_active(table, rid):
     con = get_db()
     row = con.execute(f"SELECT is_active FROM {table} WHERE id=?", (rid,)).fetchone()
@@ -433,19 +603,14 @@ def _toggle_active(table, rid):
     con.commit(); con.close()
     return True
 
-# ---------------- Workers ----------------
+# ---- Workers
 @app.route("/workers")
 def workers_list():
     con = get_db()
-    # 支持可选时间过滤（开始/结束）
-    dt_from = request.args.get("from")
-    dt_to   = request.args.get("to")
-    sql = "SELECT * FROM workers WHERE 1=1"
-    args = []
-    if dt_from:
-        sql += " AND datetime(created_at) >= datetime(?)"; args.append(dt_from)
-    if dt_to:
-        sql += " AND datetime(created_at) <= datetime(?)"; args.append(dt_to)
+    dt_from = request.args.get("from"); dt_to = request.args.get("to")
+    sql = "SELECT * FROM workers WHERE 1=1"; args = []
+    if dt_from: sql += " AND datetime(created_at) >= datetime(?)"; args.append(dt_from)
+    if dt_to:   sql += " AND datetime(created_at) <= datetime(?)"; args.append(dt_to)
     sql += " ORDER BY id DESC"
     rows = con.execute(sql, args).fetchall()
     con.close()
@@ -511,7 +676,7 @@ def workers_delete(wid):
     con.commit(); con.close()
     return redirect(url_for("workers_list"))
 
-# ---------------- Bank Accounts ----------------
+# ---- Bank Accounts
 @app.route("/bank-accounts")
 def bank_accounts_list():
     con = get_db()
@@ -577,7 +742,7 @@ def bank_accounts_delete(bid):
     con.commit(); con.close()
     return redirect(url_for("bank_accounts_list"))
 
-# ---------------- Card Rentals ----------------
+# ---- Card Rentals
 @app.route("/card-rentals")
 def card_rentals_list():
     con = get_db()
@@ -651,7 +816,7 @@ def card_rentals_delete(cid):
     con.commit(); con.close()
     return redirect(url_for("card_rentals_list"))
 
-# ---------------- Salaries ----------------
+# ---- Salaries
 @app.route("/salaries")
 def salaries_list():
     con = get_db()
@@ -725,7 +890,7 @@ def salaries_delete(sid):
     con.commit(); con.close()
     return redirect(url_for("salaries_list"))
 
-# ---------------- Expenses ----------------
+# ---- Expenses
 @app.route("/expenses")
 def expenses_list():
     con = get_db()
@@ -780,8 +945,7 @@ def expenses_edit_form(eid):
 @app.post("/expenses/<int:eid>/edit")
 def expenses_edit(eid):
     d = request.form or request.json
-    worker_id = d.get("worker_id")
-    worker_id = int(worker_id) if worker_id else None
+    worker_id = d.get("worker_id"); worker_id = int(worker_id) if worker_id else None
     amount = float(d.get("amount"))
     date = (d.get("date") or "").strip()
     note = d.get("note") or ""
@@ -802,7 +966,7 @@ def expenses_delete(eid):
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
 
-# ---------------- Export CSV ----------------
+# ---- Export
 def export_csv(query, headers, filename):
     con = get_db()
     rows = con.execute(query).fetchall()
@@ -860,5 +1024,4 @@ def export_expenses():
     )
 
 if __name__ == "__main__":
-    # 本地调试：可设置 SHOW_ERRORS=1 查看堆栈
     app.run(host="0.0.0.0", port=5000, debug=False)
