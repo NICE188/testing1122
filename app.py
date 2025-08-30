@@ -1,54 +1,84 @@
-# app.py  —— 你的原有逻辑 + 稳健增强版
-from flask import Flask, request, jsonify, render_template, render_template_string, redirect, url_for, send_file, session, abort
-import sqlite3, csv, io, os, logging, traceback
+from flask import (
+    Flask, request, jsonify, render_template, render_template_string,
+    redirect, url_for, send_file, session, abort
+)
+import sqlite3, csv, io, os, logging
 from datetime import datetime
+from jinja2 import TemplateNotFound
 
+# ---------- 基础配置 ----------
 APP_DB = os.environ.get("APP_DB", "data.db")
-
-# ====== 简单账号（可用环境变量覆盖）======
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
-# 改模板自动生效（开发期友好）
-app.config["TEMPLATES_AUTO_RELOAD"] = True
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(APP_ROOT, "templates")
+STATIC_DIR = os.path.join(APP_ROOT, "static")
 
-# -----------------------------------------------------------------------------
-# 日志 + 统一错误处理（避免只看到“Internal Server Error”）
-# -----------------------------------------------------------------------------
+app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
+
 logging.basicConfig(level=logging.INFO)
 
-from jinja2 import TemplateNotFound
+# ---------- 登录页“后备模板”：万一 login.html 丢了/路径错了也能显示 ----------
+LOGIN_HTML_FALLBACK = r"""<!doctype html>
+<html lang="{{ 'zh' if lang == 'zh' else 'en' }}">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ '登录' if lang=='zh' else 'Login' }} · {{ t['app_name'] }}</title>
+  <style>
+    :root{--bg:#0b1324;--panel:#141c2d;--text:#e6ecf5;--muted:#9fb0c9;--brand:#facc15;--ring:#3659d6;--line:rgba(148,163,184,.18);--shadow:0 18px 50px rgba(0,0,0,.35)}
+    *,*:before,*:after{box-sizing:border-box}html,body{height:100%}
+    body{margin:0;font:16px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans","PingFang SC","Microsoft YaHei",sans-serif;color:var(--text);
+      background:radial-gradient(1200px 600px at 80% -120px, rgba(54,89,214,.22), transparent 55%),radial-gradient(900px 520px at -200px 80%, rgba(250,204,21,.10), transparent 60%),linear-gradient(180deg,#0b1324,#0a1220)}
+    .grid{min-height:100%;display:grid;place-items:center;padding:28px}
+    .card{width:min(92vw,540px);background:linear-gradient(180deg, rgba(20,28,45,.92), rgba(20,28,45,.86));
+      border:1px solid var(--line);border-radius:20px;padding:26px 26px 20px;box-shadow:var(--shadow);backdrop-filter: blur(12px) saturate(1.05)}
+    .brand{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+    .logo{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.3px}
+    .logo-badge{width:26px;height:26px;border-radius:8px;background:conic-gradient(from 180deg,#60a5fa,#a78bfa,#60a5fa);box-shadow:0 0 0 3px rgba(96,165,250,.18)}
+    .logo-title{font-size:18px}
+    .title{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:800;letter-spacing:.3px;margin:2px 2px 10px}
+    .subtitle{color:var(--muted);font-size:13px;margin:-2px 2px 18px}
+    .field{margin-bottom:12px}.label{font-size:13px;color:#cbd5e1;margin:0 4px 6px;display:block}
+    .input{width:100%;padding:12px 14px;border-radius:12px;background:rgba(11,17,32,.9);color:var(--text);
+      border:1px solid rgba(148,163,184,.28);outline:none;transition:.18s ease}
+    .input:focus{border-color:rgba(54,89,214,.6);box-shadow:0 0 0 3px rgba(54,89,214,.18);background:rgba(14,21,38,.96)}
+    .error{margin:-4px 2px 12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(239,68,68,.4);
+      background:linear-gradient(180deg, rgba(239,68,68,.14), rgba(239,68,68,.10));color:#fecaca;font-size:13px}
+    .actions{display:flex;align-items:center;gap:10px;margin-top:8px}
+    .btn{padding:10px 14px;border-radius:12px;cursor:pointer;border:1px solid rgba(148,163,184,.28);color:#0b1324;font-weight:800;letter-spacing:.2px;
+      background:linear-gradient(180deg,#ffd84a,#facc15);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 10px 20px rgba(250,204,21,.25)}
+    .btn:active{transform:translateY(1px)}.btn:hover{filter:brightness(1.04)}
+    .lang{margin-top:16px;color:var(--muted);font-size:13px}.lang a{color:#cfe1ff;text-decoration:none}.lang a:hover{text-decoration:underline}
+    .meta{margin-top:14px;font-size:12px;color:#94a3b8;text-align:center}.meta .dot{opacity:.65}
+    @media (max-width:560px){.card{padding:22px 18px;border-radius:16px}.title{font-size:20px}}
+  </style>
+</head>
+<body>
+  <div class="grid">
+    <form class="card" action="{{ url_for('login_post') }}" method="post" novalidate>
+      <div class="brand">
+        <div class="logo"><div class="logo-badge" aria-hidden="true"></div><div class="logo-title">{{ t['app_name'] }}</div></div>
+      </div>
+      <div class="title">{{ '登录' if lang=='zh' else 'Login' }}</div>
+      <div class="subtitle">{{ t['login_tip'] }}</div>
+      {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+      <input type="hidden" name="next" value="{{ next_url or url_for('home') }}">
+      <div class="field"><label class="label" for="username">{{ t['username'] }}</label>
+        <input id="username" class="input" type="text" name="username" autocomplete="username" autofocus required></div>
+      <div class="field"><label class="label" for="password">{{ t['password'] }}</label>
+        <input id="password" class="input" type="password" name="password" autocomplete="current-password" required></div>
+      <div class="actions"><button class="btn" type="submit">{{ t['login'] }}</button></div>
+      <div class="lang">{{ '语言' if lang=='zh' else 'Language' }}：
+        <a href="{{ url_for('login', next=next_url, lang='zh') }}">中文</a> |
+        <a href="{{ url_for('login', next=next_url, lang='en') }}">English</a></div>
+      <div class="meta">© {{ t['app_name'] }} · <span class="dot">●</span> <span>{{ '安全登录' if lang=='zh' else 'Secure Sign In' }}</span></div>
+    </form>
+  </div>
+</body></html>"""
 
-@app.errorhandler(TemplateNotFound)
-def handle_tpl_not_found(e):
-    return (
-        f"Oops, template not found: <b>templates/{e.name}</b><br>"
-        "请确认文件存在且文件名大小写一致（Linux 区分大小写）。",
-        500,
-    )
-
-@app.errorhandler(Exception)
-def handle_any_error(e):
-    app.logger.exception("Unhandled error")
-    return (
-        f"Error: <b>{e.__class__.__name__}</b><br>"
-        f"Message: {str(e)}<br>"
-        "请打开 Railway（或你的部署平台）日志查看完整堆栈。",
-        500,
-    )
-
-@app.get("/__diag__")
-def __diag():
-    # 迷你诊断：确认模板上下文(t/lang)与 Jinja 能正常工作
-    return render_template_string("OK — lang={{lang}}, app={{t.app_name}}")
-
-@app.get("/favicon.ico")
-def favicon():
-    return ("", 204)
-
-# ---------------- I18N（含状态/编辑/删除文案） ----------------
+# ---------- I18N ----------
 I18N = {
     "zh": {
         "app_name": "Nepwin88",
@@ -174,24 +204,20 @@ def inject_i18n():
     t = I18N[lang]
     return dict(t=t, lang=lang)
 
-# ----------------- 简易登录保护 -----------------
+# ---------- 简易登录保护 ----------
 def is_logged_in():
     return bool(session.get("user_id"))
 
 @app.before_request
 def require_login():
-    # 放行的端点（无需登录）
-    open_endpoints = {
-        "login", "login_post", "logout",
-        "health", "static", "__diag__", "favicon"
-    }
+    open_endpoints = {"login", "login_post", "logout", "health", "static", "__diag__", "__tpls__", "favicon"}
     if request.endpoint in open_endpoints:
         return
     if not is_logged_in():
         next_url = request.path
         return redirect(url_for("login", next=next_url))
 
-# ---------------- DB helpers ----------------
+# ---------- DB ----------
 def get_db():
     con = sqlite3.connect(APP_DB)
     con.row_factory = sqlite3.Row
@@ -210,7 +236,6 @@ def init_db():
         expenses REAL DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
-
     CREATE TABLE IF NOT EXISTS bank_accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         worker_id INTEGER NOT NULL,
@@ -219,7 +244,6 @@ def init_db():
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
-
     CREATE TABLE IF NOT EXISTS card_rentals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         worker_id INTEGER NOT NULL,
@@ -229,7 +253,6 @@ def init_db():
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
-
     CREATE TABLE IF NOT EXISTS salary_payments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         worker_id INTEGER NOT NULL,
@@ -239,7 +262,6 @@ def init_db():
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
-
     CREATE TABLE IF NOT EXISTS expense_records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         worker_id INTEGER,
@@ -250,11 +272,9 @@ def init_db():
         FOREIGN KEY(worker_id) REFERENCES workers(id)
     );
     """)
-    con.commit()
-    con.close()
+    con.commit(); con.close()
 
 def ensure_is_active_columns():
-    """五张表补 is_active 列（默认 1）"""
     tables = ["workers", "bank_accounts", "card_rentals", "salary_payments", "expense_records"]
     con = get_db()
     for tname in tables:
@@ -267,26 +287,61 @@ if not os.path.exists(APP_DB):
     init_db()
 ensure_is_active_columns()
 
-# ---------------- Health ----------------
+# ---------- Health & 诊断 ----------
 @app.get("/health")
 def health():
     return "ok", 200
 
-# ---------------- Auth: login / logout ----------------
+@app.get("/__diag__")
+def __diag():
+    return render_template_string("OK — lang={{lang}}, app={{t.app_name}}")
+
+@app.get("/__tpls__")
+def __tpls__():
+    try:
+        files = os.listdir(TEMPLATES_DIR) if os.path.isdir(TEMPLATES_DIR) else []
+    except Exception:
+        files = []
+    return {
+        "template_folder": TEMPLATES_DIR,
+        "login_html_exists": os.path.exists(os.path.join(TEMPLATES_DIR, "login.html")),
+        "files": files,
+    }
+
+@app.get("/favicon.ico")
+def favicon():
+    return ("", 204)
+
+# ---------- 错误处理（避免只看到 Internal Server Error） ----------
+@app.errorhandler(TemplateNotFound)
+def handle_tpl_not_found(e):
+    return (
+        f"Oops, template not found: <b>templates/{e.name}</b><br>"
+        "请确认文件存在且文件名大小写一致（Linux 区分大小写）。",
+        500,
+    )
+
+@app.errorhandler(Exception)
+def handle_any_error(e):
+    app.logger.exception("Unhandled error")
+    return (
+        f"Error: <b>{e.__class__.__name__}</b><br>"
+        f"Message: {str(e)}<br>"
+        "请在部署平台日志查看完整堆栈。",
+        500,
+    )
+
+# ---------- Auth: login / logout ----------
 @app.get("/login")
 def login():
     if is_logged_in():
         return redirect(url_for("home"))
     next_url = request.args.get("next", url_for("home"))
-    # 友好检查：避免 login.html 缺失导致 500
-    tpl = os.path.join(app.template_folder or "templates", "login.html")
-    if not os.path.isfile(tpl):
-        return (
-            "Oops, template not found: <b>templates/login.html</b><br>"
-            "请把登录页文件放到 <code>templates/</code> 目录，文件名严格为 <code>login.html</code>（小写）。",
-            500,
-        )
-    return render_template("login.html", next_url=next_url, error=None)
+    # 优先用文件模板；找不到时用后备模板
+    try:
+        return render_template("login.html", next_url=next_url, error=None)
+    except TemplateNotFound:
+        return render_template_string(LOGIN_HTML_FALLBACK, next_url=next_url, error=None)
 
 @app.post("/login")
 def login_post():
@@ -297,41 +352,38 @@ def login_post():
         session["user_id"] = username
         return redirect(next_url)
     # 登录失败
-    return render_template("login.html", next_url=next_url,
-                           error=I18N[get_lang()]["login_failed"]), 401
+    try:
+        return render_template("login.html", next_url=next_url,
+                               error=I18N[get_lang()]["login_failed"]), 401
+    except TemplateNotFound:
+        return render_template_string(LOGIN_HTML_FALLBACK, next_url=next_url,
+                                      error=I18N[get_lang()]["login_failed"]), 401
 
 @app.get("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
 
-# ---------------- Home / Dashboard ----------------
+# ---------- 首页 / Dashboard ----------
 @app.route("/")
 def home():
-    # 优先使用你的 index.html；如果缺失，不报 500，给个占位页
+    con = get_db()
+    total_workers = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
+    total_rentals = con.execute("SELECT IFNULL(SUM(rental_amount),0) s FROM card_rentals").fetchone()["s"]
+    total_salaries = con.execute("SELECT IFNULL(SUM(salary_amount),0) s FROM salary_payments").fetchone()["s"]
+    total_expenses = con.execute("SELECT IFNULL(SUM(amount),0) s FROM expense_records").fetchone()["s"]
+    con.close()
+    # 你已有 index.html 就会用你的；没有就用一个很小的内嵌模板
     try:
-        con = get_db()
-        total_workers = con.execute("SELECT COUNT(*) c FROM workers").fetchone()["c"]
-        total_rentals = con.execute("SELECT IFNULL(SUM(rental_amount),0) s FROM card_rentals").fetchone()["s"]
-        total_salaries = con.execute("SELECT IFNULL(SUM(salary_amount),0) s FROM salary_payments").fetchone()["s"]
-        total_expenses = con.execute("SELECT IFNULL(SUM(amount),0) s FROM expense_records").fetchone()["s"]
-        con.close()
         return render_template("index.html",
                                total_workers=total_workers,
                                total_rentals=total_rentals,
                                total_salaries=total_salaries,
                                total_expenses=total_expenses)
     except TemplateNotFound:
-        user = session.get("user_id", "?")
-        return f"""
-        <html><body style="font-family:Inter,Arial,Helvetica,sans-serif;padding:24px;color:#e6ecf5;background:#0b1324">
-            <h2>Hi, {user}</h2>
-            <p>你已成功登录。当前缺少 <code>templates/index.html</code>，这是临时首页占位。</p>
-            <p><a href="{url_for('logout')}" style="color:#9dd1ff">退出登录</a></p>
-        </body></html>
-        """
+        return f"<h1 style='font-family:system-ui'>Dashboard</h1><p>Workers: {total_workers}</p>"
 
-# 近 6 个月图表数据
+# ---------- 图表数据 ----------
 @app.get("/api/summary")
 def api_summary():
     con = get_db()
@@ -361,7 +413,7 @@ def api_summary():
     con.close()
     return jsonify({"months": months, "rentals": rentals, "salaries": salaries, "expenses": expenses})
 
-# -------- 通用：切换 is_active --------
+# ---------- 通用激活切换 ----------
 def _toggle_active(table, rid):
     con = get_db()
     row = con.execute(f"SELECT is_active FROM {table} WHERE id=?", (rid,)).fetchone()
@@ -372,11 +424,10 @@ def _toggle_active(table, rid):
     con.commit(); con.close()
     return True
 
-# ---------------- Workers ----------------
+# ---------- Workers ----------
 @app.route("/workers")
 def workers_list():
     con = get_db()
-    # 支持可选时间过滤（开始/结束）
     dt_from = request.args.get("from")
     dt_to   = request.args.get("to")
     sql = "SELECT * FROM workers WHERE 1=1"
@@ -444,7 +495,7 @@ def workers_delete(wid):
     con.commit(); con.close()
     return redirect(url_for("workers_list"))
 
-# ---------------- Bank Accounts ----------------
+# ---------- Bank Accounts ----------
 @app.route("/bank-accounts")
 def bank_accounts_list():
     con = get_db()
@@ -504,7 +555,7 @@ def bank_accounts_delete(bid):
     con.commit(); con.close()
     return redirect(url_for("bank_accounts_list"))
 
-# ---------------- Card Rentals ----------------
+# ---------- Card Rentals ----------
 @app.route("/card-rentals")
 def card_rentals_list():
     con = get_db()
@@ -572,7 +623,7 @@ def card_rentals_delete(cid):
     con.commit(); con.close()
     return redirect(url_for("card_rentals_list"))
 
-# ---------------- Salaries ----------------
+# ---------- Salaries ----------
 @app.route("/salaries")
 def salaries_list():
     con = get_db()
@@ -640,7 +691,7 @@ def salaries_delete(sid):
     con.commit(); con.close()
     return redirect(url_for("salaries_list"))
 
-# ---------------- Expenses ----------------
+# ---------- Expenses ----------
 @app.route("/expenses")
 def expenses_list():
     con = get_db()
@@ -711,7 +762,7 @@ def expenses_delete(eid):
     con.commit(); con.close()
     return redirect(url_for("expenses_list"))
 
-# ---------------- Export CSV ----------------
+# ---------- Export CSV ----------
 def export_csv(query, headers, filename):
     con = get_db()
     rows = con.execute(query).fetchall()
@@ -719,7 +770,8 @@ def export_csv(query, headers, filename):
     si = io.StringIO()
     cw = csv.writer(si)
     cw.writerow(headers)
-    for r in rows: cw.writerow([r[h] for h in headers])
+    for r in rows:
+        cw.writerow([r[h] for h in headers])
     mem = io.BytesIO(si.getvalue().encode("utf-8-sig"))
     mem.seek(0)
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name=filename)
@@ -769,5 +821,4 @@ def export_expenses():
     )
 
 if __name__ == "__main__":
-    # Railway 会注入 PORT；本地默认 5000
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(debug=True)
