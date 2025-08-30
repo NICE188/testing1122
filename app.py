@@ -1,17 +1,17 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, send_file, session, abort
-import sqlite3, csv, io, os
+import sqlite3, csv, io, os, traceback
 from datetime import datetime
 
 APP_DB = os.environ.get("APP_DB", "data.db")
 
-# ====== 简单账号（可用环境变量覆盖）======
+# ====== 登录账号（可用环境变量覆盖）======
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # session 用
 
-# ---------------- I18N（含状态/编辑/删除文案） ----------------
+# ---------------- I18N（含登录/登出文案） ----------------
 I18N = {
     "zh": {
         "app_name": "Nepwin88",
@@ -124,6 +124,7 @@ I18N = {
 }
 
 def get_lang():
+    # URL ?lang=zh/en 时写入 session
     lang = request.args.get("lang")
     if lang in I18N:
         session["lang"] = lang
@@ -135,26 +136,30 @@ def inject_i18n():
     t = I18N[lang]
     return dict(t=t, lang=lang)
 
-# ----------------- 登录保护 & 语言切换 -----------------
+# --------- 语言切换（登录页右上角用）---------
+@app.get("/set-lang")
+def set_lang():
+    lang = request.args.get("lang")
+    if lang in I18N:
+        session["lang"] = lang
+    next_url = request.args.get("next") or url_for("home")
+    return redirect(next_url)
+
+# ----------------- 登录保护 -----------------
 def is_logged_in():
     return bool(session.get("user_id"))
 
 @app.before_request
 def require_login():
-    # 无需登录的端点
-    open_endpoints = {"login", "login_post", "logout", "health", "static", "set_lang"}
+    # 放行的端点（无需登录）
+    open_endpoints = {
+        "login", "login_post", "logout", "health", "static", "set_lang"
+    }
     if request.endpoint in open_endpoints:
         return
     if not is_logged_in():
-        return redirect(url_for("login", next=request.path))
-
-@app.get("/set-lang")
-def set_lang():
-    code = request.args.get("lang", "zh")
-    if code in I18N:
-        session["lang"] = code
-    nxt = request.args.get("next") or request.referrer or url_for("login")
-    return redirect(nxt)
+        next_url = request.path
+        return redirect(url_for("login", next=next_url))
 
 # ---------------- DB helpers ----------------
 def get_db():
@@ -232,41 +237,42 @@ if not os.path.exists(APP_DB):
     init_db()
 ensure_is_active_columns()
 
-# ---------------- Health ----------------
+# ---------------- 健康检查 ----------------
 @app.get("/health")
 def health():
     return "ok", 200
 
-# ---------------- Auth: login / logout ----------------
+# ---------------- 登录 / 登出 ----------------
 @app.get("/login")
 def login():
     if is_logged_in():
         return redirect(url_for("home"))
     next_url = request.args.get("next", url_for("home"))
-    return render_template("login.html", next_url=next_url, error=None)
+    html_lang = 'zh' if get_lang() == 'zh' else 'en'
+    return render_template("login.html", next_url=next_url, error=None, html_lang=html_lang)
 
 @app.post("/login")
 def login_post():
     username = (request.form.get("username") or "").strip()
     password = (request.form.get("password") or "").strip()
     next_url = request.form.get("next") or url_for("home")
-
     if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
         session["user_id"] = username
         return redirect(next_url)
     # 登录失败
-    return render_template("login.html", next_url=next_url,
-                           error=I18N[get_lang()]["login_failed"]), 401
+    return render_template(
+        "login.html",
+        next_url=next_url,
+        error=I18N[get_lang()]["login_failed"],
+        html_lang=('zh' if get_lang() == 'zh' else 'en')
+    ), 401
 
 @app.get("/logout")
 def logout():
-    # 退出时保留当前语言
-    current_lang = session.get("lang", "zh")
     session.clear()
-    session["lang"] = current_lang
     return redirect(url_for("login"))
 
-# ---------------- Home / Dashboard ----------------
+# ---------------- 首页 / Dashboard ----------------
 @app.route("/")
 def home():
     con = get_db()
@@ -717,5 +723,18 @@ def export_expenses():
         "expenses.csv"
     )
 
+# -------- 错误可视化（调试用：设置 DEBUG_ERRORS=1 即可在浏览器看到堆栈） --------
+@app.errorhandler(Exception)
+def _any_error(e):
+    if os.environ.get("DEBUG_ERRORS", "0") == "1":
+        return (
+            "<h3>Exception on server</h3><pre>%s</pre>" % traceback.format_exc(),
+            500,
+            {"Content-Type": "text/html; charset=utf-8"},
+        )
+    return "Internal Server Error", 500
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    # 本地开发时便于调试
+    app.run(host="0.0.0.0", port=5000, debug=True)
