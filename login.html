@@ -1,45 +1,90 @@
 <!doctype html>
 <html lang="{{ 'zh' if lang=='zh' else 'en' }}">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>{{ t["login"] }} · {{ t["app_name"] }}</title>
 
-  <!-- 用你整站的样式：背景三角、玻璃面板、按钮等都会一致 -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=login2">
+  <!-- 复用你整站的样式（背景三角 + 玻璃卡片 + 按钮等） -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=login-3">
 
   <style>
-    /* 只补充登录页的居中与卡片宽度，不破坏你原来的 style.css */
+    /* ===== 只为登录页补充的少量样式，不改变全站 ===== */
+
+    /* 全屏垂直水平居中 */
     .login-wrap{
       min-height:100dvh;
       display:grid;
       place-items:center;
       padding:24px;
     }
+
+    /* 玻璃卡片：尺寸适中、微妙阴影（具体视觉来自 style.css 的 .panel） */
     .login-card{
       width:min(520px, 92vw);
       margin:auto;
     }
-    .login-title{ margin:4px 2px 10px; font-size:20px; font-weight:800; }
-    .login-tip{ color:#9fb0cc; font-size:13px; margin:0 2px 14px; }
+
+    /* 标题 + 说明 */
+    .login-title{
+      margin:4px 2px 10px;
+      font-size:22px;
+      font-weight:900;
+      letter-spacing:.2px;
+    }
+    .login-tip{
+      color:#9fb0cc;
+      font-size:13px;
+      margin:0 2px 16px;
+    }
+
+    /* 错误提示（红色玻璃条） */
     .error{
-      margin:8px 2px 12px; padding:10px 12px; border-radius:10px;
+      margin:6px 2px 12px; padding:10px 12px; border-radius:10px;
       border:1px solid rgba(239,68,68,.35);
       background:linear-gradient(180deg, rgba(239,68,68,.16), rgba(239,68,68,.10));
       color:#fecaca; font-size:13px;
     }
+
+    /* 表单布局（沿用你 .form 的视觉，但在此页单独控制间距） */
+    .login-form{ display:flex; flex-direction:column; gap:12px; }
+    .login-form label .label{
+      color:#cbd5e1; font-size:13px; margin:0 0 6px 2px;
+      letter-spacing:.2px;
+    }
+    .login-form input{
+      background:rgba(14,20,35,.9);
+      border:1px solid rgba(148,163,184,.28);
+      border-radius:11px;
+      padding:11px 12px; color:#e7ebf3; outline:none;
+      transition:box-shadow .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .login-form input::placeholder{ color:#9fb0cc }
+    .login-form input:focus{
+      border-color:rgba(54,89,214,.55);
+      box-shadow:0 0 0 3px rgba(54,89,214,.18);
+      background:rgba(18,24,41,.96);
+    }
+
+    /* 登录按钮更“厚实”一些 */
+    .login-form .btn{
+      width:100%;
+      padding:12px 14px;
+      border-radius:12px;
+      font-weight:700;
+      letter-spacing:.3px;
+    }
+
+    /* 底部语言切换 */
     .lang-row{ margin-top:12px; color:#93a4c0; font-size:13px; }
     .lang-row a{ color:#cbd5e1; text-decoration:none; margin-left:6px; }
     .lang-row a:hover{ color:#fff; }
-    /* 让输入与按钮更像你的表单样式（复用 .form 的风格）*/
-    .login-form{ display:flex; flex-direction:column; gap:10px; }
-    .login-form .btn{ width:100%; }
   </style>
 </head>
 <body>
 
+  <!-- 背景 & 玻璃遮罩均来自你的 style.css（body 的背景图 + body::before 光晕） -->
   <div class="login-wrap">
-    <!-- 复用你的 .panel 外观（玻璃、圆角、阴影由 style.css 提供） -->
     <div class="panel login-card">
       <div class="login-title">{{ t["login"] }}</div>
       <p class="login-tip">
@@ -47,7 +92,7 @@
       </p>
 
       {% if error %}
-      <div class="error">{{ error }}</div>
+        <div class="error">{{ error }}</div>
       {% endif %}
 
       <form class="login-form" method="post" action="{{ url_for('login') }}">
@@ -55,12 +100,12 @@
 
         <label>
           <div class="label">{{ t["username"] }}</div>
-          <input class="" name="username" autocomplete="username" placeholder="{{ t['username'] }}" required>
+          <input name="username" autocomplete="username" placeholder="{{ t['username'] }}" required>
         </label>
 
         <label>
           <div class="label">{{ t["password"] }}</div>
-          <input class="" type="password" name="password" autocomplete="current-password" placeholder="{{ t['password'] }}" required>
+          <input type="password" name="password" autocomplete="current-password" placeholder="{{ t['password'] }}" required>
         </label>
 
         <button class="btn" type="submit">{{ t["login"] }}</button>
