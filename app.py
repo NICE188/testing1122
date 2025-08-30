@@ -697,4 +697,168 @@ def salaries_edit_form(sid):
     con.close()
     if not r: abort(404)
     try:
-       
+        return render_template("salaries_edit.html", r=r, workers=workers)
+    except TemplateNotFound:
+        return render_template_string("<pre>edit salary {{ r['id'] }}</pre>", r=r)
+
+@app.post("/salaries/<int:sid>/edit")
+def salaries_edit(sid):
+    d = request.form or request.json
+    worker_id = int(d.get("worker_id"))
+    salary_amount = float(d.get("salary_amount"))
+    pay_date = (d.get("pay_date") or "").strip()
+    note = d.get("note") or ""
+    try:
+        datetime.fromisoformat(pay_date)
+    except Exception:
+        return "pay_date must be YYYY-MM-DD", 400
+    con = get_db()
+    con.execute("UPDATE salary_payments SET worker_id=?, salary_amount=?, pay_date=?, note=? WHERE id=?",
+                (worker_id, salary_amount, pay_date, note, sid))
+    con.commit(); con.close()
+    return redirect(url_for("salaries_list"))
+
+@app.post("/salaries/<int:sid>/delete")
+def salaries_delete(sid):
+    con = get_db()
+    con.execute("DELETE FROM salary_payments WHERE id=?", (sid,))
+    con.commit(); con.close()
+    return redirect(url_for("salaries_list"))
+
+# ---------------- Expenses ----------------
+@app.route("/expenses")
+def expenses_list():
+    con = get_db()
+    rows = con.execute("""
+      SELECT e.*, w.name AS worker_name
+      FROM expense_records e
+      LEFT JOIN workers w ON w.id=e.worker_id
+      ORDER BY e.date DESC, e.id DESC
+    """).fetchall()
+    workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
+    con.close()
+    try:
+        return render_template("expenses.html", rows=rows, workers=workers)
+    except TemplateNotFound:
+        return render_template_string("<pre>{{ rows|length }} expenses</pre>", rows=rows)
+
+@app.post("/expenses/add")
+def expenses_add():
+    d = request.form or request.json
+    worker_id = d.get("worker_id")
+    worker_id = int(worker_id) if worker_id else None
+    amount = float(d.get("amount"))
+    date = (d.get("date") or "").strip()
+    note = d.get("note") or ""
+    try:
+        datetime.fromisoformat(date)
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
+    con = get_db()
+    con.execute("INSERT INTO expense_records (worker_id, amount, date, note) VALUES (?,?,?,?)",
+                (worker_id, amount, date, note))
+    con.commit(); con.close()
+    return redirect(url_for("expenses_list"))
+
+@app.post("/expenses/<int:eid>/toggle")
+def expenses_toggle(eid):
+    _toggle_active("expense_records", eid)
+    return redirect(url_for("expenses_list"))
+
+@app.get("/expenses/<int:eid>/edit")
+def expenses_edit_form(eid):
+    con = get_db()
+    r = con.execute("SELECT * FROM expense_records WHERE id=?", (eid,)).fetchone()
+    workers = con.execute("SELECT id,name FROM workers ORDER BY name").fetchall()
+    con.close()
+    if not r: abort(404)
+    try:
+        return render_template("expenses_edit.html", r=r, workers=workers)
+    except TemplateNotFound:
+        return render_template_string("<pre>edit expense {{ r['id'] }}</pre>", r=r)
+
+@app.post("/expenses/<int:eid>/edit")
+def expenses_edit(eid):
+    d = request.form or request.json
+    worker_id = d.get("worker_id")
+    worker_id = int(worker_id) if worker_id else None
+    amount = float(d.get("amount"))
+    date = (d.get("date") or "").strip()
+    note = d.get("note") or ""
+    try:
+        datetime.fromisoformat(date)
+    except Exception:
+        return "date must be YYYY-MM-DD", 400
+    con = get_db()
+    con.execute("UPDATE expense_records SET worker_id=?, amount=?, date=?, note=? WHERE id=?",
+                (worker_id, amount, date, note, eid))
+    con.commit(); con.close()
+    return redirect(url_for("expenses_list"))
+
+@app.post("/expenses/<int:eid>/delete")
+def expenses_delete(eid):
+    con = get_db()
+    con.execute("DELETE FROM expense_records WHERE id=?", (eid,))
+    con.commit(); con.close()
+    return redirect(url_for("expenses_list"))
+
+# ---------------- Export CSV ----------------
+def export_csv(query, headers, filename):
+    con = get_db()
+    rows = con.execute(query).fetchall()
+    con.close()
+    si = io.StringIO()
+    cw = csv.writer(si)
+    cw.writerow(headers)
+    for r in rows: cw.writerow([r[h] for h in headers])
+    mem = io.BytesIO(si.getvalue().encode("utf-8-sig"))
+    mem.seek(0)
+    return send_file(mem, mimetype="text/csv", as_attachment=True, download_name=filename)
+
+@app.get("/export/workers.csv")
+def export_workers():
+    return export_csv(
+        "SELECT id,name,company,commission,expenses,created_at FROM workers ORDER BY id",
+        ["id","name","company","commission","expenses","created_at"],
+        "workers.csv"
+    )
+
+@app.get("/export/bank_accounts.csv")
+def export_bank():
+    return export_csv(
+        """SELECT b.id, w.name as worker_name, b.account_number, b.bank_name, b.created_at
+           FROM bank_accounts b JOIN workers w ON w.id=b.worker_id ORDER BY b.id""",
+        ["id","worker_name","account_number","bank_name","created_at"],
+        "bank_accounts.csv"
+    )
+
+@app.get("/export/card_rentals.csv")
+def export_rentals():
+    return export_csv(
+        """SELECT c.id, w.name as worker_name, c.rental_amount, c.date, c.note, c.created_at
+           FROM card_rentals c JOIN workers w ON w.id=c.worker_id ORDER BY c.date DESC, c.id""",
+        ["id","worker_name","rental_amount","date","note","created_at"],
+        "card_rentals.csv"
+    )
+
+@app.get("/export/salaries.csv")
+def export_salaries():
+    return export_csv(
+        """SELECT s.id, w.name as worker_name, s.salary_amount, s.pay_date, s.note, s.created_at
+           FROM salary_payments s JOIN workers w ON w.id=s.worker_id ORDER BY s.pay_date DESC, s.id""",
+        ["id","worker_name","salary_amount","pay_date","note","created_at"],
+        "salaries.csv"
+    )
+
+@app.get("/export/expenses.csv")
+def export_expenses():
+    return export_csv(
+        """SELECT e.id, w.name as worker_name, e.amount, e.date, e.note, e.created_at
+           FROM expense_records e LEFT JOIN workers w ON w.id=e.worker_id ORDER BY e.date DESC, e.id""",
+        ["id","worker_name","amount","date","note","created_at"],
+        "expenses.csv"
+    )
+
+if __name__ == "__main__":
+    # 本地调试：可设置 SHOW_ERRORS=1 查看堆栈
+    app.run(host="0.0.0.0", port=5000, debug=False)
