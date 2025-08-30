@@ -1,44 +1,49 @@
 {% extends "base.html" %}
-{% set page_title = t.dashboard %}
-{% block body %}
-<h1 class="page-title"><span class="nav-emoji" aria-hidden="true">🎰</span> {{ t.dashboard }}</h1>
+{% block title %}Dashboard · {{ t.app_name }}{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- 顶部导出按钮（右侧对齐） -->
+<div class="topbar">
+  <div></div>
+  <div class="exports">
+    <a class="btn sm" href="{{ url_for('export_workers') }}">{{ t.export_workers }}</a>
+    <a class="btn sm" href="{{ url_for('export_bank') }}">{{ t.export_bank }}</a>
+    <a class="btn sm" href="{{ url_for('export_rentals') }}">{{ t.export_rentals }}</a>
+    <a class="btn sm" href="{{ url_for('export_salaries') }}">{{ t.export_salaries }}</a>
+    <a class="btn sm" href="{{ url_for('export_expenses') }}">{{ t.export_expenses }}</a>
+  </div>
+</div>
+
+<!-- 指标卡片 -->
 <div class="cards">
-  <div class="card"><div class="metric-title">{{ t.total_workers }}</div><div class="metric-num">{{ total_workers }}</div></div>
-  <div class="card"><div class="metric-title">{{ t.total_rentals }}</div><div class="metric-num">{{ '%.2f'|format(total_rentals or 0) }}</div></div>
-  <div class="card"><div class="metric-title">{{ t.total_salaries }}</div><div class="metric-num">{{ '%.2f'|format(total_salaries or 0) }}</div></div>
-  <div class="card"><div class="metric-title">{{ t.total_expenses }}</div><div class="metric-num">{{ '%.2f'|format(total_expenses or 0) }}</div></div>
+  <div class="card">
+    <div class="metric-title">{{ t.total_workers }}</div>
+    <div class="metric-num">{{ total_workers }}</div>
+  </div>
+  <div class="card">
+    <div class="metric-title">{{ t.total_rentals }}</div>
+    <div class="metric-num">{{ '%.2f'|format(total_rentals) }}</div>
+  </div>
+  <div class="card">
+    <div class="metric-title">{{ t.total_salaries }}</div>
+    <div class="metric-num">{{ '%.2f'|format(total_salaries) }}</div>
+  </div>
+  <div class="card">
+    <div class="metric-title">{{ t.total_expenses }}</div>
+    <div class="metric-num">{{ '%.2f'|format(total_expenses) }}</div>
+  </div>
 </div>
 
-<div class="tip">{{ t.welcome_tip }}</div>
-
-<div class="panel">
-  <canvas id="barChart" height="110"></canvas>
+<!-- 欢迎面板（玻璃拟态） -->
+<div class="panel" style="margin-top:12px">
+  <p class="metric-title" style="margin:0 0 6px">{{ t.welcome_tip }}</p>
+  <div style="font-size:13.5px;color:#cbd5e1">
+    · 使用左侧菜单进入各功能页（工人、银行账户、租金、出粮、开销）<br>
+    · 若首页空白，多半是 <code>index.html</code> 没有继承 <code>base.html</code> 或区块名写错（已在本页修正）<br>
+    · 导出按钮在右上角（CSV）
+  </div>
 </div>
 
-<script>
-(async function(){
-  try{
-    const res = await fetch('/api/summary');
-    const data = await res.json();
-    const ctx = document.getElementById('barChart');
-    if(!ctx) return;
-
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: data.months,
-        datasets: [
-          { label: 'Card Rentals', data: data.rentals },
-          { label: 'Salaries', data: data.salaries },
-          { label: 'Expenses', data: data.expenses }
-        ]
-      },
-      options: {
-        responsive: true,
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-  }catch(e){ console.error(e); }
-})();
-</script>
 {% endblock %}
