@@ -1,4 +1,4 @@
-<!-- templates/login.html -->
+<!-- templates/login.html (美化版) -->
 <!doctype html>
 <html lang="{{ 'zh' if lang=='zh' else 'en' }}">
 <head>
@@ -7,55 +7,204 @@
   <title>{{ t['login'] }} · {{ t['app_name'] }}</title>
   <style>
     :root{
-      --bg:#0b1220; --panel:#111827; --line:#334155;
-      --text:#e7ebf3; --muted:#9fb1c8; --brand:#facc15;
+      /* 暗色主题变量（和你站内风格一致） */
+      --bg:#0b1220;           /* 背景深色 */
+      --panel:#0f172a80;      /* 卡片半透明玻璃 */
+      --panel-solid:#111827;  /* 纯色备选 */
+      --line:#334155;         /* 边框色 */
+      --ring:#3659d6;         /* 焦点描边 */
+      --text:#e7ebf3;         /* 正文 */
+      --muted:#94a3b8;        /* 次要文字 */
+      --brand:#facc15;        /* 品牌黄色 */
+      --danger:#ef4444;       /* 错误色 */
+      --shadow: 0 10px 40px rgba(0,0,0,.35);
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);
-         font:15px/1.6 Inter,system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC","Microsoft YaHei",sans-serif;}
-    .wrap{min-height:100vh;display:grid;place-items:center;
-          background:
-            radial-gradient(1000px 520px at 70% -120px, rgba(54,89,214,.22), transparent 60%),
-            radial-gradient(820px 480px at -120px 70%, rgba(250,204,21,.08), transparent 60%);}
-    .card{width:360px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;
-          box-shadow:0 10px 30px rgba(0,0,0,.25)}
-    h1{margin:0 0 14px;font-size:20px;font-weight:800;letter-spacing:.2px}
-    label{display:block;margin:10px 0 6px;color:var(--muted);font-size:13px}
-    input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0f172a;color:#e7ebf3}
-    .row{display:flex;gap:10px}
-    .btn{width:100%;margin-top:12px;padding:10px;border-radius:10px;border:1px solid var(--line);
-         background:linear-gradient(180deg,#1e293b,#192233);color:#fff;cursor:pointer}
-    .lang{margin-top:10px;color:var(--muted);font-size:13px}
-    a{color:#93c5fd;text-decoration:none}
-    .err{color:#f87171;margin-top:10px}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--text);
+      font:15px/1.6 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+      background:
+        url("https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=1920&auto=format&fit=crop") center/cover fixed no-repeat,
+        linear-gradient(180deg,#0c1220,#0b1220);
+    }
+    /* 光晕遮罩：让文字更清晰 */
+    body::before{
+      content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+      background:
+        radial-gradient(1200px 600px at 75% -150px, rgba(54,89,214,.24), transparent 60%),
+        radial-gradient(900px 520px at -150px 70%, rgba(250,204,21,.10), transparent 60%),
+        rgba(8,12,22,.55);
+      mix-blend-mode:screen;
+    }
+
+    .wrap{min-height:100%; display:grid; place-items:center; position:relative; z-index:1; padding:28px}
+
+    .card{
+      width: 380px; max-width:90vw;
+      background: linear-gradient(180deg, rgba(17,24,39,.72), rgba(17,24,39,.55));
+      backdrop-filter: blur(14px) saturate(1.05);
+      border:1px solid rgba(148,163,184,.28);
+      border-radius:16px; padding:22px 20px 18px; box-shadow: var(--shadow);
+      animation: pop .28s ease-out;
+    }
+    @keyframes pop{ from{ transform: translateY(6px) scale(.985); opacity:.0 } to{ transform:none; opacity:1 }}
+
+    .brand{
+      display:flex; align-items:center; gap:10px; margin:4px 2px 14px;
+      font-weight:800; letter-spacing:.3px;
+    }
+    .badge{
+      display:inline-grid; place-items:center; width:28px; height:28px; border-radius:10px;
+      background:linear-gradient(180deg, #1f2937, #111827);
+      border:1px solid rgba(148,163,184,.28);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+      font-size:14px;
+    }
+    .brand-name{ font-size:18px }
+    .brand-name small{ color:var(--muted); font-weight:600; margin-left:6px }
+
+    label{ display:block; margin:12px 2px 6px; color:var(--muted); font-size:13px }
+    .field{
+      position:relative;
+    }
+    .field input{
+      width:100%; padding:11px 12px 11px 38px;
+      border-radius:12px; outline:none;
+      border:1px solid rgba(148,163,184,.28);
+      background:rgba(8,13,24,.9); color:var(--text);
+      transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .field input:focus{
+      border-color: rgba(54,89,214,.55);
+      box-shadow: 0 0 0 3px rgba(54,89,214,.18);
+      background: rgba(14,20,35,.95);
+    }
+    .icon{
+      position:absolute; left:10px; top:50%; transform:translateY(-50%);
+      width:18px; height:18px; opacity:.75;
+    }
+
+    .pw-toggle{
+      position:absolute; right:10px; top:50%; transform:translateY(-50%);
+      width:28px; height:28px; border-radius:8px; display:grid; place-items:center; cursor:pointer;
+      border:1px solid rgba(148,163,184,.25); background:rgba(15,23,42,.6);
+    }
+    .pw-toggle:hover{ filter:brightness(1.05) }
+
+    .btn{
+      width:100%; margin-top:14px; padding:11px 14px; border-radius:12px;
+      border:1px solid rgba(148,163,184,.28); cursor:pointer;
+      color:#0b1220; font-weight:800; letter-spacing:.2px;
+      background: linear-gradient(180deg, #fde047, #facc15);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 8px 24px rgba(250,204,21,.22);
+      transition: transform .06s ease, filter .15s ease;
+    }
+    .btn:active{ transform: translateY(1px) }
+    .lang{
+      margin-top:12px; color:var(--muted); font-size:13px; display:flex; gap:8px; align-items:center;
+    }
+    .seg{
+      display:inline-flex; border:1px solid rgba(148,163,184,.28); border-radius:10px; overflow:hidden;
+      background:rgba(14,20,35,.7);
+    }
+    .seg a, .seg b{
+      padding:6px 10px; display:block; text-decoration:none; color:#cfe1ff; font-weight:600; font-size:13px;
+    }
+    .seg b{
+      color:#fff; background:linear-gradient(180deg, rgba(148,163,184,.14), rgba(148,163,184,.08));
+    }
+    a{ color:#93c5fd; text-decoration:none }
+    .err{
+      margin-top:10px; color:#fff; background: linear-gradient(180deg, #7f1d1d, #641616);
+      border:1px solid rgba(239,68,68,.5); padding:8px 10px; border-radius:10px; font-size:14px;
+      animation: shake .28s; box-shadow: 0 6px 18px rgba(239,68,68,.22) inset;
+    }
+    @keyframes shake{
+      10%,90%{transform:translateX(-1px)} 20%,80%{transform:translateX(2px)}
+      30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)}
+    }
+    footer{
+      position:fixed; inset:auto 12px 10px; color:#8aa0be; font-size:12px; text-align:right; z-index:1;
+    }
+
+    @media (max-width:420px){
+      .card{ padding:18px 16px }
+      .brand-name{ font-size:17px }
+    }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <form class="card" method="post" action="{{ url_for('login') }}">
-    <h1>{{ t['login'] }}</h1>
+  <div class="wrap">
+    <form class="card" method="post" action="{{ url_for('login') }}" id="loginForm">
+      <!-- 品牌栏 -->
+      <div class="brand">
+        <div class="badge">🔐</div>
+        <div class="brand-name">{{ t['login'] }} <small>· {{ t['app_name'] }}</small></div>
+      </div>
 
-    <label>{{ t['username'] }}</label>
-    <input name="username" autofocus>
+      <!-- 用户名 -->
+      <label for="username">{{ t['username'] }}</label>
+      <div class="field">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5 0-9 2.5-9 5.5A1.5 1.5 0 0 0 4.5 21h15A1.5 1.5 0 0 0 21 19.5C21 16.5 17 14 12 14Z"/>
+        </svg>
+        <input id="username" name="username" autocomplete="username" required autofocus>
+      </div>
 
-    <label>{{ t['password'] }}</label>
-    <input type="password" name="password">
+      <!-- 密码 -->
+      <label for="password">{{ t['password'] }}</label>
+      <div class="field">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M17 8V6A5 5 0 0 0 7 6v2H5v12h14V8Zm-8 0V6a3 3 0 0 1 6 0v2Z"/>
+        </svg>
+        <input id="password" type="password" name="password" autocomplete="current-password" required>
+        <button class="pw-toggle" type="button" id="togglePw" aria-label="toggle password">
+          👁️
+        </button>
+      </div>
 
-    <input type="hidden" name="next" value="{{ next_url or '/' }}">
+      <input type="hidden" name="next" value="{{ next_url or '/' }}">
 
-    <button class="btn" type="submit">{{ t['login'] }}</button>
+      <button class="btn" type="submit">{{ t['login'] }}</button>
 
-    {% if error %}<div class="err">{{ error }}</div>{% endif %}
-
-    <div class="lang">
-      {{ t['language'] }}：
-      {% if lang=='zh' %}
-        <b>{{ t['zh'] }}</b> · <a href="{{ url_for('login', lang='en', next=next_url or '/') }}">{{ t['en'] }}</a>
-      {% else %}
-        <a href="{{ url_for('login', lang='zh', next=next_url or '/') }}">{{ t['zh'] }}</a> · <b>{{ t['en'] }}</b>
+      {% if error %}
+        <div class="err">{{ error }}</div>
       {% endif %}
-    </div>
-  </form>
-</div>
+
+      <!-- 语言切换（分段控件） -->
+      <div class="lang">
+        {{ t['language'] }}：
+        <span class="seg">
+          {% if lang=='zh' %}
+            <b>{{ t['zh'] }}</b>
+            <a href="{{ url_for('login', lang='en', next=next_url or '/') }}">{{ t['en'] }}</a>
+          {% else %}
+            <a href="{{ url_for('login', lang='zh', next=next_url or '/') }}">{{ t['zh'] }}</a>
+            <b>{{ t['en'] }}</b>
+          {% endif %}
+        </span>
+      </div>
+    </form>
+  </div>
+
+  <footer>© {{ t['app_name'] }}</footer>
+
+  <script>
+    // 密码显隐
+    const pw = document.getElementById('password');
+    const btn = document.getElementById('togglePw');
+    btn.addEventListener('click', () => {
+      const show = pw.type === 'password';
+      pw.type = show ? 'text' : 'password';
+      btn.textContent = show ? '🙈' : '👁️';
+      pw.focus();
+    });
+
+    // 防重复提交
+    document.getElementById('loginForm').addEventListener('submit', function(){
+      this.querySelector('button[type="submit"]').disabled = true;
+    });
+  </script>
 </body>
 </html>
