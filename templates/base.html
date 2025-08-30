@@ -1,79 +1,100 @@
 <!doctype html>
 <html lang="{{ 'zh' if lang=='zh' else 'en' }}">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{{ t.app_name }}{% if page_title %} — {{ page_title }}{% endif %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <title>{% block title %}{{ t.app_name }}{% endblock %}</title>
+
+  <!-- 你现有的全站样式 -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+
+  <style>
+    /* 仅做一点点兜底样式：若你的 style.css 已有同名类，会被它覆盖 */
+    body{margin:0;background:#0b1220;color:#e7ebf3;font:15px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial}
+    .layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+    .sidebar{background:#0e1626;border-right:1px solid rgba(148,163,184,.15);padding:18px 14px;position:sticky;top:0;height:100vh}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700;margin:4px 6px 18px 6px}
+    .brand .name{font-size:18px}
+    .nav{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+    .nav a{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;color:#d7deea;text-decoration:none;border:1px solid transparent}
+    .nav a:hover{background:#101a2e;border-color:rgba(148,163,184,.25)}
+    .nav li.active>a{background:#13203a;border-color:#2a3e6b}
+    .section-title{color:#9fb0ca;font-size:12px;margin:16px 6px 8px}
+    .lang{margin-top:14px;color:#9fb0ca;font-size:13px}
+    .lang a{color:#60a5fa;text-decoration:none;margin:0 6px}
+    .userline{margin:12px 6px 6px;color:#9fb0ca;font-size:13px}
+    .main{padding:22px 22px 40px}
+    .page-header{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+    .page-title{font-size:22px;margin:0}
+    .header-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{padding:8px 12px;border-radius:10px;border:1px solid rgba(148,163,184,.25);background:#151f33;color:#e7ebf3;text-decoration:none}
+    .content{background:rgba(16,22,39,.65);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:16px}
+  </style>
+
+  {% block head %}{% endblock %}
 </head>
-<body>
-<div class="layout">
+<body class="layout">
 
-  <!-- 左侧侧栏 -->
+  <!-- ============ Sidebar ============ -->
   <aside class="sidebar">
-    <div class="brand">🇳🇵 {{ t.app_name }}</div>
+    <div class="brand">
+      <span style="font-size:20px">😈</span>
+      <span class="name">{{ t.app_name }}</span>
+    </div>
 
-    <!-- 一排排：图标 + 名称 -->
-    <nav class="nav-grid">
-      <a href="{{ url_for('home') }}" class="tile {{ 'active' if request.path=='/' else '' }}">
-        <span class="tile-emoji" aria-hidden="true">🎰</span>
-        <span class="tile-label">{{ t.dashboard }}</span>
-      </a>
+    <div class="userline">
+      {% if session.get('user_id') %}
+        {{ '用户' if lang=='zh' else 'User' }}: <b>{{ session.get('user_id') }}</b>
+      {% endif %}
+    </div>
 
-      <a href="{{ url_for('workers_list') }}" class="tile {{ 'active' if request.path.startswith('/workers') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">👨‍💼</span>
-        <span class="tile-label">{{ t.workers }}</span>
-      </a>
+    {% macro item(href, label, icon) -%}
+      <li class="{{ 'active' if request.path.startswith(href) else '' }}">
+        <a href="{{ href }}"><span style="width:1.2em;text-align:center">{{ icon }}</span> {{ label }}</a>
+      </li>
+    {%- endmacro %}
 
-      <a href="{{ url_for('bank_accounts_list') }}" class="tile {{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">🏦</span>
-        <span class="tile-label">{{ t.bank_accounts }}</span>
-      </a>
+    <ul class="nav">
+      {{ item(url_for('home'), t.dashboard, '🏠') }}
+      {{ item(url_for('workers_list'), t.workers, '👨‍💼📲') }}
+      {{ item(url_for('bank_accounts_list'), t.bank_accounts, '🏦') }}
+      {{ item(url_for('card_rentals_list'), t.card_rentals, '💳') }}
+      {{ item(url_for('salaries_list'), t.salaries, '💵') }}
+      {{ item(url_for('expenses_list'), t.expenses, '💸') }}
 
-      <a href="{{ url_for('card_rentals_list') }}" class="tile {{ 'active' if request.path.startswith('/card-rentals') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">💳</span>
-        <span class="tile-label">{{ t.card_rentals }}</span>
-      </a>
+      <div class="section-title">{{ '安全设置' if lang=='zh' else 'Security' }}</div>
+      <!-- 🔐 这里就是你要的 3 个入口 -->
+      {{ item(url_for('account_security'), t.account_security, '🔐') }}
+      {{ item(url_for('account_security') ~ '#pw', t.change_pw, '🧩') }}
+      {{ item(url_for('account_security') ~ '#uid', t.change_user_id, '🆔') }}
 
-      <a href="{{ url_for('salaries_list') }}" class="tile {{ 'active' if request.path.startswith('/salaries') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">💵</span>
-        <span class="tile-label">{{ t.salaries }}</span>
-      </a>
-
-      <a href="{{ url_for('expenses_list') }}" class="tile {{ 'active' if request.path.startswith('/expenses') else '' }}">
-        <span class="tile-emoji" aria-hidden="true">💸</span>
-        <span class="tile-label">{{ t.expenses }}</span>
-      </a>
-    </nav>
+      <div class="section-title">{{ '会话' if lang=='zh' else 'Session' }}</div>
+      {{ item(url_for('logout'), t.logout, '🚪') }}
+    </ul>
 
     <div class="lang">
-      🌐 {{ t.language }}：
-      <a href="?lang=zh">中文</a> | <a href="?lang=en">EN</a>
+      {{ t.language }}:
+      <a href="{{ request.path }}?lang=zh">中文</a> |
+      <a href="{{ request.path }}?lang=en">English</a>
     </div>
   </aside>
 
-  <!-- 右侧主内容 -->
-  <main class="content">
-    <header class="topbar">
-      <div></div>
-      <div class="exports">
-        <a class="btn" href="{{ url_for('export_workers') }}">{{ t.export_workers }}</a>
-        <a class="btn" href="{{ url_for('export_bank') }}">{{ t.export_bank }}</a>
-        <a class="btn" href="{{ url_for('export_rentals') }}">{{ t.export_rentals }}</a>
-        <a class="btn" href="{{ url_for('export_salaries') }}">{{ t.export_salaries }}</a>
-        <a class="btn" href="{{ url_for('export_expenses') }}">{{ t.export_expenses }}</a>
-
-        {% if session.get('user_id') %}
-          <a class="btn" href="{{ url_for('logout') }}">{{ t.logout }}</a>
-        {% else %}
-          <a class="btn" href="{{ url_for('login', next=request.full_path or request.path) }}">{{ t.login }}</a>
-        {% endif %}
+  <!-- ============ Main ============ -->
+  <main class="main">
+    <header class="page-header">
+      <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+      <div class="header-actions">
+        {% block header_actions %}{% endblock %}
       </div>
     </header>
 
-    {% block body %}{% endblock %}
+    <section class="content">
+      {% block content %}{% endblock %}
+    </section>
+
+    {% block modals %}{% endblock %}
   </main>
-</div>
+
+  {% block scripts %}{% endblock %}
 </body>
 </html>
