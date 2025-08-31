@@ -1,3 +1,4 @@
+# app.py  —— 高质感 UI + 侧边栏版（单文件可直接运行/部署）
 from flask import (
     Flask, request, render_template, render_template_string,
     redirect, url_for, send_file, session, abort, flash, Response
@@ -8,7 +9,7 @@ from jinja2 import TemplateNotFound, DictLoader
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # =========================
-# 可配置环境变量（Railway上设置）
+# 环境变量（可在 Railway/本地 .env 设置）
 # =========================
 APP_DB = os.environ.get("APP_DB", "data.db")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
@@ -19,71 +20,185 @@ app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
 # =========================
-# 侧边栏样式（通过 /static/style.css 输出）
+# 高质感 CSS（通过 /static/style.css 提供）
 # =========================
-STYLE_CSS = """:root{
-  --bg:#0b0f17; --card:#121826; --line:#2a3346; --text:#e6edf6; --muted:#9fb0c3; --accent:#d4af37;
+STYLE_CSS = r""":root{
+  /* 主题色与基色 */
+  --bg:#090d14;
+  --bg-2:#0e1524;
+  --surface:#0f1726;        /* 玻璃底 */
+  --line:#26314a;           /* 线条 */
+  --text:#e9eef7;
+  --muted:#9db0c8;
+  --accent:#f2c94c;         /* 金色 */
+  --accent-2:#ff9f43;       /* 橙色 */
+  --shadow:0 10px 40px rgba(0,0,0,.45);
 }
+
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+html,body{height:100%}
+body{
+  margin:0;
+  color:var(--text);
+  font:14px/1.6 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  /* 背景渐变层 */
+  background:
+    radial-gradient(1200px 700px at 10% -10%, rgba(242,201,76,.10), transparent 60%),
+    radial-gradient(1200px 700px at 120% 10%, rgba(255,159,67,.10), transparent 60%),
+    linear-gradient(to bottom, var(--bg), var(--bg-2) 1200px);
+}
+/* 全局网格（格子）叠加层 */
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 1px, transparent 1px, transparent 24px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 1px, transparent 1px, transparent 24px);
+  opacity:.14;
+  mask-image:
+    radial-gradient(1200px 800px at 20% 0%, #000 40%, transparent 100%),
+    radial-gradient(1200px 800px at 110% 10%, #000 40%, transparent 100%);
+}
 
-/* 顶部栏 */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(11,15,23,.9);backdrop-filter:saturate(140%) blur(8px);z-index:20}
-.brand{font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:10px}
-.nav a{margin-left:12px;padding:6px 10px;border:1px solid transparent;border-radius:10px}
+/* ===== 顶部栏 ===== */
+.topbar{
+  position:sticky; top:0; z-index:30;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; border-bottom:1px solid var(--line);
+  background:rgba(11,17,30,.75); backdrop-filter:blur(10px) saturate(140%);
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.3px}
+.brand::after{
+  content:""; width:7px; height:7px; border-radius:50%;
+  background:conic-gradient(from 0deg, var(--accent), var(--accent-2), var(--accent));
+  box-shadow:0 0 10px rgba(242,201,76,.9), 0 0 18px rgba(255,159,67,.5);
+}
+.nav a{margin-left:12px;padding:6px 10px;border:1px solid transparent;border-radius:10px;position:relative}
 .nav a:hover{border-color:var(--line)}
-.user{opacity:.8;margin-right:8px}
+.user{opacity:.85;margin-right:8px}
 
-/* 布局：侧栏 + 主内容 */
-.layout{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 56px)}
-.sidebar{border-right:1px solid var(--line);background:#0f1522;position:sticky;top:56px;height:calc(100vh - 56px);padding:12px}
-.main{padding:16px}
+/* ===== 布局：侧栏 + 主区 ===== */
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 56px);position:relative;z-index:1}
+.sidebar{
+  position:sticky; top:56px; height:calc(100vh - 56px);
+  padding:14px 10px 16px;
+  background:linear-gradient(180deg, rgba(24,28,43,.65), rgba(15,22,38,.8));
+  border-right:1px solid var(--line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+/* 侧栏自己的网格层 */
+.sidebar::before{
+  content:""; position:absolute; inset:0; pointer-events:none; opacity:.22;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0, rgba(255,255,255,.06) 1px, transparent 1px, transparent 22px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0, rgba(255,255,255,.06) 1px, transparent 1px, transparent 22px);
+}
+.main{padding:20px}
 
-/* 侧栏菜单 */
-.side-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+/* 折叠状态（仅图标） */
+body.side-collapsed .layout{grid-template-columns:80px 1fr}
+body.side-collapsed .sidebar{padding-left:8px;padding-right:8px}
+body.side-collapsed .side-title{display:none}
+body.side-collapsed .side-menu a{justify-content:center}
+body.side-collapsed .side-menu a .label{display:none}
+
+/* ===== 侧栏菜单 ===== */
+.side-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .side-title{font-size:12px;color:var(--muted);letter-spacing:.4px}
-.side-toggle{display:none}
-.side-menu{display:grid;gap:6px}
-.side-menu a{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid transparent;border-radius:12px;text-decoration:none;color:var(--text)}
-.side-menu a:hover{background:#0c121f;border-color:var(--line)}
-.side-menu a.active{background:#141b2b;border-color:#39425a}
+.side-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:#0f1522;cursor:pointer}
 
-/* 原有组件 */
-.page-title{margin:10px 0 16px;font-size:20px}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:12px 0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
-.card-title{font-size:12px;color:var(--muted)}
-.card-value{font-size:24px;margin-top:6px}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.side-menu{display:grid;gap:8px}
+.side-menu a{
+  position:relative; display:flex; align-items:center; gap:12px;
+  padding:12px 12px; border-radius:14px; border:1px solid rgba(255,255,255,.04);
+  color:var(--text); text-decoration:none; transition:all .18s ease;
+  background:linear-gradient(180deg, rgba(255,255,255,.02), transparent 70%), rgba(14,20,34,.35);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+}
+.side-menu a .icon{width:22px;text-align:center;filter:saturate(112%)}
+.side-menu a:hover{transform:translateX(2px);border-color:#364466;background:rgba(20,28,46,.55)}
+.side-menu a.active{
+  border-color:#3e4c72;
+  background:linear-gradient(90deg, rgba(242,201,76,.16), rgba(242,201,76,.04) 60%, transparent),
+             linear-gradient(180deg, rgba(255,255,255,.03), transparent 70%), rgba(18,26,44,.65);
+  box-shadow:inset 0 0 0 1px rgba(242,201,76,.22), 0 8px 18px rgba(0,0,0,.28);
+}
+.side-menu a.active::before{
+  content:""; position:absolute; left:-1px; top:10px; bottom:10px; width:3px; border-radius:3px;
+  background:linear-gradient(180deg,var(--accent),var(--accent-2));
+  box-shadow:0 0 10px rgba(242,201,76,.65);
+}
+
+/* ===== 页面标题、卡片、面板 ===== */
+.page-title{margin:6px 0 16px;font-size:20px;display:flex;align-items:center;gap:8px;text-shadow:0 0 1px rgba(0,0,0,.2)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:14px 0}
+.card{
+  background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);
+  border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:16px;
+  box-shadow:var(--shadow); backdrop-filter:blur(6px);
+}
+.card-title{font-size:12px;color:var(--muted);letter-spacing:.3px}
+.card-value{font-size:28px;margin-top:6px}
+
+.panel{
+  background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);
+  border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:16px; margin-bottom:16px;
+  box-shadow:var(--shadow); backdrop-filter:blur(6px);
+}
+
+/* ===== 表单与按钮 ===== */
 .form{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
-.form input,.form select,.form button{height:36px;padding:6px 10px;border-radius:10px;border:1px solid var(--line);background:#0f1522;color:var(--text)}
-.form button{background:#141b2b;border-color:#39425a;cursor:pointer}
-.form .danger{border-color:#6b2a2a;background:#241216}
-.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px}
-table{border-collapse:collapse;width:100%}
-th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left}
-.actions{display:flex;gap:6px}
+.form input,.form select,.form button{
+  height:38px;padding:6px 12px;border-radius:12px;border:1px solid var(--line);
+  background:#0f1522;color:var(--text);outline:0;transition:border-color .15s, box-shadow .15s
+}
+.form input:focus,.form select:focus{border-color:#4a5a86; box-shadow:0 0 0 3px rgba(74,90,134,.28)}
+.form button{
+  background:linear-gradient(180deg,#141b2b,#101626);border-color:#3f4b6b;cursor:pointer
+}
+.form button:hover{box-shadow:0 8px 20px rgba(0,0,0,.35)}
+.form .danger{border-color:#7a2a2a;background:linear-gradient(180deg,#2a1416,#1b0f11)}
+
+/* ===== 表格 ===== */
+.table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.06);border-radius:18px;box-shadow:var(--shadow);backdrop-filter:blur(6px)}
+table{border-collapse:separate;border-spacing:0;width:100%}
+th{
+  position:sticky; top:0; z-index:1;
+  background:rgba(15,22,38,.9); backdrop-filter:blur(4px);
+  font-weight:600; font-size:12px; color:#bcd0e6; letter-spacing:.2px;
+  border-bottom:1px solid var(--line); text-align:left; padding:12px
+}
+td{padding:12px;border-bottom:1px solid var(--line)}
+tbody tr:hover{background:rgba(255,255,255,.03)}
+tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
+.actions{display:flex;gap:8px}
+
+/* ===== 消息条 & 页脚 ===== */
 .flash-wrap{display:grid;gap:8px;margin-bottom:12px}
 .flash{padding:10px;border-radius:12px;background:#141b2b;border:1px solid var(--line)}
-.flash.success{border-color:#2f6b2a;background:#162414}
-.flash.error{border-color:#6b2a2a;background:#241216}
-.footer{opacity:.6;text-align:center;padding:20px}
+.flash.success{border-color:#2f6b2a;background:linear-gradient(180deg,#182616,#121d13)}
+.flash.error{border-color:#6b2a2a;background:linear-gradient(180deg,#2b1717,#1f1212)}
+
+.footer{opacity:.65;text-align:center;padding:26px}
+
+/* 美化滚动条 */
+*::-webkit-scrollbar{height:10px;width:10px}
+*::-webkit-scrollbar-thumb{background:#2a3754;border-radius:10px;border:2px solid #0f1522}
+*::-webkit-scrollbar-thumb:hover{background:#35476b}
 
 /* 移动端 */
 @media (max-width: 960px){
   .layout{grid-template-columns:1fr}
   .sidebar{position:relative;top:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}
-  .side-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:#0f1522;cursor:pointer}
-  .side-menu{margin-top:10px}
 }
 """
 
 @app.get("/static/style.css")
 def static_style():
+    # 附带版本号防缓存：?v=9
     return Response(STYLE_CSS, mimetype="text/css")
 
 # =========================
-# 内嵌模板（含侧边栏）
+# 内嵌模板（含“网格+玻璃+侧栏”base）
 # =========================
 TEMPLATES = {
 "base.html": """<!doctype html>
@@ -92,14 +207,14 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=9">
 </head>
 <body>
   <!-- 顶部栏 -->
   <header class="topbar">
     <div class="brand">
       ⚜️ Admin Panel
-      <button class="side-toggle" onclick="document.body.classList.toggle('side-open')">菜单</button>
+      <button id="collapseBtn" class="side-toggle" type="button" title="折叠/展开侧边栏">菜单</button>
     </div>
     <nav class="nav">
       {% if session.get('user_id') %}
@@ -111,20 +226,34 @@ TEMPLATES = {
     </nav>
   </header>
 
-  <!-- 主布局：侧栏 + 主内容 -->
+  <!-- 主布局：侧栏 + 内容 -->
   <div class="layout">
     <aside class="sidebar">
       <div class="side-head">
         <div class="side-title">导航</div>
       </div>
       <nav class="side-menu">
-        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}">🏠 Dashboard</a>
-        <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">👨‍💼 工人 / 平台</a>
-        <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">🏦 银行账户</a>
-        <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">💳 银行卡租金</a>
-        <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}">💵 出粮记录</a>
-        <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}">💸 开销记录</a>
-        <a href="{{ url_for('account_security') }}" class="{{ 'active' if request.path.startswith('/account') or request.path.startswith('/account-security') else '' }}">🔐 安全设置</a>
+        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}">
+          <span class="icon">🏠</span><span class="label">Dashboard</span>
+        </a>
+        <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">
+          <span class="icon">👨‍💼</span><span class="label">工人 / 平台</span>
+        </a>
+        <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
+          <span class="icon">🏦</span><span class="label">银行账户</span>
+        </a>
+        <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">
+          <span class="icon">💳</span><span class="label">银行卡租金</span>
+        </a>
+        <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}">
+          <span class="icon">💵</span><span class="label">出粮记录</span>
+        </a>
+        <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}">
+          <span class="icon">💸</span><span class="label">开销记录</span>
+        </a>
+        <a href="{{ url_for('account_security') }}" class="{{ 'active' if request.path.startswith('/account') or request.path.startswith('/account-security') else '' }}">
+          <span class="icon">🔐</span><span class="label">安全设置</span>
+        </a>
       </nav>
     </aside>
 
@@ -132,16 +261,31 @@ TEMPLATES = {
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div class="flash-wrap">
-          {% for category, message in messages %}
-            <div class="flash {{ category }}">{{ message }}</div>
-          {% endfor %}
+            {% for category, message in messages %}
+              <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
           </div>
         {% endif %}
       {% endwith %}
+
       {% block content %}{% endblock %}
       <footer class="footer">© {{ 2025 }} Admin</footer>
     </main>
   </div>
+
+  <script>
+    // 侧栏折叠状态记忆
+    (function(){
+      const key='__side_collapsed__';
+      try{
+        if(localStorage.getItem(key)==='1'){ document.body.classList.add('side-collapsed'); }
+        document.getElementById('collapseBtn')?.addEventListener('click',()=>{
+          document.body.classList.toggle('side-collapsed');
+          localStorage.setItem(key, document.body.classList.contains('side-collapsed')?'1':'0');
+        });
+      }catch(e){}
+    })();
+  </script>
 </body>
 </html>
 """,
@@ -171,7 +315,6 @@ TEMPLATES = {
   <div class="card"><div class="card-title">{{ t.total_salaries }}</div><div class="card-value">{{ '%.2f'|format(total_salaries) }}</div></div>
   <div class="card"><div class="card-title">{{ t.total_expenses }}</div><div class="card-value">{{ '%.2f'|format(total_expenses) }}</div></div>
 </div>
-{# 侧边栏已提供导航，这里不再显示快捷按钮 #}
 {% endblock %}
 """,
 
@@ -589,7 +732,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, date TEXT, note TEXT, created_at TEXT
         )""")
         # 默认管理员
-        cur.execute("SELECT COUNT(*) n FROM users"); 
+        cur.execute("SELECT COUNT(*) n FROM users")
         if cur.fetchone()["n"] == 0:
             cur.execute("INSERT INTO users(username, password_hash, is_admin) VALUES(?,?,1)",
                         (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD)))
@@ -666,7 +809,7 @@ def account_credentials_post():
         flash("用户名与密码不能为空", "error"); return redirect(url_for("account_credentials"))
     with conn() as c:
         cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (session["user_id"],))
-        u = cur.fetchone(); 
+        u = cur.fetchone()
         if not u: abort(403)
         cur.execute("UPDATE users SET username=?, password_hash=? WHERE id=?",
                     (new_username, generate_password_hash(new_password), u["id"]))
@@ -706,7 +849,7 @@ def account_change_username_post():
         flash("新用户名不能为空", "error"); return redirect(url_for("account_change_username"))
     with conn() as c:
         cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (session["user_id"],))
-        u = cur.fetchone(); 
+        u = cur.fetchone()
         if not u: abort(403)
         cur.execute("UPDATE users SET username=? WHERE id=?", (new_username, u["id"]))
         c.commit(); session["user_id"] = new_username
