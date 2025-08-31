@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <!-- 加 v 参数避免旧 CSS 缓存 -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=3) }}">
+  <!-- 单文件版：用内置 CSS 路由；分文件版请改成 url_for('static', filename='style.css') -->
+  <link rel="stylesheet" href="{{ url_for('static_style') }}">
 </head>
 <body>
   <!-- 顶部栏 -->
   <header class="topbar">
     <div class="brand">
       ⚜️ Admin Panel
-      <button class="side-toggle" onclick="document.body.classList.toggle('side-open')">菜单</button>
+      <button id="collapseBtn" class="side-toggle" type="button" title="折叠/展开侧边栏">菜单</button>
     </div>
     <nav class="nav">
       {% if session.get('user_id') %}
@@ -24,20 +24,34 @@
     </nav>
   </header>
 
-  <!-- 主布局：侧栏 + 内容区 -->
+  <!-- 主布局：侧栏 + 内容 -->
   <div class="layout">
     <aside class="sidebar">
       <div class="side-head">
         <div class="side-title">导航</div>
       </div>
       <nav class="side-menu">
-        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}">🏠 Dashboard</a>
-        <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">👨‍💼 工人 / 平台</a>
-        <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">🏦 银行账户</a>
-        <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">💳 银行卡租金</a>
-        <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}">💵 出粮记录</a>
-        <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}">💸 开销记录</a>
-        <a href="{{ url_for('account_security') }}" class="{{ 'active' if request.path.startswith('/account') or request.path.startswith('/account-security') else '' }}">🔐 安全设置</a>
+        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}">
+          <span class="icon">🏠</span><span class="label">Dashboard</span>
+        </a>
+        <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">
+          <span class="icon">👨‍💼</span><span class="label">工人 / 平台</span>
+        </a>
+        <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
+          <span class="icon">🏦</span><span class="label">银行账户</span>
+        </a>
+        <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">
+          <span class="icon">💳</span><span class="label">银行卡租金</span>
+        </a>
+        <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}">
+          <span class="icon">💵</span><span class="label">出粮记录</span>
+        </a>
+        <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}">
+          <span class="icon">💸</span><span class="label">开销记录</span>
+        </a>
+        <a href="{{ url_for('account_security') }}" class="{{ 'active' if request.path.startswith('/account') or request.path.startswith('/account-security') else '' }}">
+          <span class="icon">🔐</span><span class="label">安全设置</span>
+        </a>
       </nav>
     </aside>
 
@@ -55,5 +69,19 @@
       <footer class="footer">© {{ 2025 }} Admin</footer>
     </main>
   </div>
+
+  <script>
+    // 侧边栏折叠状态记忆
+    (function(){
+      const key='__side_collapsed__';
+      try{
+        if(localStorage.getItem(key)==='1'){ document.body.classList.add('side-collapsed'); }
+        document.getElementById('collapseBtn')?.addEventListener('click',()=>{
+          document.body.classList.toggle('side-collapsed');
+          localStorage.setItem(key, document.body.classList.contains('side-collapsed')?'1':'0');
+        });
+      }catch(e){}
+    })();
+  </script>
 </body>
 </html>
