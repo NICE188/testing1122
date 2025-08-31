@@ -1,17 +1,16 @@
 {% extends "base.html" %}
-{% set page_title = t.salaries %}
-{% block body %}
-<h1 class="page-title">💵 {{ t.edit }} — {{ t.salaries }}</h1>
-
+{% block title %}{{ t.edit }} — {{ t.salaries }}{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ t.edit }} — {{ t.salaries }}</h1>
 <form class="form" method="post" action="{{ url_for('salaries_edit', sid=r.id) }}">
-  <select name="worker_id" required>
+  <select name="worker_id">
     {% for w in workers %}
-    <option value="{{ w.id }}" {{ 'selected' if w.id==r.worker_id else '' }}>{{ w.name }}</option>
+    <option value="{{ w.id }}" {% if r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>
     {% endfor %}
   </select>
-  <input name="salary_amount" type="number" step="0.01" value="{{ r.salary_amount }}" required>
+  <input name="amount" type="number" step="0.01" value="{{ r.amount }}" placeholder="{{ t.salary_amount }}">
   <input name="pay_date" type="date" value="{{ r.pay_date }}">
-  <input name="note" value="{{ r.note }}">
+  <input name="note" value="{{ r.note }}" placeholder="{{ t.note }}">
   <button class="btn" type="submit">{{ t.save }}</button>
   <a class="btn" href="{{ url_for('salaries_list') }}">{{ t.back }}</a>
 </form>
