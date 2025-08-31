@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% set page_title = t.edit ~ ' - ' ~ t.bank_accounts %}
-{% block body %}
+{% block title %}{{ t.edit }} — {{ t.bank_accounts }}{% endblock %}
+{% block content %}
 <h1 class="page-title">{{ t.edit }} — {{ t.bank_accounts }}</h1>
 <form class="form" method="post" action="{{ url_for('bank_accounts_edit', bid=r.id) }}">
-  <select name="worker_id" required>
-    {% for w in workers %}
-      <option value="{{ w.id }}" {{ 'selected' if w.id==r.worker_id else '' }}>{{ w.name }}</option>
-    {% endfor %}
+  <input name="bank_name" value="{{ r.bank_name }}" placeholder="银行名" required>
+  <input name="account_no" value="{{ r.account_no }}" placeholder="账号" required>
+  <input name="holder" value="{{ r.holder }}" placeholder="户名" required>
+  <select name="status">
+    <option value="1" {% if r.status==1 %}selected{% endif %}>{{ t.active }}</option>
+    <option value="0" {% if r.status==0 %}selected{% endif %}>{{ t.inactive }}</option>
   </select>
-  <input name="account_number" value="{{ r.account_number }}" placeholder="{{ t.account_number }}" required>
-  <input name="bank_name" value="{{ r.bank_name }}" placeholder="{{ t.bank_name }}" required>
   <button class="btn" type="submit">{{ t.save }}</button>
   <a class="btn" href="{{ url_for('bank_accounts_list') }}">{{ t.back }}</a>
 </form>
