@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}账号安全 · {{ t.app_name if t else "App" }}{% endblock %}
+{% block content %}
+<div class="panel">
+  <h2>🔐 账号安全</h2>
+  <p>这里可以管理登录账号、修改密码、修改用户名以及管理员重置密码。</p>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('account_credentials') }}">🧑‍💻 修改登录账号/密码</a>
+    <a class="btn" href="{{ url_for('account_change_password') }}">🔑 修改密码</a>
+    <a class="btn" href="{{ url_for('account_change_username') }}">🆔 修改用户名</a>
+    <a class="btn" href="{{ url_for('account_reset') }}">🛠 管理员重置密码</a>
+  </div>
+</div>
+<style>
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
+.btn{display:inline-block;padding:10px 14px;border:1px solid var(--line, #2a3346);border-radius:10px;text-decoration:none}
+</style>
+{% endblock %}
