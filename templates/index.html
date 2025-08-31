@@ -2,11 +2,7 @@
 {% block title %}Dashboard · {{ t.app_name }}{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 
-{% block content %}
-
-<!-- 顶部导出按钮（右侧对齐） -->
-<div class="topbar">
-  <div></div>
+{% block page_actions %}
   <div class="exports">
     <a class="btn sm" href="{{ url_for('export_workers') }}">{{ t.export_workers }}</a>
     <a class="btn sm" href="{{ url_for('export_bank') }}">{{ t.export_bank }}</a>
@@ -14,36 +10,36 @@
     <a class="btn sm" href="{{ url_for('export_salaries') }}">{{ t.export_salaries }}</a>
     <a class="btn sm" href="{{ url_for('export_expenses') }}">{{ t.export_expenses }}</a>
   </div>
-</div>
+{% endblock %}
 
-<!-- 指标卡片 -->
-<div class="cards">
-  <div class="card">
-    <div class="metric-title">{{ t.total_workers }}</div>
-    <div class="metric-num">{{ total_workers }}</div>
+{% block content %}
+  <!-- 4 个指标卡片 -->
+  <div class="cards">
+    <div class="card">
+      <div class="metric-title">{{ t.total_workers }}</div>
+      <div class="metric-num">{{ total_workers }}</div>
+    </div>
+    <div class="card">
+      <div class="metric-title">{{ t.total_rentals }}</div>
+      <div class="metric-num">{{ '%.2f'|format(total_rentals) }}</div>
+    </div>
+    <div class="card">
+      <div class="metric-title">{{ t.total_salaries }}</div>
+      <div class="metric-num">{{ '%.2f'|format(total_salaries) }}</div>
+    </div>
+    <div class="card">
+      <div class="metric-title">{{ t.total_expenses }}</div>
+      <div class="metric-num">{{ '%.2f'|format(total_expenses) }}</div>
+    </div>
   </div>
-  <div class="card">
-    <div class="metric-title">{{ t.total_rentals }}</div>
-    <div class="metric-num">{{ '%.2f'|format(total_rentals) }}</div>
-  </div>
-  <div class="card">
-    <div class="metric-title">{{ t.total_salaries }}</div>
-    <div class="metric-num">{{ '%.2f'|format(total_salaries) }}</div>
-  </div>
-  <div class="card">
-    <div class="metric-title">{{ t.total_expenses }}</div>
-    <div class="metric-num">{{ '%.2f'|format(total_expenses) }}</div>
-  </div>
-</div>
 
-<!-- 欢迎面板（玻璃拟态） -->
-<div class="panel" style="margin-top:12px">
-  <p class="metric-title" style="margin:0 0 6px">{{ t.welcome_tip }}</p>
-  <div style="font-size:13.5px;color:#cbd5e1">
-    · 使用左侧菜单进入各功能页（工人、银行账户、租金、出粮、开销）<br>
-    · 若首页空白，多半是 <code>index.html</code> 没有继承 <code>base.html</code> 或区块名写错（已在本页修正）<br>
-    · 导出按钮在右上角（CSV）
+  <!-- 玻璃面板 -->
+  <div class="panel" style="margin-top:12px">
+    <p class="metric-title" style="margin:0 0 6px">{{ t.welcome_tip }}</p>
+    <div style="font-size:13.5px;color:#cbd5e1;line-height:1.7">
+      · 使用左侧菜单进入各功能页（工人、银行账户、租金、出粮、开销）<br>
+      · 顶部右侧可导出各模块 CSV<br>
+      · 若首页空白，多半是模板继承或区块名写错（本页已对齐）
+    </div>
   </div>
-</div>
-
 {% endblock %}
