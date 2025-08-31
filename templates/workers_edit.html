@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% set page_title = t.edit ~ ' - ' ~ t.workers %}
-{% block body %}
+{% block title %}{{ t.edit }} — {{ t.workers }}{% endblock %}
+{% block content %}
 <h1 class="page-title">{{ t.edit }} — {{ t.workers }}</h1>
 <form class="form" method="post" action="{{ url_for('workers_edit', wid=r.id) }}">
   <input name="name" value="{{ r.name }}" placeholder="{{ t.name }}" required>
