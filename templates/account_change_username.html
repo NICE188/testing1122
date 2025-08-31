@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ '修改用户名' if lang=='zh' else 'Change Username' }} · {{ t.app_name }}{% endblock %}
+{% block page_title %}🆔 {{ '修改用户名' if lang=='zh' else 'Change Username' }}{% endblock %}
+{% block content %}
+<div class="panel">
+  <p style="color:#93a4c0;margin:0 0 10px">
+    {{ '这里可放置修改用户名表单。' if lang=='zh' else 'Place your change username form here.' }}
+  </p>
+  <div class="empty">Coming soon…</div>
+</div>
+{% endblock %}
