@@ -3,24 +3,11 @@
 {% block content %}
 <h1 class="page-title">🏠 Dashboard</h1>
 <div class="cards">
-  <div class="card">
-    <div class="card-title">{{ t.total_workers }}</div>
-    <div class="card-value">{{ total_workers }}</div>
-  </div>
-  <div class="card">
-    <div class="card-title">{{ t.total_rentals }}</div>
-    <div class="card-value">{{ '%.2f'|format(total_rentals) }}</div>
-  </div>
-  <div class="card">
-    <div class="card-title">{{ t.total_salaries }}</div>
-    <div class="card-value">{{ '%.2f'|format(total_salaries) }}</div>
-  </div>
-  <div class="card">
-    <div class="card-title">{{ t.total_expenses }}</div>
-    <div class="card-value">{{ '%.2f'|format(total_expenses) }}</div>
-  </div>
+  <div class="card"><div class="card-title">{{ t.total_workers }}</div><div class="card-value">{{ total_workers }}</div></div>
+  <div class="card"><div class="card-title">{{ t.total_rentals }}</div><div class="card-value">{{ '%.2f'|format(total_rentals) }}</div></div>
+  <div class="card"><div class="card-title">{{ t.total_salaries }}</div><div class="card-value">{{ '%.2f'|format(total_salaries) }}</div></div>
+  <div class="card"><div class="card-title">{{ t.total_expenses }}</div><div class="card-value">{{ '%.2f'|format(total_expenses) }}</div></div>
 </div>
-
 <div class="quick-links">
   <a class="btn" href="{{ url_for('workers_list') }}">👨‍💼 {{ t.workers }}</a>
   <a class="btn" href="{{ url_for('bank_accounts_list') }}">🏦 {{ t.bank_accounts }}</a>
