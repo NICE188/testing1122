@@ -14,7 +14,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui
 /* 布局：侧栏 + 主内容 */
 .layout{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 56px)}
 .sidebar{border-right:1px solid var(--line);background:#0f1522;position:sticky;top:56px;height:calc(100vh - 56px);padding:12px}
-.main{padding:16px;}
+.main{padding:16px}
 
 /* 侧栏菜单 */
 .side-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
@@ -23,15 +23,15 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui
 .side-menu{display:grid;gap:6px}
 .side-menu a{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid transparent;border-radius:12px;text-decoration:none;color:var(--text)}
 .side-menu a:hover{background:#0c121f;border-color:var(--line)}
-.side-menu a.active{background:#141b2b;border-color:#39425a;}
+.side-menu a.active{background:#141b2b;border-color:#39425a}
 
-/* 卡片 & 表单等原有样式 */
+/* 原有组件 */
 .page-title{margin:10px 0 16px;font-size:20px}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:12px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
 .card-title{font-size:12px;color:var(--muted)}
 .card-value{font-size:24px;margin-top:6px}
-.quick-links .btn{display:inline-block;margin:6px 8px 0 0;padding:8px 12px;border:1px solid var(--line);border-radius:12px}
+.quick-links{display:none} /* 隐藏旧的顶部按钮区 */
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
 .form{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
 .form input,.form select,.form button{height:36px;padding:6px 10px;border-radius:10px;border:1px solid var(--line);background:#0f1522;color:var(--text)}
