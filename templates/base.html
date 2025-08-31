@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <!-- 加 v 参数避免旧 CSS 缓存 -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=3) }}">
 </head>
 <body>
   <!-- 顶部栏 -->
@@ -23,7 +24,7 @@
     </nav>
   </header>
 
-  <!-- 主布局：侧栏 + 主内容 -->
+  <!-- 主布局：侧栏 + 内容区 -->
   <div class="layout">
     <aside class="sidebar">
       <div class="side-head">
@@ -44,9 +45,9 @@
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div class="flash-wrap">
-          {% for category, message in messages %}
-            <div class="flash {{ category }}">{{ message }}</div>
-          {% endfor %}
+            {% for category, message in messages %}
+              <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
           </div>
         {% endif %}
       {% endwith %}
@@ -54,18 +55,5 @@
       <footer class="footer">© {{ 2025 }} Admin</footer>
     </main>
   </div>
-
-  <script>
-    // 记住侧栏展开状态（移动端更方便）
-    try{
-      const key='__side_open__';
-      const saved=localStorage.getItem(key);
-      if(saved==='1'){ document.body.classList.add('side-open'); }
-      document.querySelector('.side-toggle')?.addEventListener('click',()=>{
-        const open=document.body.classList.contains('side-open');
-        localStorage.setItem(key, open?'0':'1');
-      });
-    }catch(e){}
-  </script>
 </body>
 </html>
