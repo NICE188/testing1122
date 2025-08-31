@@ -25,13 +25,12 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui
 .side-menu a:hover{background:#0c121f;border-color:var(--line)}
 .side-menu a.active{background:#141b2b;border-color:#39425a}
 
-/* 原有组件 */
+/* 原有组件（保持不变） */
 .page-title{margin:10px 0 16px;font-size:20px}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:12px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
 .card-title{font-size:12px;color:var(--muted)}
 .card-value{font-size:24px;margin-top:6px}
-.quick-links{display:none} /* 隐藏旧的顶部按钮区 */
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
 .form{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
 .form input,.form select,.form button{height:36px;padding:6px 10px;border-radius:10px;border:1px solid var(--line);background:#0f1522;color:var(--text)}
@@ -46,6 +45,9 @@ th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left}
 .flash.success{border-color:#2f6b2a;background:#162414}
 .flash.error{border-color:#6b2a2a;background:#241216}
 .footer{opacity:.6;text-align:center;padding:20px}
+
+/* 隐藏 Dashboard 里的旧“快捷按钮区” */
+.quick-links{display:none}
 
 /* 移动端 */
 @media (max-width: 960px){
