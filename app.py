@@ -2,7 +2,7 @@ from flask import (
     Flask, request, jsonify, render_template, render_template_string,
     redirect, url_for, send_file, session, abort, flash
 )
-import sqlite3, csv, io, os, logging, traceback, secrets, string
+import sqlite3, csv, io, os, logging
 from datetime import datetime
 from jinja2 import TemplateNotFound
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -279,7 +279,7 @@ def login_post():
 
 @app.get("/logout")
 def logout():
-    session.clear()
+    session.clear
     return redirect(url_for("login"))
 
 # -----------------------------------------------------------------------------
@@ -323,12 +323,10 @@ def account_credentials_post():
         return redirect(url_for("account_credentials"))
     with conn() as c:
         cur = c.cursor()
-        # 当前登录用户的记录
         cur.execute("SELECT * FROM users WHERE username=?", (session["user_id"],))
         u = cur.fetchone()
         if not u:
             abort(403)
-        # 更新
         cur.execute("UPDATE users SET username=?, password_hash=? WHERE id=?",
                     (new_username, generate_password_hash(new_password), u["id"]))
         c.commit()
@@ -394,7 +392,6 @@ def account_reset():
 @app.post("/account/reset")
 def account_reset_post():
     if require_login(): return require_login()
-    # 简化处理：只有当前登录者（默认admin）可重置任意用户密码
     target_username = request.form.get("target_username","").strip()
     new_password = request.form.get("new_password","").strip()
     if not target_username or not new_password:
@@ -810,9 +807,11 @@ def export_expenses():
     mem = io.BytesIO(output.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="expenses.csv")
 
+# ✅ 关键：在 gunicorn 导入时也初始化数据库（首次部署避免 "no such table"）
+init_db()
+
 # -----------------------------------------------------------------------------
-# 启动
+# 本地启动（Railway 用 Procfile 启动，无需走这里）
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    init_db()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")))
