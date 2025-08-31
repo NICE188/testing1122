@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Dashboard · {{ t.app_name }}{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
-
+{% block page_title %}🏠 Dashboard{% endblock %}
 {% block page_actions %}
   <div class="exports">
     <a class="btn sm" href="{{ url_for('export_workers') }}">{{ t.export_workers }}</a>
@@ -11,35 +10,17 @@
     <a class="btn sm" href="{{ url_for('export_expenses') }}">{{ t.export_expenses }}</a>
   </div>
 {% endblock %}
-
 {% block content %}
-  <!-- 4 个指标卡片 -->
   <div class="cards">
-    <div class="card">
-      <div class="metric-title">{{ t.total_workers }}</div>
-      <div class="metric-num">{{ total_workers }}</div>
-    </div>
-    <div class="card">
-      <div class="metric-title">{{ t.total_rentals }}</div>
-      <div class="metric-num">{{ '%.2f'|format(total_rentals) }}</div>
-    </div>
-    <div class="card">
-      <div class="metric-title">{{ t.total_salaries }}</div>
-      <div class="metric-num">{{ '%.2f'|format(total_salaries) }}</div>
-    </div>
-    <div class="card">
-      <div class="metric-title">{{ t.total_expenses }}</div>
-      <div class="metric-num">{{ '%.2f'|format(total_expenses) }}</div>
-    </div>
+    <div class="card"><div class="metric-title">{{ t.total_workers }}</div><div class="metric-num">{{ total_workers }}</div></div>
+    <div class="card"><div class="metric-title">{{ t.total_rentals }}</div><div class="metric-num">{{ "%.2f"|format(total_rentals) }}</div></div>
+    <div class="card"><div class="metric-title">{{ t.total_salaries }}</div><div class="metric-num">{{ "%.2f"|format(total_salaries) }}</div></div>
+    <div class="card"><div class="metric-title">{{ t.total_expenses }}</div><div class="metric-num">{{ "%.2f"|format(total_expenses) }}</div></div>
   </div>
 
-  <!-- 玻璃面板 -->
-  <div class="panel" style="margin-top:12px">
-    <p class="metric-title" style="margin:0 0 6px">{{ t.welcome_tip }}</p>
-    <div style="font-size:13.5px;color:#cbd5e1;line-height:1.7">
-      · 使用左侧菜单进入各功能页（工人、银行账户、租金、出粮、开销）<br>
-      · 顶部右侧可导出各模块 CSV<br>
-      · 若首页空白，多半是模板继承或区块名写错（本页已对齐）
-    </div>
+  <div class="panel">
+    <div style="color:#93a4c0;margin-bottom:8px">{{ t.welcome_tip }}</div>
+    <!-- 你已在 app.py 提供 /api/summary，可在这里接 Chart.js（如有需要再加） -->
+    <div class="empty">Chart placeholder</div>
   </div>
 {% endblock %}
