@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <!-- 顶部栏 -->
@@ -30,7 +30,6 @@
         <div class="side-title">导航</div>
       </div>
       <nav class="side-menu">
-        {# active 高亮根据 request.path 匹配 #}
         <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}">🏠 Dashboard</a>
         <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">👨‍💼 工人 / 平台</a>
         <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">🏦 银行账户</a>
@@ -57,7 +56,7 @@
   </div>
 
   <script>
-    // 可选：记住侧栏展开状态（简单版，也可以不加）
+    // 记住侧栏展开状态（移动端更方便）
     try{
       const key='__side_open__';
       const saved=localStorage.getItem(key);
