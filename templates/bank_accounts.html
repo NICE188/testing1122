@@ -1,190 +1,52 @@
 {% extends "base.html" %}
-{% set page_title = t.bank_accounts %}
-{% block body %}
-
-<h1 class="page-title" style="display:flex;align-items:center;justify-content:space-between">
-  <span>🏦 {{ t.bank_accounts }}</span>
-  <button class="btn" id="openBankModal">{{ t.add }}</button>
-</h1>
-
-<!-- 列表 -->
+{% block title %}{{ t.bank_accounts }} · {{ t.app_name }}{% endblock %}
+{% block page_title %}🏦 {{ t.bank_accounts }}{% endblock %}
+{% block content %}
 <div class="panel">
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>{{ t.worker }}</th>
-        <th>{{ t.account_number }}</th>
-        <th>{{ t.bank_name }}</th>
-        <th>{{ t.status }}</th>
-        <th>{{ t.created_at }}</th>
-        <th>{{ t.actions }}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in rows %}
-      <tr>
-        <td>{{ r.id }}</td>
-        <td>{{ r.worker_name }}</td>
-        <td>{{ r.account_number }}</td>
-        <td>{{ r.bank_name }}</td>
-        <td>
-          {% if r.is_active %}
-            <span class="badge on">{{ t.active }}</span>
-          {% else %}
-            <span class="badge off">{{ t.inactive }}</span>
-          {% endif %}
-        </td>
-        <td>{{ r.created_at }}</td>
-        <td>
-          <form method="post" action="{{ url_for('bank_accounts_toggle', bid=r.id) }}" style="display:inline">
-            <button class="btn soft" type="submit">
-              {% if r.is_active %}{{ t.deactivate }}{% else %}{{ t.activate }}{% endif %}
-            </button>
-          </form>
-          <a class="btn" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}">{{ t.edit }}</a>
-          <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" style="display:inline"
-                onsubmit="return confirm('{{ t.confirm_delete }}')">
-            <button class="btn danger" type="submit">{{ t.delete }}</button>
-          </form>
-        </td>
-      </tr>
+  <form class="form" action="{{ url_for('bank_accounts_add') }}" method="post">
+    <select name="worker_id" required>
+      <option value="" disabled selected>{{ t.worker }}</option>
+      {% for w in workers %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}
+    </select>
+    <input name="account_number" placeholder="{{ t.account_number }}" required>
+    <input name="bank_name" placeholder="{{ t.bank_name }}" required>
+    <button class="btn" type="submit">{{ t.add }}</button>
+  </form>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>{{ t.worker }}</th><th>{{ t.account_number }}</th><th>{{ t.bank_name }}</th>
+          <th>{{ t.created_at }}</th><th>{{ t.status }}</th><th>{{ t.actions }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% if rows %}
+        {% for r in rows %}
+        <tr>
+          <td>{{ r.id }}</td>
+          <td>{{ r.worker_name }}</td>
+          <td>{{ r.account_number }}</td>
+          <td>{{ r.bank_name }}</td>
+          <td>{{ r.created_at }}</td>
+          <td>{% if r.is_active %}<span class="badge on">{{ t.active }}</span>{% else %}<span class="badge off">{{ t.inactive }}</span>{% endif %}</td>
+          <td>
+            <form action="{{ url_for('bank_accounts_toggle', bid=r.id) }}" method="post" style="display:inline">
+              <button class="btn sm" type="submit">{{ t.activate if not r.is_active else t.deactivate }}</button>
+            </form>
+            <a class="btn sm" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}">{{ t.edit }}</a>
+            <form action="{{ url_for('bank_accounts_delete', bid=r.id) }}" method="post" style="display:inline" onsubmit="return confirm('{{ t.confirm_delete }}')">
+              <button class="btn sm danger" type="submit">{{ t.delete }}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
       {% else %}
-      <tr><td colspan="7" class="empty">{{ t.empty }}</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-
-<!-- ================== 美观弹窗：银行账户 ================== -->
-<style>
-/* —— 仅本页样式（ba-* 前缀），避免影响全站 —— */
-.ba-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:60}
-.ba-modal.show{display:flex;animation:ba-fadeIn .18s ease}
-.ba-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(3px)}
-.ba-dialog{
-  position:relative; z-index:1; width:min(680px,92vw);
-  border-radius:16px; padding:0; overflow:hidden;
-  background:
-    linear-gradient(180deg, rgba(148,163,184,.08), rgba(148,163,184,.04)) padding-box,
-    linear-gradient(135deg, rgba(96,165,250,.75), rgba(167,139,250,.75), rgba(250,204,21,.55)) border-box;
-  border:1px solid transparent;
-  box-shadow:0 18px 60px rgba(0,0,0,.38);
-  animation:ba-popIn .18s ease;
-}
-.ba-header{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:14px 16px;
-  background:linear-gradient(180deg, rgba(17,24,39,.92), rgba(17,24,39,.65));
-  border-bottom:1px solid rgba(148,163,184,.18);
-}
-.ba-title{display:flex;align-items:center;gap:10px;font-weight:800}
-.ba-sub{font-size:12px;color:var(--muted)}
-.ba-close{background:transparent;border:0;color:var(--text);font-size:20px;line-height:1;cursor:pointer;opacity:.9}
-.ba-close:hover{opacity:1;transform:scale(1.06)}
-
-.ba-body{padding:14px 16px}
-.ba-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-@media (max-width:640px){ .ba-grid{grid-template-columns:1fr} }
-
-.ba-field{
-  display:flex;flex-direction:column;gap:6px;
-  background:rgba(14,20,35,.9); border:1px solid rgba(148,163,184,.28);
-  border-radius:12px; padding:10px 10px 9px;
-  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
-}
-.ba-field:focus-within{
-  border-color:rgba(54,89,214,.55);
-  box-shadow:0 0 0 3px rgba(54,89,214,.18);
-  background:rgba(18,24,41,.95);
-}
-.ba-field label{font-size:12px;color:#cbd5e1;letter-spacing:.2px}
-.ba-field input, .ba-field select{border:0;outline:none;background:transparent;color:var(--text)}
-.ba-field input::placeholder{color:#93a4c0}
-
-.ba-actions{
-  display:flex;gap:10px;justify-content:flex-end;
-  padding:12px 16px;
-  background:linear-gradient(180deg, rgba(17,24,39,.4), rgba(17,24,39,.25));
-  border-top:1px solid rgba(148,163,184,.12);
-}
-.btn.primary{
-  background:linear-gradient(180deg,#2b57f0,#274fe0);
-  border-color:rgba(147,163,184,.28);
-  color:#fff;
-}
-.btn.primary:hover{filter:brightness(1.06)}
-.btn.ghost{background:transparent;border:1px solid rgba(148,163,184,.28)}
-
-@keyframes ba-popIn{from{transform:translateY(8px) scale(.98);opacity:.0}to{transform:none;opacity:1}}
-@keyframes ba-fadeIn{from{opacity:.0}to{opacity:1}}
-</style>
-
-<div class="ba-modal" id="bankModal" aria-hidden="true">
-  <div class="ba-backdrop" data-close></div>
-
-  <div class="ba-dialog" role="dialog" aria-modal="true" aria-labelledby="ba_title">
-    <div class="ba-header">
-      <div>
-        <div id="ba_title" class="ba-title">🏦 {{ t.add }} · {{ t.bank_accounts }}</div>
-        <div class="ba-sub">{{ t.worker }}、{{ t.account_number }}、{{ t.bank_name }}</div>
-      </div>
-      <button class="ba-close" type="button" title="Close" aria-label="Close" data-close>×</button>
-    </div>
-
-    <form method="post" action="{{ url_for('bank_accounts_add') }}">
-      <div class="ba-body">
-        <div class="ba-grid">
-          <div class="ba-field">
-            <label for="ba_worker">{{ t.worker }}</label>
-            <select id="ba_worker" name="worker_id" required>
-              <option value="">{{ t.worker }}</option>
-              {% for w in workers %}
-              <option value="{{ w.id }}">{{ w.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div class="ba-field">
-            <label for="ba_bank">{{ t.bank_name }}</label>
-            <input id="ba_bank" name="bank_name" placeholder="e.g. Maybank / Public Bank" required>
-          </div>
-
-          <div class="ba-field" style="grid-column:1/-1">
-            <label for="ba_acc">{{ t.account_number }}</label>
-            <input id="ba_acc" name="account_number" placeholder="0123-4567-8901" required>
-          </div>
-        </div>
-      </div>
-
-      <div class="ba-actions">
-        <button class="btn ghost" type="button" data-close>{{ t.back }}</button>
-        <button class="btn primary" type="submit">{{ t.submit }}</button>
-      </div>
-    </form>
+        <tr><td colspan="7" class="empty">{{ t.empty }}</td></tr>
+      {% endif %}
+      </tbody>
+    </table>
   </div>
 </div>
-
-<script>
-(function(){
-  const modal = document.getElementById('bankModal');
-  const openBtn = document.getElementById('openBankModal');
-  const workerSel = document.getElementById('ba_worker');
-
-  function openModal(){
-    modal.classList.add('show');
-    document.documentElement.style.overflow = 'hidden'; // 防止背景滚动
-    setTimeout(()=> workerSel && workerSel.focus(), 40);
-  }
-  function closeModal(){
-    modal.classList.remove('show');
-    document.documentElement.style.overflow = '';
-  }
-
-  openBtn?.addEventListener('click', openModal);
-  modal?.addEventListener('click', (e)=>{ if(e.target.matches('[data-close]')) closeModal(); });
-  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && modal.classList.contains('show')) closeModal(); });
-})();
-</script>
-
 {% endblock %}
