@@ -11,13 +11,11 @@
     <div class="brand">⚜️ Admin Panel</div>
     <nav class="nav">
       {% if session.get('user_id') %}
-        <span class="user">👤 {{ session.get('username') }} {% if session.get('is_admin') %}<em class="badge">ADMIN</em>{% endif %}</span>
-        <a href="{{ url_for('security.dashboard_security') }}">安全中心</a>
-        <a href="{{ url_for('security.change_password') }}">修改密码</a>
-        <a href="{{ url_for('security.change_username') }}">修改用户名</a>
-        {% if session.get('is_admin') %}
-          <a href="{{ url_for('security.reset_password') }}">重置密码(管理员)</a>
-        {% endif %}
+        <span class="user">👤 {{ session.get('user_id') }}</span>
+        <a href="{{ url_for('account_credentials') }}">安全中心</a>
+        <a href="{{ url_for('account_change_password') }}">修改密码</a>
+        <a href="{{ url_for('account_change_username') }}">修改用户名</a>
+        <a href="{{ url_for('account_reset') }}">重置密码(管理员)</a>
         <a href="{{ url_for('logout') }}">退出</a>
       {% else %}
         <a href="{{ url_for('login') }}">登录</a>
