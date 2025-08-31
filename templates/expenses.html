@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block title %}{{ t.expenses }} · {{ t.app_name }}{% endblock %}
-{% block page_title %}💸 {{ t.expenses }}{% endblock %}
 {% block content %}
+<h1 class="page-title">💸 {{ t.expenses }}</h1>
+
 <div class="panel">
   <form class="form" action="{{ url_for('expenses_add') }}" method="post">
     <select name="worker_id">
@@ -12,41 +13,35 @@
     <input name="date" type="date" placeholder="{{ t.date }}" required>
     <input name="note" placeholder="{{ t.expenses_note }}">
     <button class="btn" type="submit">{{ t.add }}</button>
+    <a class="btn" href="{{ url_for('export_expenses') }}">⤓ {{ t.export_expenses }}</a>
   </form>
 
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>ID</th><th>{{ t.worker }}</th><th>{{ t.expense_amount }}</th><th>{{ t.date }}</th>
-          <th>{{ t.expenses_note }}</th><th>{{ t.created_at }}</th><th>{{ t.status }}</th><th>{{ t.actions }}</th>
+          <th>ID</th><th>{{ t.worker }}</th><th>{{ t.expense_amount }}</th><th>{{ t.date }}</th><th>{{ t.expenses_note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
         </tr>
       </thead>
       <tbody>
-      {% if rows %}
         {% for r in rows %}
         <tr>
           <td>{{ r.id }}</td>
-          <td>{{ r.worker_name or '' }}</td>
-          <td>{{ "%.2f"|format(r.amount or 0) }}</td>
+          <td>{{ r.worker_name }}</td>
+          <td>{{ r.amount }}</td>
           <td>{{ r.date }}</td>
-          <td>{{ r.note or '' }}</td>
+          <td>{{ r.note }}</td>
           <td>{{ r.created_at }}</td>
-          <td>{% if r.is_active %}<span class="badge on">{{ t.active }}</span>{% else %}<span class="badge off">{{ t.inactive }}</span>{% endif %}</td>
-          <td>
-            <form action="{{ url_for('expenses_toggle', eid=r.id) }}" method="post" style="display:inline">
-              <button class="btn sm" type="submit">{{ t.activate if not r.is_active else t.deactivate }}</button>
-            </form>
-            <a class="btn sm" href="{{ url_for('expenses_edit_form', eid=r.id) }}">{{ t.edit }}</a>
-            <form action="{{ url_for('expenses_delete', eid=r.id) }}" method="post" style="display:inline" onsubmit="return confirm('{{ t.confirm_delete }}')">
-              <button class="btn sm danger" type="submit">{{ t.delete }}</button>
+          <td class="actions">
+            <a class="btn" href="{{ url_for('expenses_edit_form', eid=r.id) }}">{{ t.edit }}</a>
+            <form method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
+              <button class="btn danger" type="submit">{{ t.delete }}</button>
             </form>
           </td>
         </tr>
+        {% else %}
+        <tr><td colspan="7">{{ t.empty }}</td></tr>
         {% endfor %}
-      {% else %}
-        <tr><td colspan="8" class="empty">{{ t.empty }}</td></tr>
-      {% endif %}
       </tbody>
     </table>
   </div>
