@@ -1,50 +1,47 @@
 {% extends "base.html" %}
 {% block title %}{{ t.bank_accounts }} · {{ t.app_name }}{% endblock %}
-{% block page_title %}🏦 {{ t.bank_accounts }}{% endblock %}
 {% block content %}
+<h1 class="page-title">🏦 {{ t.bank_accounts }}</h1>
+
 <div class="panel">
   <form class="form" action="{{ url_for('bank_accounts_add') }}" method="post">
-    <select name="worker_id" required>
-      <option value="" disabled selected>{{ t.worker }}</option>
-      {% for w in workers %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}
+    <input name="bank_name" placeholder="银行名" required>
+    <input name="account_no" placeholder="账号" required>
+    <input name="holder" placeholder="户名" required>
+    <select name="status">
+      <option value="1">{{ t.active }}</option>
+      <option value="0">{{ t.inactive }}</option>
     </select>
-    <input name="account_number" placeholder="{{ t.account_number }}" required>
-    <input name="bank_name" placeholder="{{ t.bank_name }}" required>
     <button class="btn" type="submit">{{ t.add }}</button>
+    <a class="btn" href="{{ url_for('export_bank_accounts') }}">⤓ {{ t.export_bank }}</a>
   </form>
 
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>ID</th><th>{{ t.worker }}</th><th>{{ t.account_number }}</th><th>{{ t.bank_name }}</th>
-          <th>{{ t.created_at }}</th><th>{{ t.status }}</th><th>{{ t.actions }}</th>
+          <th>ID</th><th>银行名</th><th>账号</th><th>户名</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
         </tr>
       </thead>
       <tbody>
-      {% if rows %}
         {% for r in rows %}
         <tr>
           <td>{{ r.id }}</td>
-          <td>{{ r.worker_name }}</td>
-          <td>{{ r.account_number }}</td>
           <td>{{ r.bank_name }}</td>
+          <td>{{ r.account_no }}</td>
+          <td>{{ r.holder }}</td>
+          <td>{{ t.active if r.status==1 else t.inactive }}</td>
           <td>{{ r.created_at }}</td>
-          <td>{% if r.is_active %}<span class="badge on">{{ t.active }}</span>{% else %}<span class="badge off">{{ t.inactive }}</span>{% endif %}</td>
-          <td>
-            <form action="{{ url_for('bank_accounts_toggle', bid=r.id) }}" method="post" style="display:inline">
-              <button class="btn sm" type="submit">{{ t.activate if not r.is_active else t.deactivate }}</button>
-            </form>
-            <a class="btn sm" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}">{{ t.edit }}</a>
-            <form action="{{ url_for('bank_accounts_delete', bid=r.id) }}" method="post" style="display:inline" onsubmit="return confirm('{{ t.confirm_delete }}')">
-              <button class="btn sm danger" type="submit">{{ t.delete }}</button>
+          <td class="actions">
+            <a class="btn" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}">{{ t.edit }}</a>
+            <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
+              <button class="btn danger" type="submit">{{ t.delete }}</button>
             </form>
           </td>
         </tr>
+        {% else %}
+        <tr><td colspan="7">{{ t.empty }}</td></tr>
         {% endfor %}
-      {% else %}
-        <tr><td colspan="7" class="empty">{{ t.empty }}</td></tr>
-      {% endif %}
       </tbody>
     </table>
   </div>
