@@ -1,114 +1,86 @@
 <!doctype html>
 <html lang="{{ 'zh' if lang == 'zh' else 'en' }}">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}{{ t.app_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
-  {# —— 兜底小补丁：确保侧栏链接是“卡片块”而不是一行行文本 —— #}
-  <style>
-    .sidebar nav a.tile{
-      display:flex; align-items:center; gap:10px;
-      height:50px; width:100%; padding:10px 14px; border-radius:14px;
-      text-decoration:none;
-      background:linear-gradient(180deg, rgba(148,163,184,.08), rgba(148,163,184,.04));
-      border:1px solid rgba(148,163,184,.18);
-      color:#d7e0ee; box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 6px 18px rgba(0,0,0,.12);
-    }
-    .sidebar nav{ display:flex; flex-direction:column; gap:12px; }
-    .tile-emoji{ width:22px; text-align:center; font-size:18px; line-height:1; }
-    .tile-text{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .sidebar nav a.tile.active{
-      background:linear-gradient(180deg, rgba(148,163,184,.16), rgba(148,163,184,.08));
-      border-color:rgba(148,163,184,.34);
-      position:relative;
-    }
-    .sidebar nav a.tile.active::before{
-      content:""; position:absolute; left:0; top:-1px; bottom:-1px; width:3px;
-      border-radius:12px 0 0 12px; background:linear-gradient(180deg,#60a5fa,#a78bfa);
-    }
-  </style>
-
   {% block extra_head %}{% endblock %}
 </head>
-<body class="app">
-  <div class="layout">
+<body>
+<div class="layout">
+  <!-- 侧栏 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="tile-emoji" aria-hidden="true">😈</span>
+      <span class="brand-name">{{ t.app_name }}</span>
+    </div>
 
-    <!-- 侧栏 -->
-    <aside class="sidebar">
-      <div class="brand">
-        <span class="tile-emoji">😈</span>
-        <span class="brand-name">{{ t.app_name }}</span>
+    <div class="user-line" style="margin:8px 0 12px;color:#9fb0c9;">
+      {{ '用户' if lang=='zh' else 'User' }}：<strong>{{ session.get('user_id','guest') }}</strong>
+    </div>
+
+    <nav class="nav">
+      <a href="{{ url_for('home') }}" class="{% if request.path == '/' %}active{% endif %}">
+        <span class="tile-emoji">🏠</span><span class="tile-text">Dashboard</span>
+      </a>
+      <a href="{{ url_for('workers_list') }}" class="{% if request.path.startswith('/workers') %}active{% endif %}">
+        <span class="tile-emoji">👨‍💼</span><span class="tile-text">{{ t.workers }}</span>
+      </a>
+      <a href="{{ url_for('bank_accounts_list') }}" class="{% if request.path.startswith('/bank-accounts') %}active{% endif %}">
+        <span class="tile-emoji">🏦</span><span class="tile-text">{{ t.bank_accounts }}</span>
+      </a>
+      <a href="{{ url_for('card_rentals_list') }}" class="{% if request.path.startswith('/card-rentals') %}active{% endif %}">
+        <span class="tile-emoji">💳</span><span class="tile-text">{{ t.card_rentals }}</span>
+      </a>
+      <a href="{{ url_for('salaries_list') }}" class="{% if request.path.startswith('/salaries') %}active{% endif %}">
+        <span class="tile-emoji">💵</span><span class="tile-text">{{ t.salaries }}</span>
+      </a>
+      <a href="{{ url_for('expenses_list') }}" class="{% if request.path.startswith('/expenses') %}active{% endif %}">
+        <span class="tile-emoji">💸</span><span class="tile-text">{{ t.expenses }}</span>
+      </a>
+
+      <div class="nav-group-title" style="margin-top:12px;color:#93a4c0;font-size:12px;">
+        {{ '安全设置' if lang=='zh' else 'Security' }}
       </div>
+      <!-- 注意：下面三个路由需要你在 app.py 里有对应 GET 页面（见本文最底部“可选路由”） -->
+      <a href="/account/reset" class="{% if request.path.startswith('/account/reset') %}active{% endif %}">
+        <span class="tile-emoji">🔐</span><span class="tile-text">{{ '账号安全（重置密码）' if lang=='zh' else 'Reset Password' }}</span>
+      </a>
+      <a href="/account/change-password" class="{% if request.path.startswith('/account/change-password') %}active{% endif %}">
+        <span class="tile-emoji">🔑</span><span class="tile-text">{{ '修改密码' if lang=='zh' else 'Change Password' }}</span>
+      </a>
+      <a href="/account/change-username" class="{% if request.path.startswith('/account/change-username') %}active{% endif %}">
+        <span class="tile-emoji">🆔</span><span class="tile-text">{{ '修改用户名' if lang=='zh' else 'Change Username' }}</span>
+      </a>
 
-      <div class="user-line">
-        {{ '用户' if lang=='zh' else 'User' }}：<strong>{{ session.get('user_id', 'guest') }}</strong>
+      <div class="nav-group-title" style="margin-top:12px;color:#93a4c0;font-size:12px;">
+        {{ '会话' if lang=='zh' else 'Session' }}
       </div>
+      <a href="{{ url_for('logout') }}"><span class="tile-emoji">🚪</span><span class="tile-text">{{ t.logout }}</span></a>
 
-      <nav>
-        <!-- 主导航 -->
-        <a class="tile {% if request.path == '/' %}active{% endif %}" href="{{ url_for('home') }}">
-          <span class="tile-emoji">🏠</span><span class="tile-text">Dashboard</span>
-        </a>
-
-        <a class="tile {% if request.path.startswith('/workers') %}active{% endif %}" href="{{ url_for('workers_list') }}">
-          <span class="tile-emoji">👨‍💼</span><span class="tile-text">{{ t.workers }}</span>
-        </a>
-
-        <a class="tile {% if request.path.startswith('/bank-accounts') %}active{% endif %}" href="{{ url_for('bank_accounts_list') }}">
-          <span class="tile-emoji">🏦</span><span class="tile-text">{{ t.bank_accounts }}</span>
-        </a>
-
-        <a class="tile {% if request.path.startswith('/card-rentals') %}active{% endif %}" href="{{ url_for('card_rentals_list') }}">
-          <span class="tile-emoji">💳</span><span class="tile-text">{{ t.card_rentals }}</span>
-        </a>
-
-        <a class="tile {% if request.path.startswith('/salaries') %}active{% endif %}" href="{{ url_for('salaries_list') }}">
-          <span class="tile-emoji">💵</span><span class="tile-text">{{ t.salaries }}</span>
-        </a>
-
-        <a class="tile {% if request.path.startswith('/expenses') %}active{% endif %}" href="{{ url_for('expenses_list') }}">
-          <span class="tile-emoji">💸</span><span class="tile-text">{{ t.expenses }}</span>
-        </a>
-
-        <!-- 分组标题 -->
-        <div class="lang" style="margin-top:8px;opacity:.75">{{ '安全设置' if lang=='zh' else 'Security' }}</div>
-
-        <a class="tile {% if request.path == '/account-credentials' %}active{% endif %}" href="/account-credentials">
-          <span class="tile-emoji">🔐</span><span class="tile-text">{{ '账号安全（重置密码）' if lang=='zh' else 'Account Security' }}</span>
-        </a>
-        <a class="tile" href="/account-credentials#change-pw">
-          <span class="tile-emoji">🔑</span><span class="tile-text">{{ '修改密码' if lang=='zh' else 'Change Password' }}</span>
-        </a>
-        <a class="tile" href="/account-credentials#change-id">
-          <span class="tile-emoji">🆔</span><span class="tile-text">{{ '修改用户名' if lang=='zh' else 'Change Username' }}</span>
-        </a>
-
-        <div class="lang" style="margin-top:8px;opacity:.75">{{ '会话' if lang=='zh' else 'Session' }}</div>
-        <a class="tile" href="{{ url_for('logout') }}">
-          <span class="tile-emoji">🚪</span><span class="tile-text">{{ t.logout }}</span>
-        </a>
-
-        <div class="lang" style="margin-top:12px">
-          {{ t.language }}：
-          <a href="{{ request.path }}?lang=zh">中文</a> |
-          <a href="{{ request.path }}?lang=en">English</a>
-        </div>
-      </nav>
-    </aside>
-
-    <!-- 内容区 -->
-    <main class="content">
-      <div class="topbar">
-        <h2 class="page-title">{% block page_title %}{% endblock %}</h2>
-        <div class="page-actions">{% block page_actions %}{% endblock %}</div>
+      <div class="nav-group-title" style="margin-top:12px;color:#93a4c0;font-size:12px;">
+        {{ t.language }}
       </div>
+      <div class="lang">
+        <a href="{{ request.path }}?lang=zh">中文</a> | <a href="{{ request.path }}?lang=en">English</a>
+      </div>
+    </nav>
+  </aside>
 
+  <!-- 主内容 -->
+  <main class="content">
+    <header class="topbar">
+      <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+      <div class="page-actions">{% block page_actions %}{% endblock %}</div>
+    </header>
+
+    <section class="page-body">
       {% block content %}{% endblock %}
-    </main>
-  </div>
+    </section>
+  </main>
+</div>
 
-  {% block scripts %}{% endblock %}
+{% block scripts %}{% endblock %}
 </body>
 </html>
