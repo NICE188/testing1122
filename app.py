@@ -279,7 +279,7 @@ def login_post():
 
 @app.get("/logout")
 def logout():
-    session.clear
+    session.clear()
     return redirect(url_for("login"))
 
 # -----------------------------------------------------------------------------
