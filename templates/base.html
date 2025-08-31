@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{% block title %}安全中心{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static_style') }}">
 </head>
-<body class="bg-dark">
+<body>
+  <!-- 顶部栏 -->
   <header class="topbar">
-    <div class="brand">⚜️ Admin Panel</div>
+    <div class="brand">
+      ⚜️ Admin Panel
+      <button class="side-toggle" onclick="document.body.classList.toggle('side-open')">菜单</button>
+    </div>
     <nav class="nav">
       {% if session.get('user_id') %}
         <span class="user">👤 {{ session.get('user_id') }}</span>
-        <a href="{{ url_for('account_credentials') }}">安全中心</a>
-        <a href="{{ url_for('account_change_password') }}">修改密码</a>
-        <a href="{{ url_for('account_change_username') }}">修改用户名</a>
-        <a href="{{ url_for('account_reset') }}">重置密码(管理员)</a>
         <a href="{{ url_for('logout') }}">退出</a>
       {% else %}
         <a href="{{ url_for('login') }}">登录</a>
@@ -23,19 +23,50 @@
     </nav>
   </header>
 
-  <main class="container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="flash-wrap">
-        {% for category, message in messages %}
-          <div class="flash {{ category }}">{{ message }}</div>
-        {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-    {% block content %}{% endblock %}
-  </main>
+  <!-- 主布局：侧栏 + 主内容 -->
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="side-head">
+        <div class="side-title">导航</div>
+      </div>
+      <nav class="side-menu">
+        {# active 高亮根据 request.path 匹配 #}
+        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}">🏠 Dashboard</a>
+        <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">👨‍💼 工人 / 平台</a>
+        <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">🏦 银行账户</a>
+        <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">💳 银行卡租金</a>
+        <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}">💵 出粮记录</a>
+        <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}">💸 开销记录</a>
+        <a href="{{ url_for('account_security') }}" class="{{ 'active' if request.path.startswith('/account') or request.path.startswith('/account-security') else '' }}">🔐 安全设置</a>
+      </nav>
+    </aside>
 
-  <footer class="footer">© {{ 2025 }} Admin</footer>
+    <main class="main">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-wrap">
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+      <footer class="footer">© {{ 2025 }} Admin</footer>
+    </main>
+  </div>
+
+  <script>
+    // 可选：记住侧栏展开状态（简单版，也可以不加）
+    try{
+      const key='__side_open__';
+      const saved=localStorage.getItem(key);
+      if(saved==='1'){ document.body.classList.add('side-open'); }
+      document.querySelector('.side-toggle')?.addEventListener('click',()=>{
+        const open=document.body.classList.contains('side-open');
+        localStorage.setItem(key, open?'0':'1');
+      });
+    }catch(e){}
+  </script>
 </body>
 </html>
