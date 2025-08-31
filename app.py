@@ -896,6 +896,19 @@ def export_expenses():
         "expenses.csv"
     )
 
+# --- Security pages (placeholders to avoid blank pages) ---
+@app.get("/account/reset")
+def account_reset():
+    return render_template("account_reset.html")
+
+@app.get("/account/change-password")
+def account_change_password():
+    return render_template("account_change_password.html")
+
+@app.get("/account/change-username")
+def account_change_username():
+    return render_template("account_change_username.html")
+    
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
