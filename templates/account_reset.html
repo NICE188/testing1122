@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ '账号安全（重置密码）' if lang=='zh' else 'Reset Password' }} · {{ t.app_name }}{% endblock %}
+{% block page_title %}🔐 {{ '账号安全（重置密码）' if lang=='zh' else 'Reset Password' }}{% endblock %}
+{% block content %}
+<div class="panel">
+  <p style="color:#93a4c0;margin:0 0 10px">
+    {{ '这里可放置重置管理员密码的表单或说明。' if lang=='zh' else 'Put your admin password reset form or instruction here.' }}
+  </p>
+  <div class="empty">Coming soon…</div>
+</div>
+{% endblock %}
