@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <!-- 单文件版：用内置 CSS 路由；分文件版请改成 url_for('static', filename='style.css') -->
+  <!-- 单文件版使用内置 CSS 路由；分文件版可改为 url_for('static', filename='style.css', v=8) -->
   <link rel="stylesheet" href="{{ url_for('static_style') }}">
 </head>
 <body>
@@ -65,13 +65,14 @@
           </div>
         {% endif %}
       {% endwith %}
+
       {% block content %}{% endblock %}
       <footer class="footer">© {{ 2025 }} Admin</footer>
     </main>
   </div>
 
   <script>
-    // 侧边栏折叠状态记忆
+    // 侧栏折叠状态记忆
     (function(){
       const key='__side_collapsed__';
       try{
