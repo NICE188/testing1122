@@ -227,7 +227,7 @@ TEMPLATES = {
 <body>
   <header class="topbar">
     <div class="brand">
-      ⚜️ Admin Panel
+      ⚜️ NEPWIN88
       <button id="collapseBtn" class="side-toggle" type="button" title="折叠/展开侧边栏">菜单</button>
     </div>
     <nav class="nav">
