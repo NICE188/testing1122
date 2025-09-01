@@ -1,4 +1,4 @@
-# app.py —— 单文件可运行：侧边栏 + 列表页 + 表单弹窗（美化版）+ 启用/停用 + 删除确认 + 导出CSV + 登录鉴权
+# app.py —— 单文件可运行：侧边栏 + 列表页 + 表单弹窗（美化版）+ 启用/停用 + 删除确认 + 导出CSV + 登录鉴权 + /health
 from flask import (
     Flask, request, render_template, render_template_string,
     redirect, url_for, send_file, session, abort, flash, Response
@@ -8,7 +8,7 @@ from datetime import datetime
 from jinja2 import TemplateNotFound, DictLoader
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# ============ 环境变量 ============
+# ========= 环境变量（可在 Railway Variables 覆盖）=========
 APP_DB = os.environ.get("APP_DB", "data.db")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
@@ -17,7 +17,12 @@ SECRET_KEY    = os.environ.get("SECRET_KEY", "dev-secret")
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
-# ============ 高质感 CSS（含弹窗美化/动画/骨架屏/滚动锁定） ============
+# ========= 健康检查 =========
+@app.get("/health")
+def health():
+    return "ok", 200
+
+# ========= 高质感 CSS（含弹窗美化/动画/骨架屏/滚动锁定）=========
 STYLE_CSS = r""":root{
   --bg:#090d14; --bg-2:#0e1524; --surface:#0f1726; --line:#26314a;
   --text:#e9eef7; --muted:#9db0c8;
@@ -174,7 +179,7 @@ td{padding:12px;border-bottom:1px solid var(--line)}
 tbody tr:hover{background:rgba(255,255,255,.03)}
 tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 
-/* ===== 删除确认弹窗（小） —— 美化版 ===== */
+/* ===== 删除确认弹窗（小） ===== */
 .modal-backdrop{
   position:fixed; inset:0; z-index:50; display:none;
   background:radial-gradient(1200px 600px at 15% -10%, rgba(242,201,76,.12), transparent 60%),
@@ -202,13 +207,10 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
   content:""; position:absolute; inset:0; pointer-events:none;
   border-radius:inherit;
   background:linear-gradient(180deg, rgba(242,201,76,.18), rgba(255,159,67,.10), transparent 60%);
-  mask:linear-gradient(#000,#000) content-box, linear-gradient(#000,#000);
-  -webkit-mask:linear-gradient(#000,#000) content-box, linear-gradient(#000,#000);
-  padding:1px; border-radius:inherit;
-  opacity:.18;
+  padding:1px; border-radius:inherit; opacity:.18;
 }
 
-/* ===== 大弹窗（表单）—— 高级质感 + 动画 + 骨架 ===== */
+/* ===== 大弹窗（表单） ===== */
 .big-backdrop{
   position:fixed; inset:0; z-index:55; display:none;
   background:radial-gradient(1600px 700px at 10% -10%, rgba(242,201,76,.10), transparent 60%),
@@ -218,30 +220,22 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 }
 .big-backdrop.open{display:flex; align-items:center; justify-content:center; padding:24px}
 .big-backdrop.closing{pointer-events:none}
-
-/* 容器卡片 */
 .big-modal{
   width:min(920px, 96vw); max-height:90vh; overflow:auto;
   position:relative; border-radius:20px;
   background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), var(--surface);
   border:1px solid rgba(255,255,255,.12);
-  box-shadow:
-    0 40px 100px rgba(0,0,0,.65),
-    0 0 0 1px rgba(255,255,255,.06) inset;
+  box-shadow:0 40px 100px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.06) inset;
   opacity:0; transform:translateY(14px) scale(.985);
   transition:opacity .24s ease, transform .24s ease;
 }
 .big-backdrop.open .big-modal{opacity:1; transform:none}
 .big-backdrop.closing .big-modal{opacity:0; transform:translateY(6px) scale(.985)}
-
 .big-modal::before{
   content:""; position:absolute; inset:-1px; border-radius:inherit; pointer-events:none;
-  background:
-    linear-gradient(180deg, rgba(242,201,76,.35), rgba(255,159,67,.18) 40%, rgba(81,118,255,.18) 80%, transparent);
-  opacity:.20; filter:blur(0.4px);
+  background:linear-gradient(180deg, rgba(242,201,76,.35), rgba(255,159,67,.18) 40%, rgba(81,118,255,.18) 80%, transparent);
+  opacity:.20;
 }
-
-/* 头部 */
 .big-header{
   position:sticky; top:0; z-index:1;
   display:flex; align-items:center; justify-content:space-between;
@@ -253,8 +247,6 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 .big-title{font-weight:700; letter-spacing:.2px; display:flex; align-items:center; gap:8px}
 .big-title::before{content:"✨"; opacity:.9}
 .big-body{padding:16px 16px 18px}
-
-/* 关闭按钮 */
 .big-close{
   --bcol:rgba(255,255,255,.12);
   padding:8px 12px; border-radius:12px; border:1px solid var(--bcol);
@@ -262,12 +254,8 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
   transition:transform .16s ease, box-shadow .2s ease, border-color .2s ease;
 }
 .big-close:hover{transform:translateY(-1px); box-shadow:0 10px 22px rgba(0,0,0,.35); border-color:#3f4b6b}
-
-/* 弹窗内表单的间距优化 */
 .big-body .form{gap:12px}
 .big-body .form input,.big-body .form select,.big-body .form textarea{border-radius:14px}
-
-/* 加载骨架与轻量 spinner（打开弹窗时先展示） */
 .skel{display:grid; gap:10px}
 .skel .line{
   height:14px; border-radius:10px; overflow:hidden;
@@ -282,16 +270,10 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
   animation:spin .8s linear infinite; display:inline-block; vertical-align:middle;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* 打开弹窗时锁定页面滚动 */
 body.modal-open{overflow:hidden}
-
-/* 滚动条 */
 *::-webkit-scrollbar{height:10px;width:10px}
 *::-webkit-scrollbar-thumb{background:#2a3754;border-radius:10px;border:2px solid #0f1522}
 *::-webkit-scrollbar-thumb:hover{background:#35476b}
-
-/* 移动端 */
 @media (max-width: 960px){
   .layout{grid-template-columns:1fr}
   .sidebar{position:relative;top:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}
@@ -302,7 +284,7 @@ body.modal-open{overflow:hidden}
 def static_style():
     return Response(STYLE_CSS, mimetype="text/css")
 
-# ============ 模板（DictLoader，免 templates 目录） ============
+# ========= 模板（DictLoader，免 templates 目录）=========
 TEMPLATES = {
 "base.html": """<!doctype html>
 <html lang="zh">
@@ -310,7 +292,7 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=50">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=51">
 </head>
 <body>
   <header class="topbar">
@@ -382,7 +364,7 @@ TEMPLATES = {
   </div>
 
   <script>
-    // 侧栏折叠状态记忆
+    // 侧栏折叠记忆
     (function(){
       const key='__side_collapsed__';
       try{
@@ -419,7 +401,7 @@ TEMPLATES = {
       backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
     })();
 
-    // ===== 表单弹窗（美化 + 交互增强）=====
+    // 表单弹窗（美化 + 交互增强）
     (function(){
       const big = document.getElementById('bigBackdrop');
       const content = document.getElementById('bigContent');
@@ -505,7 +487,7 @@ TEMPLATES = {
         ev.preventDefault();
         const data = new FormData(f);
         const btn = f.querySelector('button[type="submit"]');
-        if(btn){ btn.disabled = True = true; btn.style.opacity = .75; }
+        if(btn){ btn.disabled = true; btn.style.opacity = .75; }
         try{
           await fetch(f.action, {method: f.method || 'POST', body: data, headers:{'X-Requested-With':'fetch'}});
           close();
@@ -554,7 +536,6 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ===== 列表页（新增/编辑按钮 => 弹窗） =====
 "workers_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.workers }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -642,7 +623,7 @@ TEMPLATES = {
   </div>
 </div>
 {% endblock %}
-""},
+""",
 
 "card_rentals_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.card_rentals }} · {{ t.app_name }}{% endblock %}
@@ -757,7 +738,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ===== 弹窗表单 partials（所有新增/编辑） =====
+# ===== 弹窗表单 partials =====
 "partials/workers_form.html": """
 <div class="panel">
   <h2 style="margin-top:0">{{ '✏️ 编辑工人' if r else '➕ 新增工人' }}</h2>
@@ -840,7 +821,6 @@ TEMPLATES = {
 </div>
 """,
 
-# ===== 安全设置：弹窗 partials =====
 "partials/account_credentials_form.html": """
 <div class="panel">
   <h2 style="margin-top:0">🧑‍💻 修改登录账号/密码</h2>
@@ -881,7 +861,6 @@ TEMPLATES = {
 </div>
 """,
 
-# ===== 安全中心主页（按钮也走弹窗） =====
 "account_security.html": """{% extends "base.html" %}
 {% block title %}账号安全 · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -899,7 +878,7 @@ TEMPLATES = {
 }
 app.jinja_loader = DictLoader(TEMPLATES)
 
-# ============ 日志 & 错误 ============
+# ========= 日志 & 错误 =========
 logging.basicConfig(level=logging.INFO)
 
 @app.errorhandler(TemplateNotFound)
@@ -915,7 +894,7 @@ def handle_any_error(e):
 def __diag():
     return render_template_string("OK — lang={{lang}}, app={{t.app_name}}")
 
-# ============ I18N ============
+# ========= I18N =========
 I18N = {
     "zh": {
         "app_name": "NepWin Ops",
@@ -936,7 +915,7 @@ I18N = {
 def get_lang(): return request.args.get("lang") or request.cookies.get("lang") or "zh"
 def T(): return I18N.get(get_lang(), I18N["zh"])
 
-# ============ DB 助手 & 初始化 ============
+# ========= DB 助手 & 初始化 =========
 def conn():
     c = sqlite3.connect(APP_DB); c.row_factory = sqlite3.Row; return c
 
@@ -991,7 +970,7 @@ def inject_globals():
 def inject_t():
     return {"t": T(), "lang": get_lang()}
 
-# ============ Auth ============
+# ========= Auth =========
 def require_login():
     if not session.get("user_id"):
         return redirect(url_for("login", next=request.path))
@@ -1015,7 +994,7 @@ def login_post():
 def logout():
     session.clear(); return redirect(url_for("login"))
 
-# ============ Dashboard ============
+# ========= Dashboard =========
 @app.get("/")
 def dashboard():
     if require_login(): return require_login()
@@ -1028,7 +1007,7 @@ def dashboard():
     return render_template("dashboard.html", total_workers=total_workers,
                            total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
 
-# ============ 安全中心（GET 返回弹窗 partial） ============
+# ========= 安全中心 =========
 @app.get("/account-security")
 def account_security():
     if require_login(): return require_login()
@@ -1123,7 +1102,7 @@ def account_reset_post():
         c.commit()
     flash("目标用户密码已重置", "success"); return redirect(url_for("account_security"))
 
-# ============ 工人 / 平台 ============
+# ========= 工人 / 平台 =========
 @app.get("/workers")
 def workers_list():
     if require_login(): return require_login()
@@ -1203,7 +1182,7 @@ def export_workers():
     mem = io.BytesIO(output.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="workers.csv")
 
-# ============ 银行账户 ============
+# ========= 银行账户 =========
 @app.get("/bank-accounts")
 def bank_accounts_list():
     if require_login(): return require_login()
@@ -1283,7 +1262,7 @@ def export_bank_accounts():
     mem = io.BytesIO(output.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="bank_accounts.csv")
 
-# ============ 银行卡租金 ============
+# ========= 银行卡租金 =========
 @app.get("/card-rentals")
 def card_rentals_list():
     if require_login(): return require_login()
@@ -1371,7 +1350,7 @@ def export_card_rentals():
     mem = io.BytesIO(output.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="card_rentals.csv")
 
-# ============ 出粮记录 ============
+# ========= 出粮记录 =========
 @app.get("/salaries")
 def salaries_list():
     if require_login(): return require_login()
@@ -1457,7 +1436,7 @@ def export_salaries():
     mem = io.BytesIO(output.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="salaries.csv")
 
-# ============ 开销 ============
+# ========= 开销 =========
 @app.get("/expenses")
 def expenses_list():
     if require_login(): return require_login()
@@ -1544,7 +1523,12 @@ def export_expenses():
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="expenses.csv")
 
 # 初始化数据库
-init_db()
+def _bootstrap():
+    try: init_db()
+    except Exception as e:
+        print("DB init error:", e)
+
+_bootstrap()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")))
