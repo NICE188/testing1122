@@ -1,4 +1,4 @@
-# app.py —— 全站带 Active/Inactive 开关（单文件可直接运行/部署）
+# app.py —— 单文件：侧边栏 + 状态开关 + 高质感 UI + 安全中心（复制即跑）
 from flask import (
     Flask, request, render_template, render_template_string,
     redirect, url_for, send_file, session, abort, flash, Response
@@ -17,7 +17,7 @@ SECRET_KEY    = os.environ.get("SECRET_KEY", "dev-secret")
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
-# ============ 高质感 CSS（含开关按钮样式） ============
+# ============ 高质感 CSS（含开关/按钮/弹窗/侧边栏） ============
 STYLE_CSS = r""":root{
   --bg:#090d14; --bg-2:#0e1524; --surface:#0f1726; --line:#26314a;
   --text:#e9eef7; --muted:#9db0c8;
@@ -161,7 +161,7 @@ body.side-collapsed .side-menu a .label{display:none}
   font-weight:600; letter-spacing:.2px; cursor:pointer; user-select:none;
   background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), rgba(18,26,44,.6);
   color:#dbeafe; box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 8px 18px rgba(0,0,0,.2);
-  transition:filter .2s ease, transform .12s ease, box-shadow .2s ease, border-color .2s ease;
+  transition:filter .2s ease, transform .12s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
 }
 .toggle:hover{transform:translateY(-1px)}
 .toggle .dot{width:10px;height:10px;border-radius:50%}
@@ -192,7 +192,7 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 .flash.error{border-color:#6b2a2a;background:linear-gradient(180deg,#2b1717,#1f1212)}
 .footer{opacity:.65;text-align:center;padding:26px}
 
-/* 自定义确认弹窗（沿用之前） */
+/* 自定义确认弹窗 */
 .modal-backdrop{position:fixed; inset:0; z-index:50; display:none; background:rgba(5,8,14,.55); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px}
 .modal-backdrop.open{display:flex}
 .modal{width:min(420px,100%); border-radius:16px; padding:18px; background:linear-gradient(180deg, rgba(255,255,255,.05), transparent 60%), var(--surface); border:1px solid rgba(255,255,255,.08); box-shadow:var(--shadow)}
@@ -217,7 +217,7 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 def static_style():
     return Response(STYLE_CSS, mimetype="text/css")
 
-# ============ 模板（列表里加入状态开关） ============
+# ============ 模板（DictLoader，免 templates 目录） ============
 TEMPLATES = {
 "base.html": """<!doctype html>
 <html lang="zh">
@@ -362,8 +362,9 @@ TEMPLATES = {
 {% endblock %}
 """,
 
+# ===== 安全中心页面 =====
 "account_security.html": """{% extends "base.html" %}
-{% block title %}账号安全 · {{ t.app_name if t else "App" }}{% endblock %}
+{% block title %}账号安全 · {{ t.app_name }}{% endblock %}
 {% block content %}
 <div class="panel">
   <h2>🔐 账号安全</h2>
@@ -374,6 +375,57 @@ TEMPLATES = {
     <a class="btn btn-delete" href="{{ url_for('account_reset') }}"><span class="ico">🛠</span> 管理员重置密码</a>
   </div>
 </div>
+{% endblock %}
+""",
+
+"account_credentials.html": """{% extends "base.html" %}
+{% block title %}安全中心（登录账号/密码） · {{ t.app_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">🧑‍💻 修改登录账号/密码</h1>
+<form class="form" method="post" action="{{ url_for('account_credentials_post') }}">
+  <input name="username" placeholder="{{ t.username }}" required>
+  <input name="password" type="password" placeholder="{{ t.password }}" required>
+  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
+  <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
+</form>
+{% endblock %}
+""",
+
+"account_change_password.html": """{% extends "base.html" %}
+{% block title %}修改密码 · {{ t.app_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">🔑 修改密码</h1>
+<form class="form" method="post" action="{{ url_for('account_change_password_post') }}">
+  <input name="old_password" type="password" placeholder="旧密码" required>
+  <input name="new_password" type="password" placeholder="新密码" required>
+  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
+  <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
+</form>
+{% endblock %}
+""",
+
+"account_change_username.html": """{% extends "base.html" %}
+{% block title %}修改用户名 · {{ t.app_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">🆔 修改用户名</h1>
+<form class="form" method="post" action="{{ url_for('account_change_username_post') }}">
+  <input name="new_username" placeholder="新用户名" required>
+  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
+  <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
+</form>
+{% endblock %}
+""",
+
+"account_reset.html": """{% extends "base.html" %}
+{% block title %}重置密码（管理员） · {{ t.app_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">🛠 管理员重置密码</h1>
+<form class="form" method="post" action="{{ url_for('account_reset_post') }}">
+  <input name="target_username" placeholder="目标用户名" required>
+  <input name="new_password" type="password" placeholder="新密码" required>
+  <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.save }}</button>
+  <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
+</form>
 {% endblock %}
 """,
 
@@ -738,7 +790,7 @@ I18N = {
 def get_lang(): return request.args.get("lang") or request.cookies.get("lang") or "zh"
 def T(): return I18N.get(get_lang(), I18N["zh"])
 
-# ============ DB 帮助 & 初始化/迁移 ============
+# ============ DB 助手 & 初始化/迁移 ============
 def conn():
     c = sqlite3.connect(APP_DB); c.row_factory = sqlite3.Row; return c
 
@@ -772,7 +824,7 @@ def init_db():
         cur.execute("""CREATE TABLE IF NOT EXISTS expenses(
             id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
-        # 迁移：确保旧表也有 status 列（默认 1=Active）
+        # 迁移旧库：补 status 默认 1
         ensure_column(c, "workers", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "card_rentals", "status", "INTEGER DEFAULT 1", 1)
@@ -829,6 +881,93 @@ def dashboard():
         cur.execute("SELECT IFNULL(SUM(amount),0) s FROM expenses"); total_expenses = cur.fetchone()["s"]
     return render_template("dashboard.html", total_workers=total_workers,
                            total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
+
+# ============ 安全中心 & 账号管理 ============
+@app.get("/account-security")
+def account_security():
+    if require_login(): return require_login()
+    return render_template("account_security.html")
+
+@app.get("/account/credentials")
+def account_credentials():
+    if require_login(): return require_login()
+    return render_template("account_credentials.html")
+
+@app.post("/account/credentials")
+def account_credentials_post():
+    if require_login(): return require_login()
+    new_username = request.form.get("username","").strip()
+    new_password = request.form.get("password","").strip()
+    if not new_username or not new_password:
+        flash("用户名与密码不能为空", "error"); return redirect(url_for("account_credentials"))
+    with conn() as c:
+        cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (session["user_id"],))
+        u = cur.fetchone()
+        if not u: abort(403)
+        cur.execute("UPDATE users SET username=?, password_hash=? WHERE id=?",
+                    (new_username, generate_password_hash(new_password), u["id"]))
+        c.commit(); session["user_id"] = new_username
+    flash("登录账号与密码已更新", "success"); return redirect(url_for("dashboard"))
+
+@app.get("/account/change-password")
+def account_change_password():
+    if require_login(): return require_login()
+    return render_template("account_change_password.html")
+
+@app.post("/account/change-password")
+def account_change_password_post():
+    if require_login(): return require_login()
+    old_pw = request.form.get("old_password",""); new_pw = request.form.get("new_password","")
+    if not old_pw or not new_pw:
+        flash("请输入旧密码与新密码", "error"); return redirect(url_for("account_change_password"))
+    with conn() as c:
+        cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (session["user_id"],))
+        u = cur.fetchone()
+        if not u or not check_password_hash(u["password_hash"], old_pw):
+            flash("旧密码不正确", "error"); return redirect(url_for("account_change_password"))
+        cur.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new_pw), u["id"]))
+        c.commit()
+    flash("密码已更新", "success"); return redirect(url_for("dashboard"))
+
+@app.get("/account/change-username")
+def account_change_username():
+    if require_login(): return require_login()
+    return render_template("account_change_username.html")
+
+@app.post("/account/change-username")
+def account_change_username_post():
+    if require_login(): return require_login()
+    new_username = request.form.get("new_username","").strip()
+    if not new_username:
+        flash("新用户名不能为空", "error"); return redirect(url_for("account_change_username"))
+    with conn() as c:
+        cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (session["user_id"],))
+        u = cur.fetchone()
+        if not u: abort(403)
+        cur.execute("UPDATE users SET username=? WHERE id=?", (new_username, u["id"]))
+        c.commit(); session["user_id"] = new_username
+    flash("用户名已更新", "success"); return redirect(url_for("dashboard"))
+
+@app.get("/account/reset")
+def account_reset():
+    if require_login(): return require_login()
+    return render_template("account_reset.html")
+
+@app.post("/account/reset")
+def account_reset_post():
+    if require_login(): return require_login()
+    target_username = request.form.get("target_username","").strip()
+    new_password = request.form.get("new_password","").strip()
+    if not target_username or not new_password:
+        flash("目标用户名与新密码不能为空", "error"); return redirect(url_for("account_reset"))
+    with conn() as c:
+        cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (target_username,))
+        u = cur.fetchone()
+        if not u:
+            flash("目标用户不存在", "error"); return redirect(url_for("account_reset"))
+        cur.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new_password), u["id"]))
+        c.commit()
+    flash("目标用户密码已重置", "success"); return redirect(url_for("dashboard"))
 
 # ============ 工人 / 平台 ============
 @app.get("/workers")
