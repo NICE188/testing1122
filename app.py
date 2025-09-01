@@ -1,4 +1,4 @@
-# app.py —— 高质感按钮 + 自定义确认弹窗 + 侧边栏（单文件可直接运行/部署）
+# app.py —— 全站带 Active/Inactive 开关（单文件可直接运行/部署）
 from flask import (
     Flask, request, render_template, render_template_string,
     redirect, url_for, send_file, session, abort, flash, Response
@@ -8,9 +8,7 @@ from datetime import datetime
 from jinja2 import TemplateNotFound, DictLoader
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# =========================
-# 环境变量（Railway/本地可覆盖）
-# =========================
+# ============ 环境变量 ============
 APP_DB = os.environ.get("APP_DB", "data.db")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
@@ -19,13 +17,12 @@ SECRET_KEY    = os.environ.get("SECRET_KEY", "dev-secret")
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
-# =========================
-# 高质感 CSS（含按钮样式 & 弹窗）
-# =========================
+# ============ 高质感 CSS（含开关按钮样式） ============
 STYLE_CSS = r""":root{
   --bg:#090d14; --bg-2:#0e1524; --surface:#0f1726; --line:#26314a;
   --text:#e9eef7; --muted:#9db0c8;
   --accent:#f2c94c; --accent-2:#ff9f43;
+  --ok:#22c55e; --warn:#ef4444;
   --shadow:0 10px 40px rgba(0,0,0,.45);
 }
 *{box-sizing:border-box}
@@ -139,7 +136,7 @@ body.side-collapsed .side-menu a .label{display:none}
 .form button:hover{box-shadow:0 8px 20px rgba(0,0,0,.35)}
 .form .danger{border-color:#7a2a2a;background:linear-gradient(180deg,#2a1416,#1b0f11)}
 
-/* ===== 高质感按钮（编辑/删除） ===== */
+/* 高质感按钮（编辑/删除） */
 .btn{
   --bcol: rgba(255,255,255,.06);
   display:inline-flex; align-items:center; gap:8px;
@@ -153,34 +150,27 @@ body.side-collapsed .side-menu a .label{display:none}
 .btn:hover{transform:translateY(-1px); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 12px 24px rgba(0,0,0,.32)}
 .btn:active{transform:translateY(0)}
 .btn .ico{font-size:16px;line-height:1}
-
-.btn-edit{
-  --bcol:#5176ff66;
-  background:
-    radial-gradient(90% 120% at -10% -20%, rgba(81,118,255,.35), transparent 60%),
-    linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), #13203a;
-  border-color:#4b69ff80;
-  box-shadow:inset 0 0 0 1px #4b69ff33, 0 10px 22px rgba(75,105,255,.25);
-}
-.btn-edit:hover{
-  border-color:#7aa1ffb0;
-  box-shadow:inset 0 0 0 1px #7aa1ff66, 0 14px 28px rgba(75,105,255,.33);
-}
-
-.btn-delete{
-  --bcol:#d14a4a66;
-  background:
-    radial-gradient(90% 120% at -10% -20%, rgba(209,74,74,.32), transparent 60%),
-    linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), #2a1416;
-  border-color:#d14a4a99;
-  box-shadow:inset 0 0 0 1px #d14a4a40, 0 10px 22px rgba(209,74,74,.25);
-}
-.btn-delete:hover{
-  border-color:#ff7d7db0;
-  box-shadow:inset 0 0 0 1px #ff7d7d70, 0 14px 28px rgba(209,74,74,.35);
-}
+.btn-edit{--bcol:#5176ff66; background:radial-gradient(90% 120% at -10% -20%, rgba(81,118,255,.35), transparent 60%), linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), #13203a; border-color:#4b69ff80; box-shadow:inset 0 0 0 1px #4b69ff33, 0 10px 22px rgba(75,105,255,.25)}
+.btn-delete{--bcol:#d14a4a66; background:radial-gradient(90% 120% at -10% -20%, rgba(209,74,74,.32), transparent 60%), linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), #2a1416; border-color:#d14a4a99; box-shadow:inset 0 0 0 1px #d14a4a40, 0 10px 22px rgba(209,74,74,.25)}
 .actions{display:flex;gap:10px}
-.actions .btn{min-width:94px; justify-content:center}
+
+/* ===== 状态开关按钮（Active / Inactive） ===== */
+.toggle{
+  display:inline-flex; align-items:center; gap:8px;
+  height:30px; padding:0 10px; border-radius:999px; border:1px solid rgba(255,255,255,.08);
+  font-weight:600; letter-spacing:.2px; cursor:pointer; user-select:none;
+  background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), rgba(18,26,44,.6);
+  color:#dbeafe; box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 8px 18px rgba(0,0,0,.2);
+  transition:filter .2s ease, transform .12s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.toggle:hover{transform:translateY(-1px)}
+.toggle .dot{width:10px;height:10px;border-radius:50%}
+.toggle.on{border-color:#1d4630;background:linear-gradient(180deg, rgba(255,255,255,.05), transparent 60%), #0f1f18; box-shadow:inset 0 0 0 1px rgba(34,197,94,.35), 0 10px 22px rgba(34,197,94,.18); color:#bbf7d0}
+.toggle.on .dot{background:var(--ok)}
+.toggle.off{border-color:#4a1d1d;background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), #241112; box-shadow:inset 0 0 0 1px rgba(239,68,68,.35), 0 10px 22px rgba(239,68,68,.18); color:#fecaca}
+.toggle.off .dot{background:var(--warn)}
+.toggle:active{transform:translateY(0)}
+.toggle-wrap{display:flex;align-items:center;gap:8px}
 
 /* 表格 */
 .table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.06);border-radius:18px;box-shadow:var(--shadow);backdrop-filter:blur(6px)}
@@ -202,25 +192,14 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 .flash.error{border-color:#6b2a2a;background:linear-gradient(180deg,#2b1717,#1f1212)}
 .footer{opacity:.65;text-align:center;padding:26px}
 
-/* 确认弹窗（玻璃风） */
-.modal-backdrop{
-  position:fixed; inset:0; z-index:50; display:none;
-  background:rgba(5,8,14,.55); backdrop-filter:blur(8px);
-  align-items:center; justify-content:center; padding:20px;
-}
+/* 自定义确认弹窗（沿用之前） */
+.modal-backdrop{position:fixed; inset:0; z-index:50; display:none; background:rgba(5,8,14,.55); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px}
 .modal-backdrop.open{display:flex}
-.modal{
-  width:min(420px,100%); border-radius:16px; padding:18px;
-  background:linear-gradient(180deg, rgba(255,255,255,.05), transparent 60%), var(--surface);
-  border:1px solid rgba(255,255,255,.08); box-shadow:var(--shadow);
-}
+.modal{width:min(420px,100%); border-radius:16px; padding:18px; background:linear-gradient(180deg, rgba(255,255,255,.05), transparent 60%), var(--surface); border:1px solid rgba(255,255,255,.08); box-shadow:var(--shadow)}
 .modal h3{margin:0 0 10px}
 .modal p{margin:0 0 14px; color:var(--muted)}
 .modal-actions{display:flex; gap:10px; justify-content:flex-end}
-.btn-ghost{
-  --bcol:rgba(255,255,255,.08);
-  background:rgba(15,22,38,.6);
-}
+.btn-ghost{--bcol:rgba(255,255,255,.08); background:rgba(15,22,38,.6)}
 
 /* 滚动条 */
 *::-webkit-scrollbar{height:10px;width:10px}
@@ -238,9 +217,7 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 def static_style():
     return Response(STYLE_CSS, mimetype="text/css")
 
-# =========================
-# 内嵌模板（把删除确认做成弹窗；按钮类改为 btn-edit / btn-delete）
-# =========================
+# ============ 模板（列表里加入状态开关） ============
 TEMPLATES = {
 "base.html": """<!doctype html>
 <html lang="zh">
@@ -248,7 +225,7 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=12">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=16">
 </head>
 <body>
   <header class="topbar">
@@ -296,7 +273,7 @@ TEMPLATES = {
     </main>
   </div>
 
-  <!-- 自定义确认弹窗 -->
+  <!-- 删除确认弹窗 -->
   <div id="confirmBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal">
       <h3>确认操作</h3>
@@ -309,7 +286,7 @@ TEMPLATES = {
   </div>
 
   <script>
-    // 侧栏折叠记忆
+    // 侧栏折叠状态记忆
     (function(){
       const key='__side_collapsed__';
       try{
@@ -321,7 +298,7 @@ TEMPLATES = {
       }catch(e){}
     })();
 
-    // 自定义删除确认（拦截带 .confirm 的表单）
+    // 自定义删除确认（拦截 .confirm 表单）
     (function(){
       const backdrop = document.getElementById('confirmBackdrop');
       const txt = document.getElementById('confirmText');
@@ -329,16 +306,8 @@ TEMPLATES = {
       const btnCancel = document.getElementById('confirmCancel');
       let pendingForm = null;
 
-      function open(msg){
-        if(msg) txt.textContent = msg;
-        backdrop.classList.add('open');
-        backdrop.setAttribute('aria-hidden','false');
-      }
-      function close(){
-        backdrop.classList.remove('open');
-        backdrop.setAttribute('aria-hidden','true');
-        pendingForm = null;
-      }
+      function open(msg){ if(msg) txt.textContent = msg; backdrop.classList.add('open'); backdrop.setAttribute('aria-hidden','false'); }
+      function close(){ backdrop.classList.remove('open'); backdrop.setAttribute('aria-hidden','true'); pendingForm = null; }
 
       document.addEventListener('submit', function(e){
         const f = e.target;
@@ -352,7 +321,7 @@ TEMPLATES = {
       btnCancel.addEventListener('click', close);
       btnOK.addEventListener('click', function(){
         if(pendingForm){
-          pendingForm.classList.remove('confirm'); // 防止递归拦截
+          pendingForm.classList.remove('confirm');
           pendingForm.submit();
           close();
         }
@@ -398,7 +367,6 @@ TEMPLATES = {
 {% block content %}
 <div class="panel">
   <h2>🔐 账号安全</h2>
-  <p>这里可以管理登录账号、修改密码、修改用户名以及管理员重置密码。</p>
   <div class="actions">
     <a class="btn" href="{{ url_for('account_credentials') }}">🧑‍💻 修改登录账号/密码</a>
     <a class="btn" href="{{ url_for('account_change_password') }}">🔑 修改密码</a>
@@ -409,57 +377,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-"account_credentials.html": """{% extends "base.html" %}
-{% block title %}安全中心（登录账号/密码） · {{ t.app_name }}{% endblock %}
-{% block content %}
-<h1 class="page-title">🧑‍💻 修改登录账号/密码</h1>
-<form class="form" method="post" action="{{ url_for('account_credentials_post') }}">
-  <input name="username" placeholder="{{ t.username }}" required>
-  <input name="password" type="password" placeholder="{{ t.password }}" required>
-  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
-</form>
-{% endblock %}
-""",
-
-"account_change_password.html": """{% extends "base.html" %}
-{% block title %}修改密码 · {{ t.app_name }}{% endblock %}
-{% block content %}
-<h1 class="page-title">🔑 修改密码</h1>
-<form class="form" method="post" action="{{ url_for('account_change_password_post') }}">
-  <input name="old_password" type="password" placeholder="旧密码" required>
-  <input name="new_password" type="password" placeholder="新密码" required>
-  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
-</form>
-{% endblock %}
-""",
-
-"account_change_username.html": """{% extends "base.html" %}
-{% block title %}修改用户名 · {{ t.app_name }}{% endblock %}
-{% block content %}
-<h1 class="page-title">🆔 修改用户名</h1>
-<form class="form" method="post" action="{{ url_for('account_change_username_post') }}">
-  <input name="new_username" placeholder="新用户名" required>
-  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
-</form>
-{% endblock %}
-""",
-
-"account_reset.html": """{% extends "base.html" %}
-{% block title %}重置密码（管理员） · {{ t.app_name }}{% endblock %}
-{% block content %}
-<h1 class="page-title">🛠 管理员重置密码</h1>
-<form class="form" method="post" action="{{ url_for('account_reset_post') }}">
-  <input name="target_username" placeholder="目标用户名" required>
-  <input name="new_password" type="password" placeholder="新密码" required>
-  <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
-</form>
-{% endblock %}
-""",
-
+# ===== 工人 / 平台 =====
 "workers_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.workers }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -477,13 +395,25 @@ TEMPLATES = {
     <table>
       <thead>
         <tr>
-          <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+          <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
         </tr>
       </thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td><td>{{ r.name }}</td><td>{{ r.company }}</td><td>{{ r.commission }}</td><td>{{ r.expenses }}</td><td>{{ r.created_at }}</td>
+          <td>{{ r.id }}</td>
+          <td>{{ r.name }}</td>
+          <td>{{ r.company }}</td>
+          <td>{{ r.commission }}</td>
+          <td>{{ r.expenses }}</td>
+          <td class="toggle-wrap">
+            <form method="post" action="{{ url_for('workers_toggle', wid=r.id) }}">
+              <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit" title="切换状态">
+                <span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}
+              </button>
+            </form>
+          </td>
+          <td>{{ r.created_at }}</td>
           <td class="actions">
             <a class="btn btn-edit" href="{{ url_for('workers_edit_form', wid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
             <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
@@ -492,7 +422,7 @@ TEMPLATES = {
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="7">{{ t.empty }}</td></tr>
+        <tr><td colspan="8">{{ t.empty }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -516,6 +446,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
+# ===== 银行账户 =====
 "bank_accounts_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.bank_accounts }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -536,7 +467,14 @@ TEMPLATES = {
         {% for r in rows %}
         <tr>
           <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.holder }}</td>
-          <td>{{ t.active if r.status==1 else t.inactive }}</td><td>{{ r.created_at }}</td>
+          <td class="toggle-wrap">
+            <form method="post" action="{{ url_for('bank_accounts_toggle', bid=r.id) }}">
+              <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit" title="切换状态">
+                <span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}
+              </button>
+            </form>
+          </td>
+          <td>{{ r.created_at }}</td>
           <td class="actions">
             <a class="btn btn-edit" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
             <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
@@ -570,6 +508,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
+# ===== 银行卡租金 =====
 "card_rentals_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.card_rentals }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -588,11 +527,19 @@ TEMPLATES = {
   </form>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>ID</th><th>银行</th><th>账号</th><th>月租金</th><th>开始</th><th>结束</th><th>备注</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
+      <thead><tr><th>ID</th><th>银行</th><th>账号</th><th>月租金</th><th>开始</th><th>结束</th><th>{{ t.status }}</th><th>备注</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.monthly_rent }}</td><td>{{ r.start_date }}</td><td>{{ r.end_date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
+          <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.monthly_rent }}</td><td>{{ r.start_date }}</td><td>{{ r.end_date }}</td>
+          <td class="toggle-wrap">
+            <form method="post" action="{{ url_for('card_rentals_toggle', rid=r.id) }}">
+              <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit" title="切换状态">
+                <span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}
+              </button>
+            </form>
+          </td>
+          <td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions">
             <a class="btn btn-edit" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
             <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
@@ -600,7 +547,7 @@ TEMPLATES = {
             </form>
           </td>
         </tr>
-        {% else %}<tr><td colspan="9">{{ t.empty }}</td></tr>{% endfor %}
+        {% else %}<tr><td colspan="10">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
@@ -628,6 +575,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
+# ===== 出粮记录 =====
 "salaries_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.salaries }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -643,11 +591,19 @@ TEMPLATES = {
   </form>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.salary_amount }}</th><th>{{ t.pay_date }}</th><th>{{ t.note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
+      <thead><tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.salary_amount }}</th><th>{{ t.pay_date }}</th><th>{{ t.status }}</th><th>{{ t.note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.pay_date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
+          <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.pay_date }}</td>
+          <td class="toggle-wrap">
+            <form method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}">
+              <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit" title="切换状态">
+                <span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}
+              </button>
+            </form>
+          </td>
+          <td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions">
             <a class="btn btn-edit" href="{{ url_for('salaries_edit_form', sid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
             <form method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
@@ -655,7 +611,7 @@ TEMPLATES = {
             </form>
           </td>
         </tr>
-        {% else %}<tr><td colspan="7">{{ t.empty }}</td></tr>{% endfor %}
+        {% else %}<tr><td colspan="8">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
@@ -678,6 +634,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
+# ===== 开销 =====
 "expenses_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.expenses }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -696,11 +653,19 @@ TEMPLATES = {
   </form>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.expense_amount }}</th><th>{{ t.date }}</th><th>{{ t.expenses_note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
+      <thead><tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.expense_amount }}</th><th>{{ t.date }}</th><th>{{ t.status }}</th><th>{{ t.expenses_note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
+          <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.date }}</td>
+          <td class="toggle-wrap">
+            <form method="post" action="{{ url_for('expenses_toggle', eid=r.id) }}">
+              <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit" title="切换状态">
+                <span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}
+              </button>
+            </form>
+          </td>
+          <td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions">
             <a class="btn btn-edit" href="{{ url_for('expenses_edit_form', eid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
             <form method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
@@ -708,7 +673,7 @@ TEMPLATES = {
             </form>
           </td>
         </tr>
-        {% else %}<tr><td colspan="7">{{ t.empty }}</td></tr>{% endfor %}
+        {% else %}<tr><td colspan="8">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
@@ -736,9 +701,7 @@ TEMPLATES = {
 }
 app.jinja_loader = DictLoader(TEMPLATES)
 
-# =========================
-# 日志 & 错误
-# =========================
+# ============ 日志 & 错误 ============
 logging.basicConfig(level=logging.INFO)
 
 @app.errorhandler(TemplateNotFound)
@@ -754,9 +717,7 @@ def handle_any_error(e):
 def __diag():
     return render_template_string("OK — lang={{lang}}, app={{t.app_name}}")
 
-# =========================
-# I18N
-# =========================
+# ============ I18N ============
 I18N = {
     "zh": {
         "app_name": "NepWin Ops",
@@ -777,11 +738,18 @@ I18N = {
 def get_lang(): return request.args.get("lang") or request.cookies.get("lang") or "zh"
 def T(): return I18N.get(get_lang(), I18N["zh"])
 
-# =========================
-# DB & 初始化
-# =========================
+# ============ DB 帮助 & 初始化/迁移 ============
 def conn():
     c = sqlite3.connect(APP_DB); c.row_factory = sqlite3.Row; return c
+
+def ensure_column(c, table, col, decl, default_value=None):
+    cur = c.cursor()
+    cur.execute(f"PRAGMA table_info({table})")
+    cols = [r["name"] for r in cur.fetchall()]
+    if col not in cols:
+        cur.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+        if default_value is not None:
+            cur.execute(f"UPDATE {table} SET {col}=?", (default_value,))
 
 def init_db():
     with conn() as c:
@@ -790,20 +758,26 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password_hash TEXT, is_admin INTEGER DEFAULT 1
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS workers(
-            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, company TEXT, commission REAL DEFAULT 0.0, expenses REAL DEFAULT 0.0, created_at TEXT
+            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, company TEXT, commission REAL DEFAULT 0.0, expenses REAL DEFAULT 0.0, status INTEGER DEFAULT 1, created_at TEXT
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS bank_accounts(
             id INTEGER PRIMARY KEY AUTOINCREMENT, bank_name TEXT, account_no TEXT, holder TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS card_rentals(
-            id INTEGER PRIMARY KEY AUTOINCREMENT, bank_account_id INTEGER, monthly_rent REAL, start_date TEXT, end_date TEXT, note TEXT, created_at TEXT
+            id INTEGER PRIMARY KEY AUTOINCREMENT, bank_account_id INTEGER, monthly_rent REAL, start_date TEXT, end_date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS salaries(
-            id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, pay_date TEXT, note TEXT, created_at TEXT
+            id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, pay_date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS expenses(
-            id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, date TEXT, note TEXT, created_at TEXT
+            id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
+        # 迁移：确保旧表也有 status 列（默认 1=Active）
+        ensure_column(c, "workers", "status", "INTEGER DEFAULT 1", 1)
+        ensure_column(c, "bank_accounts", "status", "INTEGER DEFAULT 1", 1)
+        ensure_column(c, "card_rentals", "status", "INTEGER DEFAULT 1", 1)
+        ensure_column(c, "salaries", "status", "INTEGER DEFAULT 1", 1)
+        ensure_column(c, "expenses", "status", "INTEGER DEFAULT 1", 1)
         # 默认管理员
         cur.execute("SELECT COUNT(*) n FROM users")
         if cur.fetchone()["n"] == 0:
@@ -819,9 +793,7 @@ def inject_globals():
 def inject_t():
     return {"t": T(), "lang": get_lang()}
 
-# =========================
-# Auth
-# =========================
+# ============ Auth ============
 def require_login():
     if not session.get("user_id"):
         return redirect(url_for("login", next=request.path))
@@ -845,9 +817,7 @@ def login_post():
 def logout():
     session.clear(); return redirect(url_for("login"))
 
-# =========================
-# Dashboard
-# =========================
+# ============ Dashboard ============
 @app.get("/")
 def dashboard():
     if require_login(): return require_login()
@@ -860,103 +830,12 @@ def dashboard():
     return render_template("dashboard.html", total_workers=total_workers,
                            total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
 
-# =========================
-# 安全中心 & 账号管理
-# =========================
-@app.get("/account-security")
-def account_security():
-    if require_login(): return require_login()
-    return render_template("account_security.html")
-
-@app.get("/account/credentials")
-def account_credentials():
-    if require_login(): return require_login()
-    return render_template("account_credentials.html")
-
-@app.post("/account/credentials")
-def account_credentials_post():
-    if require_login(): return require_login()
-    new_username = request.form.get("username","").strip()
-    new_password = request.form.get("password","").strip()
-    if not new_username or not new_password:
-        flash("用户名与密码不能为空", "error"); return redirect(url_for("account_credentials"))
-    with conn() as c:
-        cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (session["user_id"],))
-        u = cur.fetchone()
-        if not u: abort(403)
-        cur.execute("UPDATE users SET username=?, password_hash=? WHERE id=?",
-                    (new_username, generate_password_hash(new_password), u["id"]))
-        c.commit(); session["user_id"] = new_username
-    flash("登录账号与密码已更新", "success"); return redirect(url_for("dashboard"))
-
-@app.get("/account/change-password")
-def account_change_password():
-    if require_login(): return require_login()
-    return render_template("account_change_password.html")
-
-@app.post("/account/change-password")
-def account_change_password_post():
-    if require_login(): return require_login()
-    old_pw = request.form.get("old_password",""); new_pw = request.form.get("new_password","")
-    if not old_pw or not new_pw:
-        flash("请输入旧密码与新密码", "error"); return redirect(url_for("account_change_password"))
-    with conn() as c:
-        cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (session["user_id"],))
-        u = cur.fetchone()
-        if not u or not check_password_hash(u["password_hash"], old_pw):
-            flash("旧密码不正确", "error"); return redirect(url_for("account_change_password"))
-        cur.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new_pw), u["id"]))
-        c.commit()
-    flash("密码已更新", "success"); return redirect(url_for("dashboard"))
-
-@app.get("/account/change-username")
-def account_change_username():
-    if require_login(): return require_login()
-    return render_template("account_change_username.html")
-
-@app.post("/account/change-username")
-def account_change_username_post():
-    if require_login(): return require_login()
-    new_username = request.form.get("new_username","").strip()
-    if not new_username:
-        flash("新用户名不能为空", "error"); return redirect(url_for("account_change_username"))
-    with conn() as c:
-        cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (session["user_id"],))
-        u = cur.fetchone()
-        if not u: abort(403)
-        cur.execute("UPDATE users SET username=? WHERE id=?", (new_username, u["id"]))
-        c.commit(); session["user_id"] = new_username
-    flash("用户名已更新", "success"); return redirect(url_for("dashboard"))
-
-@app.get("/account/reset")
-def account_reset():
-    if require_login(): return require_login()
-    return render_template("account_reset.html")
-
-@app.post("/account/reset")
-def account_reset_post():
-    if require_login(): return require_login()
-    target_username = request.form.get("target_username","").strip()
-    new_password = request.form.get("new_password","").strip()
-    if not target_username or not new_password:
-        flash("目标用户名与新密码不能为空", "error"); return redirect(url_for("account_reset"))
-    with conn() as c:
-        cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (target_username,))
-        u = cur.fetchone()
-        if not u:
-            flash("目标用户不存在", "error"); return redirect(url_for("account_reset"))
-        cur.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new_password), u["id"]))
-        c.commit()
-    flash("目标用户密码已重置", "success"); return redirect(url_for("dashboard"))
-
-# =========================
-# 工人 / 平台
-# =========================
+# ============ 工人 / 平台 ============
 @app.get("/workers")
 def workers_list():
     if require_login(): return require_login()
     with conn() as c:
-        cur = c.cursor(); cur.execute("SELECT * FROM workers ORDER BY id DESC"); rows = cur.fetchall()
+        rows = c.execute("SELECT * FROM workers ORDER BY id DESC").fetchall()
     return render_template("workers_list.html", rows=rows)
 
 @app.post("/workers/add")
@@ -967,9 +846,8 @@ def workers_add():
     commission = float(request.form.get("commission") or 0)
     expenses = float(request.form.get("expenses") or 0)
     with conn() as c:
-        cur = c.cursor()
-        cur.execute("""INSERT INTO workers(name,company,commission,expenses,created_at)
-                       VALUES(?,?,?,?,?)""", (name, company, commission, expenses, datetime.utcnow().isoformat()))
+        c.execute("""INSERT INTO workers(name,company,commission,expenses,status,created_at)
+                     VALUES(?,?,?,?,1,?)""", (name, company, commission, expenses, datetime.utcnow().isoformat()))
         c.commit()
     return redirect(url_for("workers_list"))
 
@@ -977,7 +855,7 @@ def workers_add():
 def workers_edit_form(wid):
     if require_login(): return require_login()
     with conn() as c:
-        cur = c.cursor(); cur.execute("SELECT * FROM workers WHERE id=?", (wid,)); r = cur.fetchone()
+        r = c.execute("SELECT * FROM workers WHERE id=?", (wid,)).fetchone()
         if not r: abort(404)
     return render_template("workers_edit.html", r=r)
 
@@ -989,9 +867,21 @@ def workers_edit(wid):
     commission = float(request.form.get("commission") or 0)
     expenses = float(request.form.get("expenses") or 0)
     with conn() as c:
+        c.execute("""UPDATE workers SET name=?, company=?, commission=?, expenses=? WHERE id=?""",
+                  (name, company, commission, expenses, wid))
+        c.commit()
+    return redirect(url_for("workers_list"))
+
+@app.post("/workers/<int:wid>/toggle")
+def workers_toggle(wid):
+    if require_login(): return require_login()
+    with conn() as c:
         cur = c.cursor()
-        cur.execute("""UPDATE workers SET name=?, company=?, commission=?, expenses=? WHERE id=?""",
-                    (name, company, commission, expenses, wid))
+        cur.execute("SELECT status FROM workers WHERE id=?", (wid,))
+        row = cur.fetchone()
+        if not row: abort(404)
+        newv = 0 if (row["status"]==1) else 1
+        cur.execute("UPDATE workers SET status=? WHERE id=?", (newv, wid))
         c.commit()
     return redirect(url_for("workers_list"))
 
@@ -1006,21 +896,19 @@ def workers_delete(wid):
 def export_workers():
     if require_login(): return require_login()
     output = io.StringIO(); writer = csv.writer(output)
-    writer.writerow(["id","name","company","commission","expenses","created_at"])
+    writer.writerow(["id","name","company","commission","expenses","status","created_at"])
     with conn() as c:
         for r in c.execute("SELECT * FROM workers ORDER BY id DESC"):
-            writer.writerow([r["id"],r["name"],r["company"],r["commission"],r["expenses"],r["created_at"]])
+            writer.writerow([r["id"],r["name"],r["company"],r["commission"],r["expenses"],r["status"],r["created_at"]])
     mem = io.BytesIO(output.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="workers.csv")
 
-# =========================
-# 银行账户
-# =========================
+# ============ 银行账户 ============
 @app.get("/bank-accounts")
 def bank_accounts_list():
     if require_login(): return require_login()
     with conn() as c:
-        cur = c.cursor(); cur.execute("SELECT * FROM bank_accounts ORDER BY id DESC"); rows = cur.fetchall()
+        rows = c.execute("SELECT * FROM bank_accounts ORDER BY id DESC").fetchall()
     return render_template("bank_accounts_list.html", rows=rows)
 
 @app.post("/bank-accounts/add")
@@ -1031,9 +919,8 @@ def bank_accounts_add():
     holder = request.form.get("holder","").strip()
     status = 1 if request.form.get("status") == "1" else 0
     with conn() as c:
-        cur = c.cursor()
-        cur.execute("""INSERT INTO bank_accounts(bank_name,account_no,holder,status,created_at)
-                       VALUES(?,?,?,?,?)""", (bank_name, account_no, holder, status, datetime.utcnow().isoformat()))
+        c.execute("""INSERT INTO bank_accounts(bank_name,account_no,holder,status,created_at)
+                     VALUES(?,?,?,?,?)""", (bank_name, account_no, holder, status, datetime.utcnow().isoformat()))
         c.commit()
     return redirect(url_for("bank_accounts_list"))
 
@@ -1041,7 +928,7 @@ def bank_accounts_add():
 def bank_accounts_edit_form(bid):
     if require_login(): return require_login()
     with conn() as c:
-        cur = c.cursor(); cur.execute("SELECT * FROM bank_accounts WHERE id=?", (bid,)); r = cur.fetchone()
+        r = c.execute("SELECT * FROM bank_accounts WHERE id=?", (bid,)).fetchone()
         if not r: abort(404)
     return render_template("bank_accounts_edit.html", r=r)
 
@@ -1053,9 +940,21 @@ def bank_accounts_edit(bid):
     holder = request.form.get("holder","").strip()
     status = 1 if request.form.get("status") == "1" else 0
     with conn() as c:
+        c.execute("""UPDATE bank_accounts SET bank_name=?, account_no=?, holder=?, status=? WHERE id=?""",
+                  (bank_name, account_no, holder, status, bid))
+        c.commit()
+    return redirect(url_for("bank_accounts_list"))
+
+@app.post("/bank-accounts/<int:bid>/toggle")
+def bank_accounts_toggle(bid):
+    if require_login(): return require_login()
+    with conn() as c:
         cur = c.cursor()
-        cur.execute("""UPDATE bank_accounts SET bank_name=?, account_no=?, holder=?, status=? WHERE id=?""",
-                    (bank_name, account_no, holder, status, bid))
+        cur.execute("SELECT status FROM bank_accounts WHERE id=?", (bid,))
+        row = cur.fetchone()
+        if not row: abort(404)
+        newv = 0 if (row["status"]==1) else 1
+        cur.execute("UPDATE bank_accounts SET status=? WHERE id=?", (newv, bid))
         c.commit()
     return redirect(url_for("bank_accounts_list"))
 
@@ -1077,20 +976,16 @@ def export_bank_accounts():
     mem = io.BytesIO(output.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="bank_accounts.csv")
 
-# =========================
-# 银行卡租金
-# =========================
+# ============ 银行卡租金 ============
 @app.get("/card-rentals")
 def card_rentals_list():
     if require_login(): return require_login()
     with conn() as c:
         cur = c.cursor()
-        cur.execute("""SELECT cr.*, ba.bank_name, ba.account_no
-                       FROM card_rentals cr LEFT JOIN bank_accounts ba ON ba.id = cr.bank_account_id
-                       ORDER BY cr.id DESC""")
-        rows = cur.fetchall()
-        cur.execute("SELECT id, bank_name, account_no FROM bank_accounts ORDER BY id DESC")
-        banks = cur.fetchall()
+        rows = cur.execute("""SELECT cr.*, ba.bank_name, ba.account_no
+                              FROM card_rentals cr LEFT JOIN bank_accounts ba ON ba.id = cr.bank_account_id
+                              ORDER BY cr.id DESC""").fetchall()
+        banks = cur.execute("SELECT id, bank_name, account_no FROM bank_accounts ORDER BY id DESC").fetchall()
     return render_template("card_rentals_list.html", rows=rows, banks=banks)
 
 @app.post("/card-rentals/add")
@@ -1102,9 +997,8 @@ def card_rentals_add():
     end_date = request.form.get("end_date","")
     note = request.form.get("note","")
     with conn() as c:
-        cur = c.cursor()
-        cur.execute("""INSERT INTO card_rentals(bank_account_id, monthly_rent, start_date, end_date, note, created_at)
-                       VALUES(?,?,?,?,?,?)""", (bank_account_id, monthly_rent, start_date, end_date, note, datetime.utcnow().isoformat()))
+        c.execute("""INSERT INTO card_rentals(bank_account_id, monthly_rent, start_date, end_date, note, status, created_at)
+                     VALUES(?,?,?,?,?,1,?)""", (bank_account_id, monthly_rent, start_date, end_date, note, datetime.utcnow().isoformat()))
         c.commit()
     return redirect(url_for("card_rentals_list"))
 
@@ -1112,10 +1006,9 @@ def card_rentals_add():
 def card_rentals_edit_form(rid):
     if require_login(): return require_login()
     with conn() as c:
-        cur = c.cursor(); cur.execute("SELECT * FROM card_rentals WHERE id=?", (rid,)); r = cur.fetchone()
+        r = c.execute("SELECT * FROM card_rentals WHERE id=?", (rid,)).fetchone()
         if not r: abort(404)
-        cur.execute("SELECT id, bank_name, account_no FROM bank_accounts ORDER BY id DESC")
-        banks = cur.fetchall()
+        banks = c.execute("SELECT id, bank_name, account_no FROM bank_accounts ORDER BY id DESC").fetchall()
     return render_template("card_rentals_edit.html", r=r, banks=banks)
 
 @app.post("/card-rentals/<int:rid>/edit")
@@ -1127,9 +1020,21 @@ def card_rentals_edit(rid):
     end_date = request.form.get("end_date","")
     note = request.form.get("note","")
     with conn() as c:
+        c.execute("""UPDATE card_rentals SET bank_account_id=?, monthly_rent=?, start_date=?, end_date=?, note=? WHERE id=?""",
+                  (bank_account_id, monthly_rent, start_date, end_date, note, rid))
+        c.commit()
+    return redirect(url_for("card_rentals_list"))
+
+@app.post("/card-rentals/<int:rid>/toggle")
+def card_rentals_toggle(rid):
+    if require_login(): return require_login()
+    with conn() as c:
         cur = c.cursor()
-        cur.execute("""UPDATE card_rentals SET bank_account_id=?, monthly_rent=?, start_date=?, end_date=?, note=? WHERE id=?""",
-                    (bank_account_id, monthly_rent, start_date, end_date, note, rid))
+        cur.execute("SELECT status FROM card_rentals WHERE id=?", (rid,))
+        row = cur.fetchone()
+        if not row: abort(404)
+        newv = 0 if (row["status"]==1) else 1
+        cur.execute("UPDATE card_rentals SET status=? WHERE id=?", (newv, rid))
         c.commit()
     return redirect(url_for("card_rentals_list"))
 
@@ -1144,27 +1049,23 @@ def card_rentals_delete(rid):
 def export_card_rentals():
     if require_login(): return require_login()
     output = io.StringIO(); writer = csv.writer(output)
-    writer.writerow(["id","bank_account_id","monthly_rent","start_date","end_date","note","created_at"])
+    writer.writerow(["id","bank_account_id","monthly_rent","start_date","end_date","note","status","created_at"])
     with conn() as c:
         for r in c.execute("SELECT * FROM card_rentals ORDER BY id DESC"):
-            writer.writerow([r["id"],r["bank_account_id"],r["monthly_rent"],r["start_date"],r["end_date"],r["note"],r["created_at"]])
+            writer.writerow([r["id"],r["bank_account_id"],r["monthly_rent"],r["start_date"],r["end_date"],r["note"],r["status"],r["created_at"]])
     mem = io.BytesIO(output.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="card_rentals.csv")
 
-# =========================
-# 出粮记录
-# =========================
+# ============ 出粮记录 ============
 @app.get("/salaries")
 def salaries_list():
     if require_login(): return require_login()
     with conn() as c:
         cur = c.cursor()
-        cur.execute("""SELECT s.*, w.name AS worker_name
-                       FROM salaries s LEFT JOIN workers w ON w.id = s.worker_id
-                       ORDER BY s.id DESC""")
-        rows = cur.fetchall()
-        cur.execute("SELECT id, name FROM workers ORDER BY id DESC")
-        workers = cur.fetchall()
+        rows = cur.execute("""SELECT s.*, w.name AS worker_name
+                              FROM salaries s LEFT JOIN workers w ON w.id = s.worker_id
+                              ORDER BY s.id DESC""").fetchall()
+        workers = cur.execute("SELECT id, name FROM workers ORDER BY id DESC").fetchall()
     return render_template("salaries_list.html", rows=rows, workers=workers)
 
 @app.post("/salaries/add")
@@ -1175,9 +1076,8 @@ def salaries_add():
     pay_date = request.form.get("pay_date","")
     note = request.form.get("note","")
     with conn() as c:
-        cur = c.cursor()
-        cur.execute("""INSERT INTO salaries(worker_id, amount, pay_date, note, created_at)
-                       VALUES(?,?,?,?,?)""", (worker_id, amount, pay_date, note, datetime.utcnow().isoformat()))
+        c.execute("""INSERT INTO salaries(worker_id, amount, pay_date, note, status, created_at)
+                     VALUES(?,?,?,?,1,?)""", (worker_id, amount, pay_date, note, datetime.utcnow().isoformat()))
         c.commit()
     return redirect(url_for("salaries_list"))
 
@@ -1185,10 +1085,9 @@ def salaries_add():
 def salaries_edit_form(sid):
     if require_login(): return require_login()
     with conn() as c:
-        cur = c.cursor(); cur.execute("SELECT * FROM salaries WHERE id=?", (sid,)); r = cur.fetchone()
+        r = c.execute("SELECT * FROM salaries WHERE id=?", (sid,)).fetchone()
         if not r: abort(404)
-        cur.execute("SELECT id, name FROM workers ORDER BY id DESC")
-        workers = cur.fetchall()
+        workers = c.execute("SELECT id, name FROM workers ORDER BY id DESC").fetchall()
     return render_template("salaries_edit.html", r=r, workers=workers)
 
 @app.post("/salaries/<int:sid>/edit")
@@ -1199,9 +1098,21 @@ def salaries_edit(sid):
     pay_date = request.form.get("pay_date","")
     note = request.form.get("note","")
     with conn() as c:
+        c.execute("""UPDATE salaries SET worker_id=?, amount=?, pay_date=?, note=? WHERE id=?""",
+                  (worker_id, amount, pay_date, note, sid))
+        c.commit()
+    return redirect(url_for("salaries_list"))
+
+@app.post("/salaries/<int:sid>/toggle")
+def salaries_toggle(sid):
+    if require_login(): return require_login()
+    with conn() as c:
         cur = c.cursor()
-        cur.execute("""UPDATE salaries SET worker_id=?, amount=?, pay_date=?, note=? WHERE id=?""",
-                    (worker_id, amount, pay_date, note, sid))
+        cur.execute("SELECT status FROM salaries WHERE id=?", (sid,))
+        row = cur.fetchone()
+        if not row: abort(404)
+        newv = 0 if (row["status"]==1) else 1
+        cur.execute("UPDATE salaries SET status=? WHERE id=?", (newv, sid))
         c.commit()
     return redirect(url_for("salaries_list"))
 
@@ -1216,27 +1127,23 @@ def salaries_delete(sid):
 def export_salaries():
     if require_login(): return require_login()
     output = io.StringIO(); writer = csv.writer(output)
-    writer.writerow(["id","worker_id","amount","pay_date","note","created_at"])
+    writer.writerow(["id","worker_id","amount","pay_date","note","status","created_at"])
     with conn() as c:
         for r in c.execute("SELECT * FROM salaries ORDER BY id DESC"):
-            writer.writerow([r["id"],r["worker_id"],r["amount"],r["pay_date"],r["note"],r["created_at"]])
+            writer.writerow([r["id"],r["worker_id"],r["amount"],r["pay_date"],r["note"],r["status"],r["created_at"]])
     mem = io.BytesIO(output.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="salaries.csv")
 
-# =========================
-# 开销
-# =========================
+# ============ 开销 ============
 @app.get("/expenses")
 def expenses_list():
     if require_login(): return require_login()
     with conn() as c:
         cur = c.cursor()
-        cur.execute("""SELECT e.*, w.name AS worker_name
-                       FROM expenses e LEFT JOIN workers w ON w.id = e.worker_id
-                       ORDER BY e.id DESC""")
-        rows = cur.fetchall()
-        cur.execute("SELECT id, name FROM workers ORDER BY id DESC")
-        workers = cur.fetchall()
+        rows = cur.execute("""SELECT e.*, w.name AS worker_name
+                              FROM expenses e LEFT JOIN workers w ON w.id = e.worker_id
+                              ORDER BY e.id DESC""").fetchall()
+        workers = cur.execute("SELECT id, name FROM workers ORDER BY id DESC").fetchall()
     return render_template("expenses_list.html", rows=rows, workers=workers)
 
 @app.post("/expenses/add")
@@ -1247,9 +1154,8 @@ def expenses_add():
     date = request.form.get("date","")
     note = request.form.get("note","")
     with conn() as c:
-        cur = c.cursor()
-        cur.execute("""INSERT INTO expenses(worker_id, amount, date, note, created_at)
-                       VALUES(?,?,?,?,?)""", (worker_id, amount, date, note, datetime.utcnow().isoformat()))
+        c.execute("""INSERT INTO expenses(worker_id, amount, date, note, status, created_at)
+                     VALUES(?,?,?,?,1,?)""", (worker_id, amount, date, note, datetime.utcnow().isoformat()))
         c.commit()
     return redirect(url_for("expenses_list"))
 
@@ -1257,10 +1163,9 @@ def expenses_add():
 def expenses_edit_form(eid):
     if require_login(): return require_login()
     with conn() as c:
-        cur = c.cursor(); cur.execute("SELECT * FROM expenses WHERE id=?", (eid,)); r = cur.fetchone()
+        r = c.execute("SELECT * FROM expenses WHERE id=?", (eid,)).fetchone()
         if not r: abort(404)
-        cur.execute("SELECT id, name FROM workers ORDER BY id DESC")
-        workers = cur.fetchall()
+        workers = c.execute("SELECT id, name FROM workers ORDER BY id DESC").fetchall()
     return render_template("expenses_edit.html", r=r, workers=workers)
 
 @app.post("/expenses/<int:eid>/edit")
@@ -1271,9 +1176,21 @@ def expenses_edit(eid):
     date = request.form.get("date","")
     note = request.form.get("note","")
     with conn() as c:
+        c.execute("""UPDATE expenses SET worker_id=?, amount=?, date=?, note=? WHERE id=?""",
+                  (worker_id, amount, date, note, eid))
+        c.commit()
+    return redirect(url_for("expenses_list"))
+
+@app.post("/expenses/<int:eid>/toggle")
+def expenses_toggle(eid):
+    if require_login(): return require_login()
+    with conn() as c:
         cur = c.cursor()
-        cur.execute("""UPDATE expenses SET worker_id=?, amount=?, date=?, note=? WHERE id=?""",
-                    (worker_id, amount, date, note, eid))
+        cur.execute("SELECT status FROM expenses WHERE id=?", (eid,))
+        row = cur.fetchone()
+        if not row: abort(404)
+        newv = 0 if (row["status"]==1) else 1
+        cur.execute("UPDATE expenses SET status=? WHERE id=?", (newv, eid))
         c.commit()
     return redirect(url_for("expenses_list"))
 
@@ -1284,7 +1201,7 @@ def expenses_delete(eid):
         c.execute("DELETE FROM expenses WHERE id=?", (eid,)); c.commit()
     return redirect(url_for("expenses_list"))
 
-# 初始化数据库
+# 初始化数据库（含迁移）
 init_db()
 
 if __name__ == "__main__":
