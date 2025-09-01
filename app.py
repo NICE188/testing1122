@@ -1,4 +1,4 @@
-# app.py —— 侧边栏直达页面（列表显示在主界面），含高质感UI/状态开关/删除确认/账号安全（单文件可运行）
+# app.py —— 列表在主界面；所有“填写表格”改为弹窗（单文件可运行）
 from flask import (
     Flask, request, render_template, render_template_string,
     redirect, url_for, send_file, session, abort, flash, Response
@@ -17,7 +17,7 @@ SECRET_KEY    = os.environ.get("SECRET_KEY", "dev-secret")
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
-# ============ 高质感 CSS ============
+# ============ 高质感 CSS（含弹窗） ============
 STYLE_CSS = r""":root{
   --bg:#090d14; --bg-2:#0e1524; --surface:#0f1726; --line:#26314a;
   --text:#e9eef7; --muted:#9db0c8;
@@ -125,18 +125,17 @@ body.side-collapsed .side-menu a .label{display:none}
   box-shadow:var(--shadow); backdrop-filter:blur(6px);
 }
 
-/* 表单与基础按钮 */
+/* 表单与按钮 */
 .form{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
-.form input,.form select,.form button{
+.form input,.form select,.form button, .form textarea{
   height:38px;padding:6px 12px;border-radius:12px;border:1px solid var(--line);
   background:#0f1522;color:var(--text);outline:0;transition:border-color .15s, box-shadow .15s
 }
-.form input:focus,.form select:focus{border-color:#4a5a86; box-shadow:0 0 0 3px rgba(74,90,134,.28)}
+.form textarea{height:auto;min-height:84px;width:100%;resize:vertical}
+.form input:focus,.form select:focus,.form textarea:focus{border-color:#4a5a86; box-shadow:0 0 0 3px rgba(74,90,134,.28)}
 .form button{background:linear-gradient(180deg,#141b2b,#101626);border-color:#3f4b6b;cursor:pointer}
 .form button:hover{box-shadow:0 8px 20px rgba(0,0,0,.35)}
 .form .danger{border-color:#7a2a2a;background:linear-gradient(180deg,#2a1416,#1b0f11)}
-
-/* 高质感按钮（编辑/删除） */
 .btn{
   --bcol: rgba(255,255,255,.06);
   display:inline-flex; align-items:center; gap:8px;
@@ -148,51 +147,34 @@ body.side-collapsed .side-menu a .label{display:none}
   transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
 }
 .btn:hover{transform:translateY(-1px); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 12px 24px rgba(0,0,0,.32)}
-.btn:active{transform:translateY(0)}
 .btn .ico{font-size:16px;line-height:1}
-.btn-edit{--bcol:#5176ff66; background:radial-gradient(90% 120% at -10% -20%, rgba(81,118,255,.35), transparent 60%), linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), #13203a; border-color:#4b69ff80; box-shadow:inset 0 0 0 1px #4b69ff33, 0 10px 22px rgba(75,105,255,.25)}
-.btn-delete{--bcol:#d14a4a66; background:radial-gradient(90% 120% at -10% -20%, rgba(209,74,74,.32), transparent 60%), linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), #2a1416; border-color:#d14a4a99; box-shadow:inset 0 0 0 1px #d14a4a40, 0 10px 22px rgba(209,74,74,.25)}
+.btn-edit{--bcol:#5176ff66; background:radial-gradient(90% 120% at -10% -20%, rgba(81,118,255,.35), transparent 60%), linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), #13203a; border-color:#4b69ff80}
+.btn-delete{--bcol:#d14a4a66; background:radial-gradient(90% 120% at -10% -20%, rgba(209,74,74,.32), transparent 60%), linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), #2a1416; border-color:#d14a4a99}
 .actions{display:flex;gap:10px}
 
-/* ===== 状态开关按钮（Active / Inactive） ===== */
+/* 状态开关 */
 .toggle{
   display:inline-flex; align-items:center; gap:8px;
   height:30px; padding:0 10px; border-radius:999px; border:1px solid rgba(255,255,255,.08);
   font-weight:600; letter-spacing:.2px; cursor:pointer; user-select:none;
   background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), rgba(18,26,44,.6);
   color:#dbeafe; box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 8px 18px rgba(0,0,0,.2);
-  transition:filter .2s ease, transform .12s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
 }
-.toggle:hover{transform:translateY(-1px)}
 .toggle .dot{width:10px;height:10px;border-radius:50%}
-.toggle.on{border-color:#1d4630;background:linear-gradient(180deg, rgba(255,255,255,.05), transparent 60%), #0f1f18; box-shadow:inset 0 0 0 1px rgba(34,197,94,.35), 0 10px 22px rgba(34,197,94,.18); color:#bbf7d0}
+.toggle.on{border-color:#1d4630;background:#0f1f18;color:#bbf7d0}
 .toggle.on .dot{background:var(--ok)}
-.toggle.off{border-color:#4a1d1d;background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), #241112; box-shadow:inset 0 0 0 1px rgba(239,68,68,.35), 0 10px 22px rgba(239,68,68,.18); color:#fecaca}
+.toggle.off{border-color:#4a1d1d;background:#241112;color:#fecaca}
 .toggle.off .dot{background:var(--warn)}
-.toggle:active{transform:translateY(0)}
-.toggle-wrap{display:flex;align-items:center;gap:8px}
 
 /* 表格 */
 .table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.06);border-radius:18px;box-shadow:var(--shadow);backdrop-filter:blur(6px)}
 table{border-collapse:separate;border-spacing:0;width:100%}
-th{
-  position:sticky; top:0; z-index:1;
-  background:rgba(15,22,38,.9); backdrop-filter:blur(4px);
-  font-weight:600; font-size:12px; color:#bcd0e6; letter-spacing:.2px;
-  border-bottom:1px solid var(--line); text-align:left; padding:12px
-}
+th{position:sticky; top:0; z-index:1; background:rgba(15,22,38,.9); backdrop-filter:blur(4px); font-weight:600; font-size:12px; color:#bcd0e6; letter-spacing:.2px; border-bottom:1px solid var(--line); text-align:left; padding:12px}
 td{padding:12px;border-bottom:1px solid var(--line)}
 tbody tr:hover{background:rgba(255,255,255,.03)}
 tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 
-/* 闪讯 & 页脚 */
-.flash-wrap{display:grid;gap:8px;margin-bottom:12px}
-.flash{padding:10px;border-radius:12px;background:#141b2b;border:1px solid var(--line)}
-.flash.success{border-color:#2f6b2a;background:linear-gradient(180deg,#182616,#121d13)}
-.flash.error{border-color:#6b2a2a;background:linear-gradient(180deg,#2b1717,#1f1212)}
-.footer{opacity:.65;text-align:center;padding:26px}
-
-/* 删除确认弹窗（小） */
+/* 删除确认（小） */
 .modal-backdrop{position:fixed; inset:0; z-index:50; display:none; background:rgba(5,8,14,.55); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px}
 .modal-backdrop.open{display:flex}
 .modal{width:min(420px,100%); border-radius:16px; padding:18px; background:linear-gradient(180deg, rgba(255,255,255,.05), transparent 60%), var(--surface); border:1px solid rgba(255,255,255,.08); box-shadow:var(--shadow)}
@@ -200,6 +182,21 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 .modal p{margin:0 0 14px; color:#9db0c8}
 .modal-actions{display:flex; gap:10px; justify-content:flex-end}
 .btn-ghost{--bcol:rgba(255,255,255,.08); background:rgba(15,22,38,.6)}
+
+/* 大弹窗（表单弹窗） */
+.big-backdrop{position:fixed; inset:0; z-index:55; display:none; background:rgba(6,10,18,.6); backdrop-filter:blur(12px) saturate(140%)}
+.big-backdrop.open{display:flex; align-items:center; justify-content:center; padding:20px}
+.big-modal{
+  width:min(860px, 96vw); max-height:90vh; overflow:auto;
+  border-radius:18px; border:1px solid rgba(255,255,255,.08);
+  background:linear-gradient(180deg, rgba(255,255,255,.05), transparent 60%), var(--surface);
+  box-shadow:0 24px 60px rgba(0,0,0,.55);
+}
+.big-header{display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--line)}
+.big-title{font-weight:700; letter-spacing:.2px}
+.big-body{padding:16px}
+.big-close{--bcol:rgba(255,255,255,.08); padding:6px 10px; border-radius:10px; border:1px solid var(--bcol); background:rgba(15,22,38,.6); color:var(--text); cursor:pointer}
+.big-close:hover{transform:translateY(-1px)}
 
 /* 滚动条 */
 *::-webkit-scrollbar{height:10px;width:10px}
@@ -217,7 +214,7 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 def static_style():
     return Response(STYLE_CSS, mimetype="text/css")
 
-# ============ 模板（DictLoader，免 templates 目录） ============
+# ============ 模板（含 partials 供弹窗渲染） ============
 TEMPLATES = {
 "base.html": """<!doctype html>
 <html lang="zh">
@@ -225,7 +222,7 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=31">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=40">
 </head>
 <body>
   <header class="topbar">
@@ -285,6 +282,17 @@ TEMPLATES = {
     </div>
   </div>
 
+  <!-- 表单弹窗（大） -->
+  <div id="bigBackdrop" class="big-backdrop" aria-hidden="true">
+    <div class="big-modal">
+      <div class="big-header">
+        <div class="big-title" id="bigTitle">📄 表单</div>
+        <button id="bigClose" class="big-close" type="button">✖</button>
+      </div>
+      <div class="big-body" id="bigContent"></div>
+    </div>
+  </div>
+
   <script>
     // 侧栏折叠状态记忆
     (function(){
@@ -305,10 +313,8 @@ TEMPLATES = {
       const btnOK = document.getElementById('confirmOk');
       const btnCancel = document.getElementById('confirmCancel');
       let pendingForm = null;
-
       function open(msg){ if(msg) txt.textContent = msg; backdrop.classList.add('open'); backdrop.setAttribute('aria-hidden','false'); }
       function close(){ backdrop.classList.remove('open'); backdrop.setAttribute('aria-hidden','true'); pendingForm = null; }
-
       document.addEventListener('submit', function(e){
         const f = e.target;
         if(f.matches('.confirm')){
@@ -317,17 +323,65 @@ TEMPLATES = {
           open(f.dataset.confirm || '确定要删除这条记录吗？');
         }
       }, true);
-
       btnCancel.addEventListener('click', close);
       btnOK.addEventListener('click', function(){
-        if(pendingForm){
-          pendingForm.classList.remove('confirm');
-          pendingForm.submit();
-          close();
-        }
+        if(pendingForm){ f = pendingForm; pendingForm=null; close(); f.classList.remove('confirm'); f.submit(); }
       });
       document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
       backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
+    })();
+
+    // ===== 表单弹窗：点击 .js-open-modal 打开；弹窗内提交后刷新页面 =====
+    (function(){
+      const big = document.getElementById('bigBackdrop');
+      const content = document.getElementById('bigContent');
+      const title = document.getElementById('bigTitle');
+      const closeBtn = document.getElementById('bigClose');
+
+      function open(){ big.classList.add('open'); big.setAttribute('aria-hidden','false'); }
+      function close(){ big.classList.remove('open'); big.setAttribute('aria-hidden','true'); content.innerHTML=''; title.textContent='📄 表单'; }
+
+      async function load(url, text){
+        try{
+          title.textContent = text || '📄 表单';
+          const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'partial=1', {headers:{'X-Requested-With':'fetch'}});
+          content.innerHTML = await res.text();
+          open();
+        }catch(e){
+          content.innerHTML = '<div class="panel"><h3>加载失败</h3><p style="color:#9db0c8">请稍后重试。</p></div>';
+          open();
+        }
+      }
+
+      // 代理点击
+      document.addEventListener('click', function(ev){
+        const a = ev.target.closest('a.js-open-modal, button.js-open-modal');
+        if(a){
+          ev.preventDefault();
+          const href = a.getAttribute('href') || a.dataset.href || '#';
+          const tt = a.getAttribute('data-title') || a.title || a.textContent.trim();
+          load(href, tt);
+        }
+      });
+
+      // 弹窗内表单提交
+      big.addEventListener('submit', async function(ev){
+        const f = ev.target;
+        if(!big.contains(f)) return;
+        ev.preventDefault();
+        const data = new FormData(f);
+        try{
+          await fetch(f.action, {method: f.method || 'POST', body: data, headers:{'X-Requested-With':'fetch'}});
+          close();
+          location.reload();
+        }catch(e){
+          alert('提交失败，请重试');
+        }
+      });
+
+      closeBtn.addEventListener('click', close);
+      big.addEventListener('click', (e)=>{ if(e.target===big) close(); });
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
     })();
   </script>
 </body>
@@ -362,26 +416,22 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ===== 工人 / 平台 =====
+# ===== 列表页：移除内嵌表单，改为“新增”按钮（弹窗） =====
 "workers_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.workers }} · {{ t.app_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">👨‍💼 {{ t.workers }}</h1>
 <div class="panel">
-  <form class="form" action="{{ url_for('workers_add') }}" method="post">
-    <input name="name" placeholder="{{ t.name }}" required>
-    <input name="company" placeholder="{{ t.company }}">
-    <input name="commission" type="number" step="0.01" placeholder="{{ t.commission }}">
-    <input name="expenses" type="number" step="0.01" placeholder="{{ t.expenses }}">
-    <button class="btn btn-edit" type="submit"><span class="ico">➕</span> {{ t.add }}</button>
+  <div class="actions" style="margin-bottom:12px">
+    <a class="btn btn-edit js-open-modal" href="{{ url_for('workers_add_form') }}" data-title="➕ 新增工人"><span class="ico">➕</span> {{ t.add }}</a>
     <a class="btn" href="{{ url_for('export_workers') }}">⤓ {{ t.export_workers }}</a>
-  </form>
-
+  </div>
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+          <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th>
+          <th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
         </tr>
       </thead>
       <tbody>
@@ -401,7 +451,7 @@ TEMPLATES = {
           </td>
           <td>{{ r.created_at }}</td>
           <td class="actions">
-            <a class="btn btn-edit" href="{{ url_for('workers_edit_form', wid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
+            <a class="btn btn-edit js-open-modal" href="{{ url_for('workers_edit_form', wid=r.id) }}" data-title="✏️ 编辑工人"><span class="ico">✏️</span> {{ t.edit }}</a>
             <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
               <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.delete }}</button>
             </form>
@@ -417,35 +467,15 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-"workers_edit.html": """{% extends "base.html" %}
-{% block title %}{{ t.edit }} — {{ t.workers }}{% endblock %}
-{% block content %}
-<h1 class="page-title">{{ t.edit }} — {{ t.workers }}</h1>
-<form class="form" method="post" action="{{ url_for('workers_edit', wid=r.id) }}">
-  <input name="name" value="{{ r.name }}" placeholder="{{ t.name }}" required>
-  <input name="company" value="{{ r.company }}" placeholder="{{ t.company }}">
-  <input name="commission" type="number" step="0.01" value="{{ r.commission }}" placeholder="{{ t.commission }}">
-  <input name="expenses" type="number" step="0.01" value="{{ r.expenses }}" placeholder="{{ t.expenses }}">
-  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('workers_list') }}">{{ t.back }}</a>
-</form>
-{% endblock %}
-""",
-
-# ===== 银行账户 =====
 "bank_accounts_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.bank_accounts }} · {{ t.app_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">🏦 {{ t.bank_accounts }}</h1>
 <div class="panel">
-  <form class="form" action="{{ url_for('bank_accounts_add') }}" method="post">
-    <input name="bank_name" placeholder="银行名" required>
-    <input name="account_no" placeholder="账号" required>
-    <input name="holder" placeholder="户名" required>
-    <select name="status"><option value="1">{{ t.active }}</option><option value="0">{{ t.inactive }}</option></select>
-    <button class="btn btn-edit" type="submit"><span class="ico">➕</span> {{ t.add }}</button>
+  <div class="actions" style="margin-bottom:12px">
+    <a class="btn btn-edit js-open-modal" href="{{ url_for('bank_accounts_add_form') }}" data-title="➕ 新增银行账户"><span class="ico">➕</span> {{ t.add }}</a>
     <a class="btn" href="{{ url_for('export_bank_accounts') }}">⤓ {{ t.export_bank }}</a>
-  </form>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>ID</th><th>银行名</th><th>账号</th><th>户名</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
@@ -462,7 +492,7 @@ TEMPLATES = {
           </td>
           <td>{{ r.created_at }}</td>
           <td class="actions">
-            <a class="btn btn-edit" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
+            <a class="btn btn-edit js-open-modal" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}" data-title="✏️ 编辑银行账户"><span class="ico">✏️</span> {{ t.edit }}</a>
             <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
               <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.delete }}</button>
             </form>
@@ -476,41 +506,15 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-"bank_accounts_edit.html": """{% extends "base.html" %}
-{% block title %}{{ t.edit }} — {{ t.bank_accounts }}{% endblock %}
-{% block content %}
-<h1 class="page-title">{{ t.edit }} — {{ t.bank_accounts }}</h1>
-<form class="form" method="post" action="{{ url_for('bank_accounts_edit', bid=r.id) }}">
-  <input name="bank_name" value="{{ r.bank_name }}" placeholder="银行名" required>
-  <input name="account_no" value="{{ r.account_no }}" placeholder="账号" required>
-  <input name="holder" value="{{ r.holder }}" placeholder="户名" required>
-  <select name="status">
-    <option value="1" {% if r.status==1 %}selected{% endif %}>{{ t.active }}</option>
-    <option value="0" {% if r.status==0 %}selected{% endif %}>{{ t.inactive }}</option>
-  </select>
-  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('bank_accounts_list') }}">{{ t.back }}</a>
-</form>
-{% endblock %}
-""",
-
-# ===== 银行卡租金 =====
 "card_rentals_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.card_rentals }} · {{ t.app_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">💳 {{ t.card_rentals }}</h1>
 <div class="panel">
-  <form class="form" action="{{ url_for('card_rentals_add') }}" method="post">
-    <select name="bank_account_id" required>
-      {% for b in banks %}<option value="{{ b.id }}">{{ b.bank_name }} - {{ b.account_no }}</option>{% endfor %}
-    </select>
-    <input name="monthly_rent" type="number" step="0.01" placeholder="月租金" required>
-    <input name="start_date" type="date" placeholder="开始日期">
-    <input name="end_date" type="date" placeholder="结束日期">
-    <input name="note" placeholder="备注">
-    <button class="btn btn-edit" type="submit"><span class="ico">➕</span> {{ t.add }}</button>
+  <div class="actions" style="margin-bottom:12px">
+    <a class="btn btn-edit js-open-modal" href="{{ url_for('card_rentals_add_form') }}" data-title="➕ 新增银行卡租金"><span class="ico">➕</span> {{ t.add }}</a>
     <a class="btn" href="{{ url_for('export_card_rentals') }}">⤓ {{ t.export_rentals }}</a>
-  </form>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>ID</th><th>银行</th><th>账号</th><th>月租金</th><th>开始</th><th>结束</th><th>{{ t.status }}</th><th>备注</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
@@ -527,7 +531,7 @@ TEMPLATES = {
           </td>
           <td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions">
-            <a class="btn btn-edit" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
+            <a class="btn btn-edit js-open-modal" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}" data-title="✏️ 编辑银行卡租金"><span class="ico">✏️</span> {{ t.edit }}</a>
             <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
               <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.delete }}</button>
             </form>
@@ -541,40 +545,15 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-"card_rentals_edit.html": """{% extends "base.html" %}
-{% block title %}{{ t.edit }} — {{ t.card_rentals }}{% endblock %}
-{% block content %}
-<h1 class="page-title">{{ t.edit }} — {{ t.card_rentals }}</h1>
-<form class="form" method="post" action="{{ url_for('card_rentals_edit', rid=r.id) }}">
-  <select name="bank_account_id">
-    {% for b in banks %}
-    <option value="{{ b.id }}" {% if r.bank_account_id==b.id %}selected{% endif %}>{{ b.bank_name }} - {{ b.account_no }}</option>
-    {% endfor %}
-  </select>
-  <input name="monthly_rent" type="number" step="0.01" value="{{ r.monthly_rent }}" placeholder="月租金">
-  <input name="start_date" type="date" value="{{ r.start_date }}">
-  <input name="end_date" type="date" value="{{ r.end_date }}">
-  <input name="note" value="{{ r.note }}" placeholder="备注">
-  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('card_rentals_list') }}">{{ t.back }}</a>
-</form>
-{% endblock %}
-""",
-
-# ===== 出粮记录 =====
 "salaries_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.salaries }} · {{ t.app_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">💵 {{ t.salaries }}</h1>
 <div class="panel">
-  <form class="form" action="{{ url_for('salaries_add') }}" method="post">
-    <select name="worker_id">{% for w in workers %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select>
-    <input name="amount" type="number" step="0.01" placeholder="{{ t.salary_amount }}" required>
-    <input name="pay_date" type="date" placeholder="{{ t.pay_date }}" required>
-    <input name="note" placeholder="{{ t.note }}">
-    <button class="btn btn-edit" type="submit"><span class="ico">➕</span> {{ t.add }}</button>
+  <div class="actions" style="margin-bottom:12px">
+    <a class="btn btn-edit js-open-modal" href="{{ url_for('salaries_add_form') }}" data-title="➕ 新增出粮记录"><span class="ico">➕</span> {{ t.add }}</a>
     <a class="btn" href="{{ url_for('export_salaries') }}">⤓ {{ t.export_salaries }}</a>
-  </form>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.salary_amount }}</th><th>{{ t.pay_date }}</th><th>{{ t.status }}</th><th>{{ t.note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
@@ -584,14 +563,12 @@ TEMPLATES = {
           <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.pay_date }}</td>
           <td class="toggle-wrap">
             <form method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}">
-              <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit">
-                <span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}
-              </button>
+              <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button>
             </form>
           </td>
           <td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions">
-            <a class="btn btn-edit" href="{{ url_for('salaries_edit_form', sid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
+            <a class="btn btn-edit js-open-modal" href="{{ url_for('salaries_edit_form', sid=r.id) }}" data-title="✏️ 编辑出粮记录"><span class="ico">✏️</span> {{ t.edit }}</a>
             <form method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
               <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.delete }}</button>
             </form>
@@ -605,38 +582,15 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-"salaries_edit.html": """{% extends "base.html" %}
-{% block title %}{{ t.edit }} — {{ t.salaries }}{% endblock %}
-{% block content %}
-<h1 class="page-title">{{ t.edit }} — {{ t.salaries }}</h1>
-<form class="form" method="post" action="{{ url_for('salaries_edit', sid=r.id) }}">
-  <select name="worker_id">{% for w in workers %}<option value="{{ w.id }}" {% if r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>{% endfor %}</select>
-  <input name="amount" type="number" step="0.01" value="{{ r.amount }}" placeholder="{{ t.salary_amount }}">
-  <input name="pay_date" type="date" value="{{ r.pay_date }}">
-  <input name="note" value="{{ r.note }}" placeholder="{{ t.note }}">
-  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('salaries_list') }}">{{ t.back }}</a>
-</form>
-{% endblock %}
-""",
-
-# ===== 开销 =====
 "expenses_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.expenses }} · {{ t.app_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">💸 {{ t.expenses }}</h1>
 <div class="panel">
-  <form class="form" action="{{ url_for('expenses_add') }}" method="post">
-    <select name="worker_id">
-      <option value="">{{ '不关联工人' if lang=='zh' else 'No worker' }}</option>
-      {% for w in workers %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}
-    </select>
-    <input name="amount" type="number" step="0.01" placeholder="{{ t.expense_amount }}" required>
-    <input name="date" type="date" placeholder="{{ t.date }}" required>
-    <input name="note" placeholder="{{ t.expenses_note }}">
-    <button class="btn btn-edit" type="submit"><span class="ico">➕</span> {{ t.add }}</button>
+  <div class="actions" style="margin-bottom:12px">
+    <a class="btn btn-edit js-open-modal" href="{{ url_for('expenses_add_form') }}" data-title="➕ 新增开销记录"><span class="ico">➕</span> {{ t.add }}</a>
     <a class="btn" href="{{ url_for('export_expenses') }}">⤓ {{ t.export_expenses }}</a>
-  </form>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.expense_amount }}</th><th>{{ t.date }}</th><th>{{ t.status }}</th><th>{{ t.expenses_note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
@@ -646,14 +600,12 @@ TEMPLATES = {
           <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.date }}</td>
           <td class="toggle-wrap">
             <form method="post" action="{{ url_for('expenses_toggle', eid=r.id) }}">
-              <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit">
-                <span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}
-              </button>
+              <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button>
             </form>
           </td>
           <td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions">
-            <a class="btn btn-edit" href="{{ url_for('expenses_edit_form', eid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
+            <a class="btn btn-edit js-open-modal" href="{{ url_for('expenses_edit_form', eid=r.id) }}" data-title="✏️ 编辑开销记录"><span class="ico">✏️</span> {{ t.edit }}</a>
             <form method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
               <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.delete }}</button>
             </form>
@@ -667,88 +619,143 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-"expenses_edit.html": """{% extends "base.html" %}
-{% block title %}{{ t.edit }} — {{ t.expenses }}{% endblock %}
-{% block content %}
-<h1 class="page-title">{{ t.edit }} — {{ t.expenses }}</h1>
-<form class="form" method="post" action="{{ url_for('expenses_edit', eid=r.id) }}">
-  <select name="worker_id">
-    <option value="">{{ '不关联工人' if lang=='zh' else 'No worker' }}</option>
-    {% for w in workers %}<option value="{{ w.id }}" {% if r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>{% endfor %}
-  </select>
-  <input name="amount" type="number" step="0.01" value="{{ r.amount }}" placeholder="{{ t.expense_amount }}">
-  <input name="date" type="date" value="{{ r.date }}">
-  <input name="note" value="{{ r.note }}" placeholder="{{ t.expenses_note }}">
-  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('expenses_list') }}">{{ t.back }}</a>
-</form>
-{% endblock %}
+# ===== 弹窗表单 partials（所有新增/编辑） =====
+"partials/workers_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑工人' if r else '➕ 新增工人' }}</h2>
+  <form class="form" method="post" action="{{ url_for('workers_edit', wid=r.id) if r else url_for('workers_add') }}">
+    <input name="name" value="{{ r.name if r else '' }}" placeholder="{{ t.name }}" required>
+    <input name="company" value="{{ r.company if r else '' }}" placeholder="{{ t.company }}">
+    <input name="commission" type="number" step="0.01" value="{{ r.commission if r else '' }}" placeholder="{{ t.commission }}">
+    <input name="expenses" type="number" step="0.01" value="{{ r.expenses if r else '' }}" placeholder="{{ t.expenses }}">
+    <button class="btn btn-edit" type="submit"><span class="ico">💾</span> {{ t.save if r else t.add }}</button>
+  </form>
+</div>
 """,
 
-# ===== 安全中心页面 =====
+"partials/bank_accounts_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑银行账户' if r else '➕ 新增银行账户' }}</h2>
+  <form class="form" method="post" action="{{ url_for('bank_accounts_edit', bid=r.id) if r else url_for('bank_accounts_add') }}">
+    <input name="bank_name" value="{{ r.bank_name if r else '' }}" placeholder="银行名" required>
+    <input name="account_no" value="{{ r.account_no if r else '' }}" placeholder="账号" required>
+    <input name="holder" value="{{ r.holder if r else '' }}" placeholder="户名" required>
+    <select name="status">
+      <option value="1" {% if r and r.status==1 %}selected{% endif %}>{{ t.active }}</option>
+      <option value="0" {% if r and r.status==0 %}selected{% endif %}>{{ t.inactive }}</option>
+    </select>
+    <button class="btn btn-edit" type="submit"><span class="ico">💾</span> {{ t.save if r else t.add }}</button>
+  </form>
+</div>
+""",
+
+"partials/card_rentals_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑银行卡租金' if r else '➕ 新增银行卡租金' }}</h2>
+  <form class="form" method="post" action="{{ url_for('card_rentals_edit', rid=r.id) if r else url_for('card_rentals_add') }}">
+    <select name="bank_account_id" required>
+      {% for b in banks %}
+        <option value="{{ b.id }}" {% if r and r.bank_account_id==b.id %}selected{% endif %}>{{ b.bank_name }} - {{ b.account_no }}</option>
+      {% endfor %}
+    </select>
+    <input name="monthly_rent" type="number" step="0.01" value="{{ r.monthly_rent if r else '' }}" placeholder="月租金" required>
+    <input name="start_date" type="date" value="{{ r.start_date if r else '' }}" placeholder="开始日期">
+    <input name="end_date" type="date" value="{{ r.end_date if r else '' }}" placeholder="结束日期">
+    <textarea name="note" placeholder="备注">{{ r.note if r else '' }}</textarea>
+    <button class="btn btn-edit" type="submit"><span class="ico">💾</span> {{ t.save if r else t.add }}</button>
+  </form>
+</div>
+""",
+
+"partials/salaries_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑出粮记录' if r else '➕ 新增出粮记录' }}</h2>
+  <form class="form" method="post" action="{{ url_for('salaries_edit', sid=r.id) if r else url_for('salaries_add') }}">
+    <select name="worker_id">
+      {% for w in workers %}
+        <option value="{{ w.id }}" {% if r and r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>
+      {% endfor %}
+    </select>
+    <input name="amount" type="number" step="0.01" value="{{ r.amount if r else '' }}" placeholder="{{ t.salary_amount }}" required>
+    <input name="pay_date" type="date" value="{{ r.pay_date if r else '' }}" placeholder="{{ t.pay_date }}" required>
+    <textarea name="note" placeholder="{{ t.note }}">{{ r.note if r else '' }}</textarea>
+    <button class="btn btn-edit" type="submit"><span class="ico">💾</span> {{ t.save if r else t.add }}</button>
+  </form>
+</div>
+""",
+
+"partials/expenses_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑开销记录' if r else '➕ 新增开销记录' }}</h2>
+  <form class="form" method="post" action="{{ url_for('expenses_edit', eid=r.id) if r else url_for('expenses_add') }}">
+    <select name="worker_id">
+      <option value="">{{ '不关联工人' if lang=='zh' else 'No worker' }}</option>
+      {% for w in workers %}
+        <option value="{{ w.id }}" {% if r and r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>
+      {% endfor %}
+    </select>
+    <input name="amount" type="number" step="0.01" value="{{ r.amount if r else '' }}" placeholder="{{ t.expense_amount }}" required>
+    <input name="date" type="date" value="{{ r.date if r else '' }}" placeholder="{{ t.date }}" required>
+    <textarea name="note" placeholder="{{ t.expenses_note }}">{{ r.note if r else '' }}</textarea>
+    <button class="btn btn-edit" type="submit"><span class="ico">💾</span> {{ t.save if r else t.add }}</button>
+  </form>
+</div>
+""",
+
+# ===== 安全设置：弹窗 partials =====
+"partials/account_credentials_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">🧑‍💻 修改登录账号/密码</h2>
+  <form class="form" method="post" action="{{ url_for('account_credentials_post') }}">
+    <input name="username" placeholder="{{ t.username }}" required>
+    <input name="password" type="password" placeholder="{{ t.password }}" required>
+    <button class="btn btn-edit" type="submit"><span class="ico">💾</span> {{ t.save }}</button>
+  </form>
+</div>
+""",
+"partials/account_change_password_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">🔑 修改密码</h2>
+  <form class="form" method="post" action="{{ url_for('account_change_password_post') }}">
+    <input name="old_password" type="password" placeholder="旧密码" required>
+    <input name="new_password" type="password" placeholder="新密码" required>
+    <button class="btn btn-edit" type="submit"><span class="ico">💾</span> {{ t.save }}</button>
+  </form>
+</div>
+""",
+"partials/account_change_username_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">🆔 修改用户名</h2>
+  <form class="form" method="post" action="{{ url_for('account_change_username_post') }}">
+    <input name="new_username" placeholder="新用户名" required>
+    <button class="btn btn-edit" type="submit"><span class="ico">💾</span> {{ t.save }}</button>
+  </form>
+</div>
+""",
+"partials/account_reset_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">🛠 管理员重置密码</h2>
+  <form class="form" method="post" action="{{ url_for('account_reset_post') }}">
+    <input name="target_username" placeholder="目标用户名" required>
+    <input name="new_password" type="password" placeholder="新密码" required>
+    <button class="btn btn-delete" type="submit"><span class="ico">💾</span> {{ t.save }}</button>
+  </form>
+</div>
+""",
+
+# ===== 安全中心主页（按钮也走弹窗） =====
 "account_security.html": """{% extends "base.html" %}
 {% block title %}账号安全 · {{ t.app_name }}{% endblock %}
 {% block content %}
 <div class="panel">
   <h2>🔐 账号安全</h2>
   <div class="actions">
-    <a class="btn" href="{{ url_for('account_credentials') }}">🧑‍💻 修改登录账号/密码</a>
-    <a class="btn" href="{{ url_for('account_change_password') }}">🔑 修改密码</a>
-    <a class="btn" href="{{ url_for('account_change_username') }}">🆔 修改用户名</a>
-    <a class="btn btn-delete" href="{{ url_for('account_reset') }}"><span class="ico">🛠</span> 管理员重置密码</a>
+    <a class="btn js-open-modal" href="{{ url_for('account_credentials') }}" data-title="🧑‍💻 修改登录账号/密码">🧑‍💻 修改登录账号/密码</a>
+    <a class="btn js-open-modal" href="{{ url_for('account_change_password') }}" data-title="🔑 修改密码">🔑 修改密码</a>
+    <a class="btn js-open-modal" href="{{ url_for('account_change_username') }}" data-title="🆔 修改用户名">🆔 修改用户名</a>
+    <a class="btn btn-delete js-open-modal" href="{{ url_for('account_reset') }}" data-title="🛠 管理员重置密码"><span class="ico">🛠</span> 管理员重置密码</a>
   </div>
 </div>
-{% endblock %}
-""",
-
-"account_credentials.html": """{% extends "base.html" %}
-{% block title %}登录账号/密码 · {{ t.app_name }}{% endblock %}
-{% block content %}
-<h1 class="page-title">🧑‍💻 修改登录账号/密码</h1>
-<form class="form" method="post" action="{{ url_for('account_credentials_post') }}">
-  <input name="username" placeholder="{{ t.username }}" required>
-  <input name="password" type="password" placeholder="{{ t.password }}" required>
-  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
-</form>
-{% endblock %}
-""",
-
-"account_change_password.html": """{% extends "base.html" %}
-{% block title %}修改密码 · {{ t.app_name }}{% endblock %}
-{% block content %}
-<h1 class="page-title">🔑 修改密码</h1>
-<form class="form" method="post" action="{{ url_for('account_change_password_post') }}">
-  <input name="old_password" type="password" placeholder="旧密码" required>
-  <input name="new_password" type="password" placeholder="新密码" required>
-  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
-</form>
-{% endblock %}
-""",
-
-"account_change_username.html": """{% extends "base.html" %}
-{% block title %}修改用户名 · {{ t.app_name }}{% endblock %}
-{% block content %}
-<h1 class="page-title">🆔 修改用户名</h1>
-<form class="form" method="post" action="{{ url_for('account_change_username_post') }}">
-  <input name="new_username" placeholder="新用户名" required>
-  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
-</form>
-{% endblock %}
-""",
-
-"account_reset.html": """{% extends "base.html" %}
-{% block title %}重置密码（管理员） · {{ t.app_name }}{% endblock %}
-{% block content %}
-<h1 class="page-title">🛠 管理员重置密码</h1>
-<form class="form" method="post" action="{{ url_for('account_reset_post') }}">
-  <input name="target_username" placeholder="目标用户名" required>
-  <input name="new_password" type="password" placeholder="新密码" required>
-  <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.save }}</button>
-  <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
-</form>
 {% endblock %}
 """,
 }
@@ -791,7 +798,7 @@ I18N = {
 def get_lang(): return request.args.get("lang") or request.cookies.get("lang") or "zh"
 def T(): return I18N.get(get_lang(), I18N["zh"])
 
-# ============ DB 助手 & 初始化/迁移 ============
+# ============ DB 助手 & 初始化 ============
 def conn():
     c = sqlite3.connect(APP_DB); c.row_factory = sqlite3.Row; return c
 
@@ -825,7 +832,7 @@ def init_db():
         cur.execute("""CREATE TABLE IF NOT EXISTS expenses(
             id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
-        # 迁移旧库：补 status 默认 1
+        # 迁移旧库：补 status 列
         ensure_column(c, "workers", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "card_rentals", "status", "INTEGER DEFAULT 1", 1)
@@ -883,7 +890,7 @@ def dashboard():
     return render_template("dashboard.html", total_workers=total_workers,
                            total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
 
-# ============ 安全中心 ============
+# ============ 安全中心（GET 返回弹窗表单 partial） ============
 @app.get("/account-security")
 def account_security():
     if require_login(): return require_login()
@@ -892,7 +899,10 @@ def account_security():
 @app.get("/account/credentials")
 def account_credentials():
     if require_login(): return require_login()
-    return render_template("account_credentials.html")
+    if request.args.get("partial") == "1":
+        return render_template("partials/account_credentials_form.html")
+    # 直接打开页面时也兼容：在弹窗里用不到
+    return render_template("account_security.html")
 
 @app.post("/account/credentials")
 def account_credentials_post():
@@ -900,7 +910,7 @@ def account_credentials_post():
     new_username = request.form.get("username","").strip()
     new_password = request.form.get("password","").strip()
     if not new_username or not new_password:
-        flash("用户名与密码不能为空", "error"); return redirect(url_for("account_credentials"))
+        flash("用户名与密码不能为空", "error"); return redirect(url_for("account_security"))
     with conn() as c:
         cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (session["user_id"],))
         u = cur.fetchone()
@@ -908,51 +918,57 @@ def account_credentials_post():
         cur.execute("UPDATE users SET username=?, password_hash=? WHERE id=?",
                     (new_username, generate_password_hash(new_password), u["id"]))
         c.commit(); session["user_id"] = new_username
-    flash("登录账号与密码已更新", "success"); return redirect(url_for("dashboard"))
+    flash("登录账号与密码已更新", "success"); return redirect(url_for("account_security"))
 
 @app.get("/account/change-password")
 def account_change_password():
     if require_login(): return require_login()
-    return render_template("account_change_password.html")
+    if request.args.get("partial") == "1":
+        return render_template("partials/account_change_password_form.html")
+    return render_template("account_security.html")
 
 @app.post("/account/change-password")
 def account_change_password_post():
     if require_login(): return require_login()
     old_pw = request.form.get("old_password",""); new_pw = request.form.get("new_password","")
     if not old_pw or not new_pw:
-        flash("请输入旧密码与新密码", "error"); return redirect(url_for("account_change_password"))
+        flash("请输入旧密码与新密码", "error"); return redirect(url_for("account_security"))
     with conn() as c:
         cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (session["user_id"],))
         u = cur.fetchone()
         if not u or not check_password_hash(u["password_hash"], old_pw):
-            flash("旧密码不正确", "error"); return redirect(url_for("account_change_password"))
+            flash("旧密码不正确", "error"); return redirect(url_for("account_security"))
         cur.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new_pw), u["id"]))
         c.commit()
-    flash("密码已更新", "success"); return redirect(url_for("dashboard"))
+    flash("密码已更新", "success"); return redirect(url_for("account_security"))
 
 @app.get("/account/change-username")
 def account_change_username():
     if require_login(): return require_login()
-    return render_template("account_change_username.html")
+    if request.args.get("partial") == "1":
+        return render_template("partials/account_change_username_form.html")
+    return render_template("account_security.html")
 
 @app.post("/account/change-username")
 def account_change_username_post():
     if require_login(): return require_login()
     new_username = request.form.get("new_username","").strip()
     if not new_username:
-        flash("新用户名不能为空", "error"); return redirect(url_for("account_change_username"))
+        flash("新用户名不能为空", "error"); return redirect(url_for("account_security"))
     with conn() as c:
         cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (session["user_id"],))
         u = cur.fetchone()
         if not u: abort(403)
         cur.execute("UPDATE users SET username=? WHERE id=?", (new_username, u["id"]))
         c.commit(); session["user_id"] = new_username
-    flash("用户名已更新", "success"); return redirect(url_for("dashboard"))
+    flash("用户名已更新", "success"); return redirect(url_for("account_security"))
 
 @app.get("/account/reset")
 def account_reset():
     if require_login(): return require_login()
-    return render_template("account_reset.html")
+    if request.args.get("partial") == "1":
+        return render_template("partials/account_reset_form.html")
+    return render_template("account_security.html")
 
 @app.post("/account/reset")
 def account_reset_post():
@@ -960,15 +976,15 @@ def account_reset_post():
     target_username = request.form.get("target_username","").strip()
     new_password = request.form.get("new_password","").strip()
     if not target_username or not new_password:
-        flash("目标用户名与新密码不能为空", "error"); return redirect(url_for("account_reset"))
+        flash("目标用户名与新密码不能为空", "error"); return redirect(url_for("account_security"))
     with conn() as c:
         cur = c.cursor(); cur.execute("SELECT * FROM users WHERE username=?", (target_username,))
         u = cur.fetchone()
         if not u:
-            flash("目标用户不存在", "error"); return redirect(url_for("account_reset"))
+            flash("目标用户不存在", "error"); return redirect(url_for("account_security"))
         cur.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new_password), u["id"]))
         c.commit()
-    flash("目标用户密码已重置", "success"); return redirect(url_for("dashboard"))
+    flash("目标用户密码已重置", "success"); return redirect(url_for("account_security"))
 
 # ============ 工人 / 平台 ============
 @app.get("/workers")
@@ -977,6 +993,11 @@ def workers_list():
     with conn() as c:
         rows = c.execute("SELECT * FROM workers ORDER BY id DESC").fetchall()
     return render_template("workers_list.html", rows=rows)
+
+@app.get("/workers/add")
+def workers_add_form():
+    if require_login(): return require_login()
+    return render_template("partials/workers_form.html")
 
 @app.post("/workers/add")
 def workers_add():
@@ -997,7 +1018,10 @@ def workers_edit_form(wid):
     with conn() as c:
         r = c.execute("SELECT * FROM workers WHERE id=?", (wid,)).fetchone()
         if not r: abort(404)
-    return render_template("workers_edit.html", r=r)
+    if request.args.get("partial") == "1":
+        return render_template("partials/workers_form.html", r=r)
+    # 兼容：若直接访问，则仍显示列表页
+    return redirect(url_for("workers_list"))
 
 @app.post("/workers/<int:wid>/edit")
 def workers_edit(wid):
@@ -1051,6 +1075,11 @@ def bank_accounts_list():
         rows = c.execute("SELECT * FROM bank_accounts ORDER BY id DESC").fetchall()
     return render_template("bank_accounts_list.html", rows=rows)
 
+@app.get("/bank-accounts/add")
+def bank_accounts_add_form():
+    if require_login(): return require_login()
+    return render_template("partials/bank_accounts_form.html")
+
 @app.post("/bank-accounts/add")
 def bank_accounts_add():
     if require_login(): return require_login()
@@ -1070,7 +1099,9 @@ def bank_accounts_edit_form(bid):
     with conn() as c:
         r = c.execute("SELECT * FROM bank_accounts WHERE id=?", (bid,)).fetchone()
         if not r: abort(404)
-    return render_template("bank_accounts_edit.html", r=r)
+    if request.args.get("partial") == "1":
+        return render_template("partials/bank_accounts_form.html", r=r)
+    return redirect(url_for("bank_accounts_list"))
 
 @app.post("/bank-accounts/<int:bid>/edit")
 def bank_accounts_edit(bid):
@@ -1125,8 +1156,14 @@ def card_rentals_list():
         rows = cur.execute("""SELECT cr.*, ba.bank_name, ba.account_no
                               FROM card_rentals cr LEFT JOIN bank_accounts ba ON ba.id = cr.bank_account_id
                               ORDER BY cr.id DESC""").fetchall()
-        banks = cur.execute("SELECT id, bank_name, account_no FROM bank_accounts ORDER BY id DESC").fetchall()
-    return render_template("card_rentals_list.html", rows=rows, banks=banks)
+    return render_template("card_rentals_list.html", rows=rows)
+
+@app.get("/card-rentals/add")
+def card_rentals_add_form():
+    if require_login(): return require_login()
+    with conn() as c:
+        banks = c.execute("SELECT id, bank_name, account_no FROM bank_accounts ORDER BY id DESC").fetchall()
+    return render_template("partials/card_rentals_form.html", banks=banks)
 
 @app.post("/card-rentals/add")
 def card_rentals_add():
@@ -1149,7 +1186,9 @@ def card_rentals_edit_form(rid):
         r = c.execute("SELECT * FROM card_rentals WHERE id=?", (rid,)).fetchone()
         if not r: abort(404)
         banks = c.execute("SELECT id, bank_name, account_no FROM bank_accounts ORDER BY id DESC").fetchall()
-    return render_template("card_rentals_edit.html", r=r, banks=banks)
+    if request.args.get("partial") == "1":
+        return render_template("partials/card_rentals_form.html", r=r, banks=banks)
+    return redirect(url_for("card_rentals_list"))
 
 @app.post("/card-rentals/<int:rid>/edit")
 def card_rentals_edit(rid):
@@ -1205,8 +1244,14 @@ def salaries_list():
         rows = cur.execute("""SELECT s.*, w.name AS worker_name
                               FROM salaries s LEFT JOIN workers w ON w.id = s.worker_id
                               ORDER BY s.id DESC""").fetchall()
-        workers = cur.execute("SELECT id, name FROM workers ORDER BY id DESC").fetchall()
-    return render_template("salaries_list.html", rows=rows, workers=workers)
+    return render_template("salaries_list.html", rows=rows)
+
+@app.get("/salaries/add")
+def salaries_add_form():
+    if require_login(): return require_login()
+    with conn() as c:
+        workers = c.execute("SELECT id, name FROM workers ORDER BY id DESC").fetchall()
+    return render_template("partials/salaries_form.html", workers=workers)
 
 @app.post("/salaries/add")
 def salaries_add():
@@ -1228,7 +1273,9 @@ def salaries_edit_form(sid):
         r = c.execute("SELECT * FROM salaries WHERE id=?", (sid,)).fetchone()
         if not r: abort(404)
         workers = c.execute("SELECT id, name FROM workers ORDER BY id DESC").fetchall()
-    return render_template("salaries_edit.html", r=r, workers=workers)
+    if request.args.get("partial") == "1":
+        return render_template("partials/salaries_form.html", r=r, workers=workers)
+    return redirect(url_for("salaries_list"))
 
 @app.post("/salaries/<int:sid>/edit")
 def salaries_edit(sid):
@@ -1283,8 +1330,14 @@ def expenses_list():
         rows = cur.execute("""SELECT e.*, w.name AS worker_name
                               FROM expenses e LEFT JOIN workers w ON w.id = e.worker_id
                               ORDER BY e.id DESC""").fetchall()
-        workers = cur.execute("SELECT id, name FROM workers ORDER BY id DESC").fetchall()
-    return render_template("expenses_list.html", rows=rows, workers=workers)
+    return render_template("expenses_list.html", rows=rows)
+
+@app.get("/expenses/add")
+def expenses_add_form():
+    if require_login(): return require_login()
+    with conn() as c:
+        workers = c.execute("SELECT id, name FROM workers ORDER BY id DESC").fetchall()
+    return render_template("partials/expenses_form.html", workers=workers)
 
 @app.post("/expenses/add")
 def expenses_add():
@@ -1306,7 +1359,9 @@ def expenses_edit_form(eid):
         r = c.execute("SELECT * FROM expenses WHERE id=?", (eid,)).fetchone()
         if not r: abort(404)
         workers = c.execute("SELECT id, name FROM workers ORDER BY id DESC").fetchall()
-    return render_template("expenses_edit.html", r=r, workers=workers)
+    if request.args.get("partial") == "1":
+        return render_template("partials/expenses_form.html", r=r, workers=workers)
+    return redirect(url_for("expenses_list"))
 
 @app.post("/expenses/<int:eid>/edit")
 def expenses_edit(eid):
@@ -1341,7 +1396,18 @@ def expenses_delete(eid):
         c.execute("DELETE FROM expenses WHERE id=?", (eid,)); c.commit()
     return redirect(url_for("expenses_list"))
 
-# 初始化数据库（含迁移）
+@app.get("/export/expenses.csv")
+def export_expenses():
+    if require_login(): return require_login()
+    output = io.StringIO(); writer = csv.writer(output)
+    writer.writerow(["id","worker_id","amount","date","note","status","created_at"])
+    with conn() as c:
+        for r in c.execute("SELECT * FROM expenses ORDER BY id DESC"):
+            writer.writerow([r["id"],r["worker_id"],r["amount"],r["date"],r["note"],r["status"],r["created_at"]])
+    mem = io.BytesIO(output.getvalue().encode("utf-8"))
+    return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="expenses.csv")
+
+# 初始化数据库
 init_db()
 
 if __name__ == "__main__":
