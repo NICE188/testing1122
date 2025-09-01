@@ -166,3 +166,151 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
   .layout{grid-template-columns:1fr}
   .sidebar{position:relative;top:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}
 }
+
+/* ===== Modal Deluxe v2 – 高级玻璃光晕 + 动态渐变边框 + 更精致细节（覆盖式样式） ===== */
+
+/* 背景光晕更细腻，增加轻微动态 */
+.big-backdrop{
+  background:
+    radial-gradient(1800px 760px at 10% -10%, rgba(255,209,102,.10), transparent 60%),
+    radial-gradient(1600px 640px at 120% 0%, rgba(92,198,255,.12), transparent 60%),
+    linear-gradient(180deg, rgba(6,10,18,.72), rgba(6,10,18,.62));
+  animation: backdropPan 28s linear infinite;
+  background-size: 120% 100%, 120% 100%, 100% 100%;
+}
+@keyframes backdropPan{
+  0%{ background-position: 0% 0%, 100% 0%, 0 0; }
+  50%{ background-position: 10% -2%, 90% 2%, 0 0; }
+  100%{ background-position: 0% 0%, 100% 0%, 0 0; }
+}
+
+/* 大弹窗：玻璃+亮面+渐变边框动画，整体更“高档” */
+.big-modal{
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), transparent 58%),
+    radial-gradient(1200px 220px at 50% -8%, rgba(255,255,255,.10), transparent 60%),
+    linear-gradient(180deg, #0f1a2c, #0d1728);
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow:
+    0 70px 160px rgba(0,0,0,.72),
+    inset 0 1px 0 rgba(255,255,255,.06);
+  overflow: hidden; /* 让高光边框不外溢 */
+}
+.big-modal::before{
+  /* 渐变发光边框（可见但不过分） */
+  content:""; position:absolute; inset:-2px; border-radius:inherit; z-index:2; pointer-events:none;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255,209,102,.6),
+    rgba(92,198,255,.55),
+    rgba(255,209,102,.55),
+    rgba(92,198,255,.6)
+  );
+  filter: blur(22px);
+  opacity:.22;
+  animation: ringSpin 12s linear infinite;
+}
+@keyframes ringSpin{ to{ transform: rotate(360deg); } }
+
+/* 顶部栏更立体，增加底纹与下边线高光 */
+.big-header{
+  background:
+    linear-gradient(180deg, rgba(20,30,50,.92), rgba(12,19,33,.86)),
+    linear-gradient(180deg, rgba(255,255,255,.06), transparent);
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset;
+}
+.big-title{
+  font-weight: 900; letter-spacing:.2px;
+  background: linear-gradient(90deg, #ffd166, #84c5ff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.big-close{
+  border-color: rgba(255,255,255,.16);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.45);
+  transition: transform .16s ease, box-shadow .22s ease, border-color .22s ease, background .22s ease;
+}
+.big-close:hover{
+  transform: translateY(-1px);
+  border-color:#4a5a86;
+  background:linear-gradient(180deg, rgba(255,255,255,.10), transparent 70%);
+  box-shadow: 0 16px 36px rgba(0,0,0,.45);
+}
+
+/* 弹窗主体内的 Panel 去“盒子感”，更像一张磨砂页 */
+.big-body .panel{
+  background: linear-gradient(180deg, rgba(255,255,255,.05), transparent 55%), rgba(18,26,44,.55) !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 24px 60px rgba(0,0,0,.40) !important;
+}
+
+/* 表单控件：更圆润、更光泽、聚焦更明显 */
+.big-body .form input,
+.big-body .form select,
+.big-body .form textarea{
+  background: linear-gradient(180deg, rgba(255,255,255,.02), transparent 60%), #0f1727;
+  border: 1px solid #2f3d5e;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+.big-body .form input:focus,
+.big-body .form select:focus,
+.big-body .form textarea:focus{
+  border-color:#6b7fc0;
+  box-shadow: 0 0 0 4px rgba(107,127,192,.28), inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+/* 弹窗内的提交按钮：更亮的高光与起伏感 */
+.big-body .btn{
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 10px 26px rgba(0,0,0,.32);
+}
+.big-body .btn-edit{
+  background: linear-gradient(135deg, rgba(81,118,255,.55), rgba(124,58,237,.48)), #12203a !important;
+  border-color: rgba(132,94,247,.55) !important;
+}
+.big-body .btn-delete{
+  background: linear-gradient(135deg, rgba(239,71,111,.58), rgba(244,114,182,.52)), #2a1416 !important;
+  border-color: rgba(239,71,111,.60) !important;
+}
+
+/* 开启/关闭动画更柔和（进场稍微有“弹性”） */
+.big-modal{
+  transform-origin: 50% 46%;
+  animation: bigIn .22s cubic-bezier(.2,.8,.2,1) both;
+}
+.big-backdrop.closing .big-modal{
+  animation: bigOut .18s ease both;
+}
+@keyframes bigIn{
+  0%{ opacity:0; transform: translateY(18px) scale(.975); }
+  60%{ opacity:1; transform: translateY(2px) scale(1.002); }
+  100%{ opacity:1; transform: translateY(0) scale(1); }
+}
+@keyframes bigOut{
+  0%{ opacity:1; transform: translateY(0) scale(1); }
+  100%{ opacity:0; transform: translateY(8px) scale(.985); }
+}
+
+/* 小确认弹窗也升级：顶部图标+轻光晕 */
+.modal{
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), transparent 60%),
+    linear-gradient(180deg, #0f182a, #0e1626);
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 36px 80px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.06);
+  position: relative;
+}
+.modal::before{
+  content:"⚠️"; position:absolute; left:18px; top:16px; font-size:18px; opacity:.9;
+  filter: drop-shadow(0 4px 14px rgba(239,71,111,.45));
+}
+.modal h3{ padding-left:28px; }
+.modal-actions .btn-ghost{
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+/* 滚动条在弹窗中更细腻 */
+.big-modal *::-webkit-scrollbar-thumb{
+  background: linear-gradient(180deg, #2b3a5a, #23324d);
+  border: 2px solid #0f1522;
+}
+
