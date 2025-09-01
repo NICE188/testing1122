@@ -1,4 +1,4 @@
-# app.py  —— 高质感 UI + 侧边栏版（单文件可直接运行/部署）
+# app.py —— 高质感按钮 + 自定义确认弹窗 + 侧边栏（单文件可直接运行/部署）
 from flask import (
     Flask, request, render_template, render_template_string,
     redirect, url_for, send_file, session, abort, flash, Response
@@ -9,7 +9,7 @@ from jinja2 import TemplateNotFound, DictLoader
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # =========================
-# 环境变量（可在 Railway/本地 .env 设置）
+# 环境变量（Railway/本地可覆盖）
 # =========================
 APP_DB = os.environ.get("APP_DB", "data.db")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
@@ -20,34 +20,24 @@ app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
 # =========================
-# 高质感 CSS（通过 /static/style.css 提供）
+# 高质感 CSS（含按钮样式 & 弹窗）
 # =========================
 STYLE_CSS = r""":root{
-  /* 主题色与基色 */
-  --bg:#090d14;
-  --bg-2:#0e1524;
-  --surface:#0f1726;        /* 玻璃底 */
-  --line:#26314a;           /* 线条 */
-  --text:#e9eef7;
-  --muted:#9db0c8;
-  --accent:#f2c94c;         /* 金色 */
-  --accent-2:#ff9f43;       /* 橙色 */
+  --bg:#090d14; --bg-2:#0e1524; --surface:#0f1726; --line:#26314a;
+  --text:#e9eef7; --muted:#9db0c8;
+  --accent:#f2c94c; --accent-2:#ff9f43;
   --shadow:0 10px 40px rgba(0,0,0,.45);
 }
-
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0;
-  color:var(--text);
+  margin:0; color:var(--text);
   font:14px/1.6 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  /* 背景渐变层 */
   background:
     radial-gradient(1200px 700px at 10% -10%, rgba(242,201,76,.10), transparent 60%),
     radial-gradient(1200px 700px at 120% 10%, rgba(255,159,67,.10), transparent 60%),
     linear-gradient(to bottom, var(--bg), var(--bg-2) 1200px);
 }
-/* 全局网格（格子）叠加层 */
 body::before{
   content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
   background-image:
@@ -59,7 +49,7 @@ body::before{
     radial-gradient(1200px 800px at 110% 10%, #000 40%, transparent 100%);
 }
 
-/* ===== 顶部栏 ===== */
+/* 顶部栏 */
 .topbar{
   position:sticky; top:0; z-index:30;
   display:flex; align-items:center; justify-content:space-between;
@@ -72,20 +62,16 @@ body::before{
   background:conic-gradient(from 0deg, var(--accent), var(--accent-2), var(--accent));
   box-shadow:0 0 10px rgba(242,201,76,.9), 0 0 18px rgba(255,159,67,.5);
 }
-.nav a{margin-left:12px;padding:6px 10px;border:1px solid transparent;border-radius:10px;position:relative}
-.nav a:hover{border-color:var(--line)}
-.user{opacity:.85;margin-right:8px}
+.nav a{margin-left:12px;padding:6px 10px;border:1px solid transparent;border-radius:10px}
+.nav a:hover{border-color:var(--line)} .user{opacity:.85;margin-right:8px}
 
-/* ===== 布局：侧栏 + 主区 ===== */
+/* 布局：侧栏 + 主区 */
 .layout{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 56px);position:relative;z-index:1}
 .sidebar{
-  position:sticky; top:56px; height:calc(100vh - 56px);
-  padding:14px 10px 16px;
+  position:sticky; top:56px; height:calc(100vh - 56px); padding:14px 10px 16px;
   background:linear-gradient(180deg, rgba(24,28,43,.65), rgba(15,22,38,.8));
-  border-right:1px solid var(--line);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+  border-right:1px solid var(--line); box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
 }
-/* 侧栏自己的网格层 */
 .sidebar::before{
   content:""; position:absolute; inset:0; pointer-events:none; opacity:.22;
   background-image:
@@ -94,18 +80,17 @@ body::before{
 }
 .main{padding:20px}
 
-/* 折叠状态（仅图标） */
+/* 侧栏折叠 */
 body.side-collapsed .layout{grid-template-columns:80px 1fr}
 body.side-collapsed .sidebar{padding-left:8px;padding-right:8px}
 body.side-collapsed .side-title{display:none}
 body.side-collapsed .side-menu a{justify-content:center}
 body.side-collapsed .side-menu a .label{display:none}
 
-/* ===== 侧栏菜单 ===== */
+/* 侧栏菜单 */
 .side-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .side-title{font-size:12px;color:var(--muted);letter-spacing:.4px}
 .side-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:#0f1522;cursor:pointer}
-
 .side-menu{display:grid;gap:8px}
 .side-menu a{
   position:relative; display:flex; align-items:center; gap:12px;
@@ -128,7 +113,7 @@ body.side-collapsed .side-menu a .label{display:none}
   box-shadow:0 0 10px rgba(242,201,76,.65);
 }
 
-/* ===== 页面标题、卡片、面板 ===== */
+/* 标题/卡片/面板 */
 .page-title{margin:6px 0 16px;font-size:20px;display:flex;align-items:center;gap:8px;text-shadow:0 0 1px rgba(0,0,0,.2)}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:14px 0}
 .card{
@@ -136,29 +121,68 @@ body.side-collapsed .side-menu a .label{display:none}
   border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:16px;
   box-shadow:var(--shadow); backdrop-filter:blur(6px);
 }
-.card-title{font-size:12px;color:var(--muted);letter-spacing:.3px}
-.card-value{font-size:28px;margin-top:6px}
-
+.card-title{font-size:12px;color:var(--muted)} .card-value{font-size:28px;margin-top:6px}
 .panel{
   background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);
   border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:16px; margin-bottom:16px;
   box-shadow:var(--shadow); backdrop-filter:blur(6px);
 }
 
-/* ===== 表单与按钮 ===== */
+/* 表单与基础按钮 */
 .form{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
 .form input,.form select,.form button{
   height:38px;padding:6px 12px;border-radius:12px;border:1px solid var(--line);
   background:#0f1522;color:var(--text);outline:0;transition:border-color .15s, box-shadow .15s
 }
 .form input:focus,.form select:focus{border-color:#4a5a86; box-shadow:0 0 0 3px rgba(74,90,134,.28)}
-.form button{
-  background:linear-gradient(180deg,#141b2b,#101626);border-color:#3f4b6b;cursor:pointer
-}
+.form button{background:linear-gradient(180deg,#141b2b,#101626);border-color:#3f4b6b;cursor:pointer}
 .form button:hover{box-shadow:0 8px 20px rgba(0,0,0,.35)}
 .form .danger{border-color:#7a2a2a;background:linear-gradient(180deg,#2a1416,#1b0f11)}
 
-/* ===== 表格 ===== */
+/* ===== 高质感按钮（编辑/删除） ===== */
+.btn{
+  --bcol: rgba(255,255,255,.06);
+  display:inline-flex; align-items:center; gap:8px;
+  height:36px; padding:0 14px; border-radius:12px;
+  border:1px solid var(--bcol);
+  background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), rgba(16,22,38,.5);
+  color:var(--text); text-decoration:none; cursor:pointer; user-select:none;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 8px 18px rgba(0,0,0,.25);
+  transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
+}
+.btn:hover{transform:translateY(-1px); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 12px 24px rgba(0,0,0,.32)}
+.btn:active{transform:translateY(0)}
+.btn .ico{font-size:16px;line-height:1}
+
+.btn-edit{
+  --bcol:#5176ff66;
+  background:
+    radial-gradient(90% 120% at -10% -20%, rgba(81,118,255,.35), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), #13203a;
+  border-color:#4b69ff80;
+  box-shadow:inset 0 0 0 1px #4b69ff33, 0 10px 22px rgba(75,105,255,.25);
+}
+.btn-edit:hover{
+  border-color:#7aa1ffb0;
+  box-shadow:inset 0 0 0 1px #7aa1ff66, 0 14px 28px rgba(75,105,255,.33);
+}
+
+.btn-delete{
+  --bcol:#d14a4a66;
+  background:
+    radial-gradient(90% 120% at -10% -20%, rgba(209,74,74,.32), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), #2a1416;
+  border-color:#d14a4a99;
+  box-shadow:inset 0 0 0 1px #d14a4a40, 0 10px 22px rgba(209,74,74,.25);
+}
+.btn-delete:hover{
+  border-color:#ff7d7db0;
+  box-shadow:inset 0 0 0 1px #ff7d7d70, 0 14px 28px rgba(209,74,74,.35);
+}
+.actions{display:flex;gap:10px}
+.actions .btn{min-width:94px; justify-content:center}
+
+/* 表格 */
 .table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.06);border-radius:18px;box-shadow:var(--shadow);backdrop-filter:blur(6px)}
 table{border-collapse:separate;border-spacing:0;width:100%}
 th{
@@ -170,17 +194,35 @@ th{
 td{padding:12px;border-bottom:1px solid var(--line)}
 tbody tr:hover{background:rgba(255,255,255,.03)}
 tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
-.actions{display:flex;gap:8px}
 
-/* ===== 消息条 & 页脚 ===== */
+/* 闪讯 & 页脚 */
 .flash-wrap{display:grid;gap:8px;margin-bottom:12px}
 .flash{padding:10px;border-radius:12px;background:#141b2b;border:1px solid var(--line)}
 .flash.success{border-color:#2f6b2a;background:linear-gradient(180deg,#182616,#121d13)}
 .flash.error{border-color:#6b2a2a;background:linear-gradient(180deg,#2b1717,#1f1212)}
-
 .footer{opacity:.65;text-align:center;padding:26px}
 
-/* 美化滚动条 */
+/* 确认弹窗（玻璃风） */
+.modal-backdrop{
+  position:fixed; inset:0; z-index:50; display:none;
+  background:rgba(5,8,14,.55); backdrop-filter:blur(8px);
+  align-items:center; justify-content:center; padding:20px;
+}
+.modal-backdrop.open{display:flex}
+.modal{
+  width:min(420px,100%); border-radius:16px; padding:18px;
+  background:linear-gradient(180deg, rgba(255,255,255,.05), transparent 60%), var(--surface);
+  border:1px solid rgba(255,255,255,.08); box-shadow:var(--shadow);
+}
+.modal h3{margin:0 0 10px}
+.modal p{margin:0 0 14px; color:var(--muted)}
+.modal-actions{display:flex; gap:10px; justify-content:flex-end}
+.btn-ghost{
+  --bcol:rgba(255,255,255,.08);
+  background:rgba(15,22,38,.6);
+}
+
+/* 滚动条 */
 *::-webkit-scrollbar{height:10px;width:10px}
 *::-webkit-scrollbar-thumb{background:#2a3754;border-radius:10px;border:2px solid #0f1522}
 *::-webkit-scrollbar-thumb:hover{background:#35476b}
@@ -194,11 +236,10 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 
 @app.get("/static/style.css")
 def static_style():
-    # 附带版本号防缓存：?v=9
     return Response(STYLE_CSS, mimetype="text/css")
 
 # =========================
-# 内嵌模板（含“网格+玻璃+侧栏”base）
+# 内嵌模板（把删除确认做成弹窗；按钮类改为 btn-edit / btn-delete）
 # =========================
 TEMPLATES = {
 "base.html": """<!doctype html>
@@ -207,10 +248,9 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=9">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=12">
 </head>
 <body>
-  <!-- 顶部栏 -->
   <header class="topbar">
     <div class="brand">
       ⚜️ Admin Panel
@@ -226,34 +266,17 @@ TEMPLATES = {
     </nav>
   </header>
 
-  <!-- 主布局：侧栏 + 内容 -->
   <div class="layout">
     <aside class="sidebar">
-      <div class="side-head">
-        <div class="side-title">导航</div>
-      </div>
+      <div class="side-head"><div class="side-title">导航</div></div>
       <nav class="side-menu">
-        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}">
-          <span class="icon">🏠</span><span class="label">Dashboard</span>
-        </a>
-        <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}">
-          <span class="icon">👨‍💼</span><span class="label">工人 / 平台</span>
-        </a>
-        <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}">
-          <span class="icon">🏦</span><span class="label">银行账户</span>
-        </a>
-        <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}">
-          <span class="icon">💳</span><span class="label">银行卡租金</span>
-        </a>
-        <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}">
-          <span class="icon">💵</span><span class="label">出粮记录</span>
-        </a>
-        <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}">
-          <span class="icon">💸</span><span class="label">开销记录</span>
-        </a>
-        <a href="{{ url_for('account_security') }}" class="{{ 'active' if request.path.startswith('/account') or request.path.startswith('/account-security') else '' }}">
-          <span class="icon">🔐</span><span class="label">安全设置</span>
-        </a>
+        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}"><span class="icon">🏠</span><span class="label">Dashboard</span></a>
+        <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}"><span class="icon">👨‍💼</span><span class="label">工人 / 平台</span></a>
+        <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}"><span class="icon">🏦</span><span class="label">银行账户</span></a>
+        <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}"><span class="icon">💳</span><span class="label">银行卡租金</span></a>
+        <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}"><span class="icon">💵</span><span class="label">出粮记录</span></a>
+        <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}"><span class="icon">💸</span><span class="label">开销记录</span></a>
+        <a href="{{ url_for('account_security') }}" class="{{ 'active' if request.path.startswith('/account') or request.path.startswith('/account-security') else '' }}"><span class="icon">🔐</span><span class="label">安全设置</span></a>
       </nav>
     </aside>
 
@@ -273,8 +296,20 @@ TEMPLATES = {
     </main>
   </div>
 
+  <!-- 自定义确认弹窗 -->
+  <div id="confirmBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal">
+      <h3>确认操作</h3>
+      <p id="confirmText">确定要执行该操作吗？</p>
+      <div class="modal-actions">
+        <button id="confirmCancel" class="btn btn-ghost" type="button">取消</button>
+        <button id="confirmOk" class="btn btn-delete" type="button"><span class="ico">🗑️</span> 确认删除</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // 侧栏折叠状态记忆
+    // 侧栏折叠记忆
     (function(){
       const key='__side_collapsed__';
       try{
@@ -284,6 +319,46 @@ TEMPLATES = {
           localStorage.setItem(key, document.body.classList.contains('side-collapsed')?'1':'0');
         });
       }catch(e){}
+    })();
+
+    // 自定义删除确认（拦截带 .confirm 的表单）
+    (function(){
+      const backdrop = document.getElementById('confirmBackdrop');
+      const txt = document.getElementById('confirmText');
+      const btnOK = document.getElementById('confirmOk');
+      const btnCancel = document.getElementById('confirmCancel');
+      let pendingForm = null;
+
+      function open(msg){
+        if(msg) txt.textContent = msg;
+        backdrop.classList.add('open');
+        backdrop.setAttribute('aria-hidden','false');
+      }
+      function close(){
+        backdrop.classList.remove('open');
+        backdrop.setAttribute('aria-hidden','true');
+        pendingForm = null;
+      }
+
+      document.addEventListener('submit', function(e){
+        const f = e.target;
+        if(f.matches('.confirm')){
+          e.preventDefault();
+          pendingForm = f;
+          open(f.dataset.confirm || '确定要删除这条记录吗？');
+        }
+      }, true);
+
+      btnCancel.addEventListener('click', close);
+      btnOK.addEventListener('click', function(){
+        if(pendingForm){
+          pendingForm.classList.remove('confirm'); // 防止递归拦截
+          pendingForm.submit();
+          close();
+        }
+      });
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
+      backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
     })();
   </script>
 </body>
@@ -328,11 +403,9 @@ TEMPLATES = {
     <a class="btn" href="{{ url_for('account_credentials') }}">🧑‍💻 修改登录账号/密码</a>
     <a class="btn" href="{{ url_for('account_change_password') }}">🔑 修改密码</a>
     <a class="btn" href="{{ url_for('account_change_username') }}">🆔 修改用户名</a>
-    <a class="btn" href="{{ url_for('account_reset') }}">🛠 管理员重置密码</a>
+    <a class="btn btn-delete" href="{{ url_for('account_reset') }}"><span class="ico">🛠</span> 管理员重置密码</a>
   </div>
 </div>
-<style>.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
-.btn{display:inline-block;padding:10px 14px;border:1px solid var(--line);border-radius:10px;text-decoration:none}</style>
 {% endblock %}
 """,
 
@@ -343,7 +416,7 @@ TEMPLATES = {
 <form class="form" method="post" action="{{ url_for('account_credentials_post') }}">
   <input name="username" placeholder="{{ t.username }}" required>
   <input name="password" type="password" placeholder="{{ t.password }}" required>
-  <button class="btn" type="submit">{{ t.save }}</button>
+  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
   <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
 </form>
 {% endblock %}
@@ -356,7 +429,7 @@ TEMPLATES = {
 <form class="form" method="post" action="{{ url_for('account_change_password_post') }}">
   <input name="old_password" type="password" placeholder="旧密码" required>
   <input name="new_password" type="password" placeholder="新密码" required>
-  <button class="btn" type="submit">{{ t.save }}</button>
+  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
   <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
 </form>
 {% endblock %}
@@ -368,7 +441,7 @@ TEMPLATES = {
 <h1 class="page-title">🆔 修改用户名</h1>
 <form class="form" method="post" action="{{ url_for('account_change_username_post') }}">
   <input name="new_username" placeholder="新用户名" required>
-  <button class="btn" type="submit">{{ t.save }}</button>
+  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
   <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
 </form>
 {% endblock %}
@@ -381,7 +454,7 @@ TEMPLATES = {
 <form class="form" method="post" action="{{ url_for('account_reset_post') }}">
   <input name="target_username" placeholder="目标用户名" required>
   <input name="new_password" type="password" placeholder="新密码" required>
-  <button class="btn" type="submit">{{ t.save }}</button>
+  <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.save }}</button>
   <a class="btn" href="{{ url_for('dashboard') }}">{{ t.back }}</a>
 </form>
 {% endblock %}
@@ -397,7 +470,7 @@ TEMPLATES = {
     <input name="company" placeholder="{{ t.company }}">
     <input name="commission" type="number" step="0.01" placeholder="{{ t.commission }}">
     <input name="expenses" type="number" step="0.01" placeholder="{{ t.expenses }}">
-    <button class="btn" type="submit">{{ t.add }}</button>
+    <button class="btn btn-edit" type="submit"><span class="ico">➕</span> {{ t.add }}</button>
     <a class="btn" href="{{ url_for('export_workers') }}">⤓ {{ t.export_workers }}</a>
   </form>
   <div class="table-wrap">
@@ -412,9 +485,9 @@ TEMPLATES = {
         <tr>
           <td>{{ r.id }}</td><td>{{ r.name }}</td><td>{{ r.company }}</td><td>{{ r.commission }}</td><td>{{ r.expenses }}</td><td>{{ r.created_at }}</td>
           <td class="actions">
-            <a class="btn" href="{{ url_for('workers_edit_form', wid=r.id) }}">{{ t.edit }}</a>
-            <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
-              <button class="btn danger" type="submit">{{ t.delete }}</button>
+            <a class="btn btn-edit" href="{{ url_for('workers_edit_form', wid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
+            <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+              <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.delete }}</button>
             </form>
           </td>
         </tr>
@@ -437,7 +510,7 @@ TEMPLATES = {
   <input name="company" value="{{ r.company }}" placeholder="{{ t.company }}">
   <input name="commission" type="number" step="0.01" value="{{ r.commission }}" placeholder="{{ t.commission }}">
   <input name="expenses" type="number" step="0.01" value="{{ r.expenses }}" placeholder="{{ t.expenses }}">
-  <button class="btn" type="submit">{{ t.save }}</button>
+  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
   <a class="btn" href="{{ url_for('workers_list') }}">{{ t.back }}</a>
 </form>
 {% endblock %}
@@ -453,7 +526,7 @@ TEMPLATES = {
     <input name="account_no" placeholder="账号" required>
     <input name="holder" placeholder="户名" required>
     <select name="status"><option value="1">{{ t.active }}</option><option value="0">{{ t.inactive }}</option></select>
-    <button class="btn" type="submit">{{ t.add }}</button>
+    <button class="btn btn-edit" type="submit"><span class="ico">➕</span> {{ t.add }}</button>
     <a class="btn" href="{{ url_for('export_bank_accounts') }}">⤓ {{ t.export_bank }}</a>
   </form>
   <div class="table-wrap">
@@ -465,9 +538,9 @@ TEMPLATES = {
           <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.holder }}</td>
           <td>{{ t.active if r.status==1 else t.inactive }}</td><td>{{ r.created_at }}</td>
           <td class="actions">
-            <a class="btn" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}">{{ t.edit }}</a>
-            <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
-              <button class="btn danger" type="submit">{{ t.delete }}</button>
+            <a class="btn btn-edit" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
+            <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+              <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.delete }}</button>
             </form>
           </td>
         </tr>
@@ -491,7 +564,7 @@ TEMPLATES = {
     <option value="1" {% if r.status==1 %}selected{% endif %}>{{ t.active }}</option>
     <option value="0" {% if r.status==0 %}selected{% endif %}>{{ t.inactive }}</option>
   </select>
-  <button class="btn" type="submit">{{ t.save }}</button>
+  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
   <a class="btn" href="{{ url_for('bank_accounts_list') }}">{{ t.back }}</a>
 </form>
 {% endblock %}
@@ -510,7 +583,7 @@ TEMPLATES = {
     <input name="start_date" type="date" placeholder="开始日期">
     <input name="end_date" type="date" placeholder="结束日期">
     <input name="note" placeholder="备注">
-    <button class="btn" type="submit">{{ t.add }}</button>
+    <button class="btn btn-edit" type="submit"><span class="ico">➕</span> {{ t.add }}</button>
     <a class="btn" href="{{ url_for('export_card_rentals') }}">⤓ {{ t.export_rentals }}</a>
   </form>
   <div class="table-wrap">
@@ -521,9 +594,9 @@ TEMPLATES = {
         <tr>
           <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.monthly_rent }}</td><td>{{ r.start_date }}</td><td>{{ r.end_date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions">
-            <a class="btn" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}">{{ t.edit }}</a>
-            <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
-              <button class="btn danger" type="submit">{{ t.delete }}</button>
+            <a class="btn btn-edit" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
+            <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+              <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.delete }}</button>
             </form>
           </td>
         </tr>
@@ -549,7 +622,7 @@ TEMPLATES = {
   <input name="start_date" type="date" value="{{ r.start_date }}">
   <input name="end_date" type="date" value="{{ r.end_date }}">
   <input name="note" value="{{ r.note }}" placeholder="备注">
-  <button class="btn" type="submit">{{ t.save }}</button>
+  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
   <a class="btn" href="{{ url_for('card_rentals_list') }}">{{ t.back }}</a>
 </form>
 {% endblock %}
@@ -565,7 +638,7 @@ TEMPLATES = {
     <input name="amount" type="number" step="0.01" placeholder="{{ t.salary_amount }}" required>
     <input name="pay_date" type="date" placeholder="{{ t.pay_date }}" required>
     <input name="note" placeholder="{{ t.note }}">
-    <button class="btn" type="submit">{{ t.add }}</button>
+    <button class="btn btn-edit" type="submit"><span class="ico">➕</span> {{ t.add }}</button>
     <a class="btn" href="{{ url_for('export_salaries') }}">⤓ {{ t.export_salaries }}</a>
   </form>
   <div class="table-wrap">
@@ -576,9 +649,9 @@ TEMPLATES = {
         <tr>
           <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.pay_date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions">
-            <a class="btn" href="{{ url_for('salaries_edit_form', sid=r.id) }}">{{ t.edit }}</a>
-            <form method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
-              <button class="btn danger" type="submit">{{ t.delete }}</button>
+            <a class="btn btn-edit" href="{{ url_for('salaries_edit_form', sid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
+            <form method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+              <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.delete }}</button>
             </form>
           </td>
         </tr>
@@ -599,7 +672,7 @@ TEMPLATES = {
   <input name="amount" type="number" step="0.01" value="{{ r.amount }}" placeholder="{{ t.salary_amount }}">
   <input name="pay_date" type="date" value="{{ r.pay_date }}">
   <input name="note" value="{{ r.note }}" placeholder="{{ t.note }}">
-  <button class="btn" type="submit">{{ t.save }}</button>
+  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
   <a class="btn" href="{{ url_for('salaries_list') }}">{{ t.back }}</a>
 </form>
 {% endblock %}
@@ -618,7 +691,7 @@ TEMPLATES = {
     <input name="amount" type="number" step="0.01" placeholder="{{ t.expense_amount }}" required>
     <input name="date" type="date" placeholder="{{ t.date }}" required>
     <input name="note" placeholder="{{ t.expenses_note }}">
-    <button class="btn" type="submit">{{ t.add }}</button>
+    <button class="btn btn-edit" type="submit"><span class="ico">➕</span> {{ t.add }}</button>
     <a class="btn" href="{{ url_for('export_expenses') }}">⤓ {{ t.export_expenses }}</a>
   </form>
   <div class="table-wrap">
@@ -629,9 +702,9 @@ TEMPLATES = {
         <tr>
           <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions">
-            <a class="btn" href="{{ url_for('expenses_edit_form', eid=r.id) }}">{{ t.edit }}</a>
-            <form method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
-              <button class="btn danger" type="submit">{{ t.delete }}</button>
+            <a class="btn btn-edit" href="{{ url_for('expenses_edit_form', eid=r.id) }}"><span class="ico">✏️</span> {{ t.edit }}</a>
+            <form method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+              <button class="btn btn-delete" type="submit"><span class="ico">🗑️</span> {{ t.delete }}</button>
             </form>
           </td>
         </tr>
@@ -655,7 +728,7 @@ TEMPLATES = {
   <input name="amount" type="number" step="0.01" value="{{ r.amount }}" placeholder="{{ t.expense_amount }}">
   <input name="date" type="date" value="{{ r.date }}">
   <input name="note" value="{{ r.note }}" placeholder="{{ t.expenses_note }}">
-  <button class="btn" type="submit">{{ t.save }}</button>
+  <button class="btn btn-edit" type="submit"><span class="ico">✏️</span> {{ t.save }}</button>
   <a class="btn" href="{{ url_for('expenses_list') }}">{{ t.back }}</a>
 </form>
 {% endblock %}
@@ -692,7 +765,7 @@ I18N = {
         "workers": "工人 / 平台","bank_accounts": "银行账户","card_rentals": "银行卡租金",
         "salaries": "出粮记录","expenses": "开销记录","actions": "操作",
         "add": "新增","edit": "编辑","delete": "删除","save": "保存","back": "返回",
-        "confirm_delete": "确定要删除吗？","empty": "暂无数据","created_at": "创建时间",
+        "confirm_delete": "确定要删除这条记录吗？","empty": "暂无数据","created_at": "创建时间",
         "status": "状态","active": "启用","inactive": "停用","name": "姓名","company": "公司",
         "commission": "佣金","salary_amount": "工资金额","pay_date": "发放日期","note": "备注",
         "date": "日期","worker": "工人","expense_amount": "开销金额","expenses_note": "开销备注",
@@ -705,7 +778,7 @@ def get_lang(): return request.args.get("lang") or request.cookies.get("lang") o
 def T(): return I18N.get(get_lang(), I18N["zh"])
 
 # =========================
-# DB helpers & 初始化
+# DB & 初始化
 # =========================
 def conn():
     c = sqlite3.connect(APP_DB); c.row_factory = sqlite3.Row; return c
@@ -788,7 +861,7 @@ def dashboard():
                            total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
 
 # =========================
-# 安全中心
+# 安全中心 & 账号管理
 # =========================
 @app.get("/account-security")
 def account_security():
@@ -1210,17 +1283,6 @@ def expenses_delete(eid):
     with conn() as c:
         c.execute("DELETE FROM expenses WHERE id=?", (eid,)); c.commit()
     return redirect(url_for("expenses_list"))
-
-@app.get("/export/expenses.csv")
-def export_expenses():
-    if require_login(): return require_login()
-    output = io.StringIO(); writer = csv.writer(output)
-    writer.writerow(["id","worker_id","amount","date","note","created_at"])
-    with conn() as c:
-        for r in c.execute("SELECT * FROM expenses ORDER BY id DESC"):
-            writer.writerow([r["id"],r["worker_id"],r["amount"],r["date"],r["note"],r["created_at"]])
-    mem = io.BytesIO(output.getvalue().encode("utf-8"))
-    return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="expenses.csv")
 
 # 初始化数据库
 init_db()
