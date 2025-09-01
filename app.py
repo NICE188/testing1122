@@ -1,4 +1,4 @@
-# app.py —— 列表在主界面；所有“填写表格”改为弹窗（单文件可运行）
+# app.py —— 单文件可运行：侧边栏 + 列表页 + 表单弹窗（美化版）+ 启用/停用 + 删除确认 + 导出CSV + 登录鉴权
 from flask import (
     Flask, request, render_template, render_template_string,
     redirect, url_for, send_file, session, abort, flash, Response
@@ -17,7 +17,7 @@ SECRET_KEY    = os.environ.get("SECRET_KEY", "dev-secret")
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
-# ============ 高质感 CSS（含弹窗） ============
+# ============ 高质感 CSS（含弹窗美化/动画/骨架屏/滚动锁定） ============
 STYLE_CSS = r""":root{
   --bg:#090d14; --bg-2:#0e1524; --surface:#0f1726; --line:#26314a;
   --text:#e9eef7; --muted:#9db0c8;
@@ -174,29 +174,117 @@ td{padding:12px;border-bottom:1px solid var(--line)}
 tbody tr:hover{background:rgba(255,255,255,.03)}
 tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 
-/* 删除确认（小） */
-.modal-backdrop{position:fixed; inset:0; z-index:50; display:none; background:rgba(5,8,14,.55); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px}
-.modal-backdrop.open{display:flex}
-.modal{width:min(420px,100%); border-radius:16px; padding:18px; background:linear-gradient(180deg, rgba(255,255,255,.05), transparent 60%), var(--surface); border:1px solid rgba(255,255,255,.08); box-shadow:var(--shadow)}
-.modal h3{margin:0 0 10px}
+/* ===== 删除确认弹窗（小） —— 美化版 ===== */
+.modal-backdrop{
+  position:fixed; inset:0; z-index:50; display:none;
+  background:radial-gradient(1200px 600px at 15% -10%, rgba(242,201,76,.12), transparent 60%),
+             radial-gradient(1200px 600px at 120% 10%, rgba(255,159,67,.12), transparent 60%),
+             rgba(5,8,14,.58);
+  backdrop-filter:blur(10px) saturate(140%);
+}
+.modal-backdrop.open{display:flex; align-items:center; justify-content:center; padding:20px}
+.modal{
+  width:min(420px,100%);
+  position:relative; overflow:hidden;
+  border-radius:16px; padding:18px;
+  background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), var(--surface);
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow:0 28px 60px rgba(0,0,0,.55);
+  opacity:0; transform:translateY(10px) scale(.985);
+  transition:opacity .22s ease, transform .22s ease;
+}
+.modal-backdrop.open .modal{opacity:1; transform:none}
+.modal h3{margin:0 0 10px; letter-spacing:.2px}
 .modal p{margin:0 0 14px; color:#9db0c8}
 .modal-actions{display:flex; gap:10px; justify-content:flex-end}
-.btn-ghost{--bcol:rgba(255,255,255,.08); background:rgba(15,22,38,.6)}
-
-/* 大弹窗（表单弹窗） */
-.big-backdrop{position:fixed; inset:0; z-index:55; display:none; background:rgba(6,10,18,.6); backdrop-filter:blur(12px) saturate(140%)}
-.big-backdrop.open{display:flex; align-items:center; justify-content:center; padding:20px}
-.big-modal{
-  width:min(860px, 96vw); max-height:90vh; overflow:auto;
-  border-radius:18px; border:1px solid rgba(255,255,255,.08);
-  background:linear-gradient(180deg, rgba(255,255,255,.05), transparent 60%), var(--surface);
-  box-shadow:0 24px 60px rgba(0,0,0,.55);
+.btn-ghost{--bcol:rgba(255,255,255,.10); background:rgba(15,22,38,.6)}
+.modal::before{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  border-radius:inherit;
+  background:linear-gradient(180deg, rgba(242,201,76,.18), rgba(255,159,67,.10), transparent 60%);
+  mask:linear-gradient(#000,#000) content-box, linear-gradient(#000,#000);
+  -webkit-mask:linear-gradient(#000,#000) content-box, linear-gradient(#000,#000);
+  padding:1px; border-radius:inherit;
+  opacity:.18;
 }
-.big-header{display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--line)}
-.big-title{font-weight:700; letter-spacing:.2px}
-.big-body{padding:16px}
-.big-close{--bcol:rgba(255,255,255,.08); padding:6px 10px; border-radius:10px; border:1px solid var(--bcol); background:rgba(15,22,38,.6); color:var(--text); cursor:pointer}
-.big-close:hover{transform:translateY(-1px)}
+
+/* ===== 大弹窗（表单）—— 高级质感 + 动画 + 骨架 ===== */
+.big-backdrop{
+  position:fixed; inset:0; z-index:55; display:none;
+  background:radial-gradient(1600px 700px at 10% -10%, rgba(242,201,76,.10), transparent 60%),
+             radial-gradient(1600px 700px at 120% 10%, rgba(80,160,255,.10), transparent 60%),
+             rgba(6,10,18,.62);
+  backdrop-filter:blur(14px) saturate(145%);
+}
+.big-backdrop.open{display:flex; align-items:center; justify-content:center; padding:24px}
+.big-backdrop.closing{pointer-events:none}
+
+/* 容器卡片 */
+.big-modal{
+  width:min(920px, 96vw); max-height:90vh; overflow:auto;
+  position:relative; border-radius:20px;
+  background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), var(--surface);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:
+    0 40px 100px rgba(0,0,0,.65),
+    0 0 0 1px rgba(255,255,255,.06) inset;
+  opacity:0; transform:translateY(14px) scale(.985);
+  transition:opacity .24s ease, transform .24s ease;
+}
+.big-backdrop.open .big-modal{opacity:1; transform:none}
+.big-backdrop.closing .big-modal{opacity:0; transform:translateY(6px) scale(.985)}
+
+.big-modal::before{
+  content:""; position:absolute; inset:-1px; border-radius:inherit; pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(242,201,76,.35), rgba(255,159,67,.18) 40%, rgba(81,118,255,.18) 80%, transparent);
+  opacity:.20; filter:blur(0.4px);
+}
+
+/* 头部 */
+.big-header{
+  position:sticky; top:0; z-index:1;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px;
+  background:linear-gradient(180deg, rgba(17,24,40,.92), rgba(15,22,38,.82));
+  border-bottom:1px solid rgba(255,255,255,.08);
+  backdrop-filter:blur(6px);
+}
+.big-title{font-weight:700; letter-spacing:.2px; display:flex; align-items:center; gap:8px}
+.big-title::before{content:"✨"; opacity:.9}
+.big-body{padding:16px 16px 18px}
+
+/* 关闭按钮 */
+.big-close{
+  --bcol:rgba(255,255,255,.12);
+  padding:8px 12px; border-radius:12px; border:1px solid var(--bcol);
+  background:rgba(15,22,38,.55); color:var(--text); cursor:pointer;
+  transition:transform .16s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.big-close:hover{transform:translateY(-1px); box-shadow:0 10px 22px rgba(0,0,0,.35); border-color:#3f4b6b}
+
+/* 弹窗内表单的间距优化 */
+.big-body .form{gap:12px}
+.big-body .form input,.big-body .form select,.big-body .form textarea{border-radius:14px}
+
+/* 加载骨架与轻量 spinner（打开弹窗时先展示） */
+.skel{display:grid; gap:10px}
+.skel .line{
+  height:14px; border-radius:10px; overflow:hidden;
+  background:linear-gradient(90deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.06) 100%);
+  background-size:240px 100%; animation:shimmer 1.25s infinite linear;
+}
+.skel .line.lg{height:22px; border-radius:12px}
+@keyframes shimmer{from{background-position:-240px 0} to{background-position:240px 0}}
+.spinner{
+  width:18px; height:18px; border-radius:50%;
+  border:2px solid rgba(255,255,255,.25); border-top-color:rgba(255,255,255,.8);
+  animation:spin .8s linear infinite; display:inline-block; vertical-align:middle;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 打开弹窗时锁定页面滚动 */
+body.modal-open{overflow:hidden}
 
 /* 滚动条 */
 *::-webkit-scrollbar{height:10px;width:10px}
@@ -214,7 +302,7 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
 def static_style():
     return Response(STYLE_CSS, mimetype="text/css")
 
-# ============ 模板（含 partials 供弹窗渲染） ============
+# ============ 模板（DictLoader，免 templates 目录） ============
 TEMPLATES = {
 "base.html": """<!doctype html>
 <html lang="zh">
@@ -222,12 +310,12 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=40">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=50">
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
-      ⚜️ NEPWIN88
+      ⚜️ Admin Panel
       <button id="collapseBtn" class="side-toggle" type="button" title="折叠/展开侧边栏">菜单</button>
     </div>
     <nav class="nav">
@@ -289,7 +377,7 @@ TEMPLATES = {
         <div class="big-title" id="bigTitle">📄 表单</div>
         <button id="bigClose" class="big-close" type="button">✖</button>
       </div>
-      <div class="big-body" id="bigContent"></div>
+      <div id="bigContent"></div>
     </div>
   </div>
 
@@ -325,63 +413,113 @@ TEMPLATES = {
       }, true);
       btnCancel.addEventListener('click', close);
       btnOK.addEventListener('click', function(){
-        if(pendingForm){ f = pendingForm; pendingForm=null; close(); f.classList.remove('confirm'); f.submit(); }
+        if(pendingForm){ const f = pendingForm; pendingForm=null; close(); f.classList.remove('confirm'); f.submit(); }
       });
       document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
       backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
     })();
 
-    // ===== 表单弹窗：点击 .js-open-modal 打开；弹窗内提交后刷新页面 =====
+    // ===== 表单弹窗（美化 + 交互增强）=====
     (function(){
       const big = document.getElementById('bigBackdrop');
       const content = document.getElementById('bigContent');
       const title = document.getElementById('bigTitle');
       const closeBtn = document.getElementById('bigClose');
 
-      function open(){ big.classList.add('open'); big.setAttribute('aria-hidden','false'); }
-      function close(){ big.classList.remove('open'); big.setAttribute('aria-hidden','true'); content.innerHTML=''; title.textContent='📄 表单'; }
+      let focusTrapHandlers = [];
+      function lockScroll(){ document.body.classList.add('modal-open'); }
+      function unlockScroll(){ document.body.classList.remove('modal-open'); }
+
+      function open(){
+        big.classList.add('open');
+        big.setAttribute('aria-hidden','false');
+        lockScroll();
+        setTimeout(() => {
+          const focusables = big.querySelectorAll('a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])');
+          if (focusables.length) focusables[0].focus();
+        }, 10);
+        const onKey = (e)=>{
+          if(e.key==='Tab'){
+            const f = big.querySelectorAll('a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])');
+            if(!f.length) return;
+            const first = f[0], last = f[f.length-1];
+            if(e.shiftKey && document.activeElement===first){ last.focus(); e.preventDefault(); }
+            else if(!e.shiftKey && document.activeElement===last){ first.focus(); e.preventDefault(); }
+          }else if(e.key==='Escape'){ close(); }
+        };
+        document.addEventListener('keydown', onKey);
+        focusTrapHandlers.push(onKey);
+      }
+
+      function close(){
+        big.classList.add('closing');
+        setTimeout(()=>{
+          big.classList.remove('open','closing');
+          big.setAttribute('aria-hidden','true');
+          content.innerHTML = '';
+          title.textContent = '📄 表单';
+          unlockScroll();
+        }, 220);
+        focusTrapHandlers.forEach(fn=>document.removeEventListener('keydown', fn));
+        focusTrapHandlers = [];
+      }
 
       async function load(url, text){
+        title.textContent = text || '📄 表单';
+        content.innerHTML = `
+          <div class="big-body">
+            <div class="skel" aria-busy="true">
+              <span class="line lg"></span>
+              <span class="line"></span>
+              <span class="line"></span>
+              <span class="line"></span>
+              <span class="line lg"></span>
+              <div style="margin-top:6px"><span class="spinner"></span> 正在加载…</div>
+            </div>
+          </div>`;
+        open();
         try{
-          title.textContent = text || '📄 表单';
           const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'partial=1', {headers:{'X-Requested-With':'fetch'}});
-          content.innerHTML = await res.text();
-          open();
+          const html = await res.text();
+          content.innerHTML = `<div class="big-body">${html}</div>`;
         }catch(e){
-          content.innerHTML = '<div class="panel"><h3>加载失败</h3><p style="color:#9db0c8">请稍后重试。</p></div>';
-          open();
+          content.innerHTML = '<div class="big-body"><div class="panel"><h3>加载失败</h3><p style="color:#9db0c8">请检查网络或稍后再试。</p></div></div>';
         }
       }
 
-      // 代理点击
+      // 打开弹窗
       document.addEventListener('click', function(ev){
-        const a = ev.target.closest('a.js-open-modal, button.js-open-modal');
-        if(a){
+        const el = ev.target.closest('a.js-open-modal, button.js-open-modal');
+        if(el){
           ev.preventDefault();
-          const href = a.getAttribute('href') || a.dataset.href || '#';
-          const tt = a.getAttribute('data-title') || a.title || a.textContent.trim();
+          const href = el.getAttribute('href') || el.dataset.href || '#';
+          const tt = el.getAttribute('data-title') || el.title || el.textContent.trim();
           load(href, tt);
         }
       });
 
-      // 弹窗内表单提交
+      // 弹窗内提交（AJAX 提交后刷新列表）
       big.addEventListener('submit', async function(ev){
         const f = ev.target;
         if(!big.contains(f)) return;
         ev.preventDefault();
         const data = new FormData(f);
+        const btn = f.querySelector('button[type="submit"]');
+        if(btn){ btn.disabled = True = true; btn.style.opacity = .75; }
         try{
           await fetch(f.action, {method: f.method || 'POST', body: data, headers:{'X-Requested-With':'fetch'}});
           close();
           location.reload();
         }catch(e){
           alert('提交失败，请重试');
+        }finally{
+          if(btn){ btn.disabled = false; btn.style.opacity = 1; }
         }
       });
 
+      // 关闭
       closeBtn.addEventListener('click', close);
       big.addEventListener('click', (e)=>{ if(e.target===big) close(); });
-      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
     })();
   </script>
 </body>
@@ -416,7 +554,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ===== 列表页：移除内嵌表单，改为“新增”按钮（弹窗） =====
+# ===== 列表页（新增/编辑按钮 => 弹窗） =====
 "workers_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.workers }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -504,7 +642,7 @@ TEMPLATES = {
   </div>
 </div>
 {% endblock %}
-""",
+""},
 
 "card_rentals_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.card_rentals }} · {{ t.app_name }}{% endblock %}
@@ -890,7 +1028,7 @@ def dashboard():
     return render_template("dashboard.html", total_workers=total_workers,
                            total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
 
-# ============ 安全中心（GET 返回弹窗表单 partial） ============
+# ============ 安全中心（GET 返回弹窗 partial） ============
 @app.get("/account-security")
 def account_security():
     if require_login(): return require_login()
@@ -901,7 +1039,6 @@ def account_credentials():
     if require_login(): return require_login()
     if request.args.get("partial") == "1":
         return render_template("partials/account_credentials_form.html")
-    # 直接打开页面时也兼容：在弹窗里用不到
     return render_template("account_security.html")
 
 @app.post("/account/credentials")
@@ -1020,7 +1157,6 @@ def workers_edit_form(wid):
         if not r: abort(404)
     if request.args.get("partial") == "1":
         return render_template("partials/workers_form.html", r=r)
-    # 兼容：若直接访问，则仍显示列表页
     return redirect(url_for("workers_list"))
 
 @app.post("/workers/<int:wid>/edit")
