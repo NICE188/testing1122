@@ -1,4 +1,4 @@
-# app.py – Premium Modal Edition (single-file Flask admin, 全量可复制)
+# app.py – Luxury Royale Admin（高端奢华黑金主题·完整可运行）
 from flask import Flask, request, render_template, redirect, url_for, session, flash, abort, send_file, Response
 from jinja2 import DictLoader, TemplateNotFound
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -16,125 +16,279 @@ app.secret_key = SECRET_KEY
 @app.get("/health")
 def health(): return "ok", 200
 
-# ----------- PREMIUM MODAL + UI CSS（已内置“金蓝主题 + 精致按钮 + 加强阴影 + 更快动画 + 更宽侧栏/弹窗 + hover 高亮”）-----------
+# ----------------------- Luxury Royale 样式（黑金 + 玻璃 + 高级动效） -----------------------
 STYLE_CSS = r""":root{
-  /* 基础主题（深色·金蓝） */
-  --bg:#070a10; --bg-2:#0c1321; --surface:#0e1626; --line:#2a3654;
-  --text:#e8eef8; --muted:#a5b6cc;
-  --accent:#ffd166; --accent-2:#5cc6ff;
-  --ok:#3ddc97; --warn:#ef476f;
-  /* 统一圆角 */
+  --bg:#0a0c12; --bg-2:#0d111b; --surface:#0f1522; --line:#212a3d;
+  --text:#eaeef7; --muted:#a8b4cc;
+  --gold:#f5d479; --gold-2:#ffd166;
+  --royal:#8f7aff; --emerald:#25d0a5; --ruby:#ef476f;
   --radius:16px;
 }
 *{box-sizing:border-box} html,body{height:100%}
 body{
   margin:0; color:var(--text);
   font:14px/1.6 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  /* 奢华黑金背景：丝绒暗纹 + 金色光晕 */
   background:
-    radial-gradient(1200px 680px at 10% -10%, rgba(255,209,102,.10), transparent 60%),
-    radial-gradient(1200px 680px at 120% 10%, rgba(92,198,255,.10), transparent 60%),
-    linear-gradient(to bottom, var(--bg), var(--bg-2) 1200px);
+    radial-gradient(1400px 700px at 12% -10%, color-mix(in oklab, var(--gold) 14%, transparent), transparent 60%),
+    radial-gradient(1400px 700px at 115% 0%, color-mix(in oklab, var(--royal) 14%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--bg), var(--bg-2) 1200px);
 }
+
+/* 顶部栏 */
 .topbar{
   position:sticky; top:0; z-index:30;
   display:flex; align-items:center; justify-content:space-between;
   padding:12px 16px; border-bottom:1px solid var(--line);
-  background:rgba(9,13,20,.75); backdrop-filter:blur(10px) saturate(140%);
+  background:rgba(10,14,24,.72); backdrop-filter:blur(10px) saturate(140%);
+  box-shadow:0 8px 28px rgba(0,0,0,.35);
 }
-.brand{display:flex;align-items:center;gap:10px;font-weight:800}
-.brand::after{content:"";width:7px;height:7px;border-radius:50%;background:conic-gradient(from 0deg, var(--accent), var(--accent-2), var(--accent));box-shadow:0 0 8px rgba(255,209,102,.9)}
-.nav a{margin-left:10px;padding:6px 10px;border-radius:10px;border:1px solid transparent}
+.brand{display:flex;align-items:center;gap:10px;font-weight:900; letter-spacing:.3px}
+.brand::before{content:"♛"; font-size:16px; filter: drop-shadow(0 6px 18px rgba(245,212,121,.35))}
+.brand::after{
+  content:""; width:7px; height:7px; border-radius:50%;
+  background:conic-gradient(from 0deg, var(--gold), var(--royal), var(--gold));
+  box-shadow:0 0 10px var(--gold);
+}
+.nav a{margin-left:10px;padding:6px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.06);text-decoration:none;color:var(--text)}
 .nav a:hover{border-color:var(--line)}
-.layout{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 56px)} /* 侧边更宽 */
-.sidebar{position:sticky;top:56px;height:calc(100vh - 56px);padding:14px 10px;background:linear-gradient(180deg, rgba(24,28,43,.65), rgba(15,22,38,.8));border-right:1px solid var(--line)}
-.main{padding:20px}
-.side-menu{display:grid;gap:8px}
-.side-menu a{display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--radius);border:1px solid rgba(255,255,255,.06); text-decoration:none; color:var(--text); background:rgba(16,22,38,.5)}
+
+/* 布局与侧栏 */
+.layout{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 56px)}
+.sidebar{
+  position:sticky; top:56px; height:calc(100vh - 56px);
+  padding:14px 12px; background:linear-gradient(180deg, rgba(22,26,44,.66), rgba(12,18,34,.86));
+  border-right:1px solid var(--line)
+}
+.main{padding:22px}
+.side-menu{display:grid;gap:10px}
+.side-menu a{
+  display:flex; align-items:center; gap:12px; padding:12px 14px;
+  border-radius:var(--radius); border:1px solid rgba(255,255,255,.06);
+  text-decoration:none; color:var(--text);
+  background:linear-gradient(180deg, rgba(255,255,255,.025), transparent 60%), rgba(16,22,38,.6);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
 .side-menu a .icon{width:22px;text-align:center}
-.side-menu a:hover{border-color:#3b4e77;background:rgba(22,30,50,.65)}
-.side-menu a.active{border-color:#405184;background:linear-gradient(90deg, rgba(255,209,102,.15), rgba(255,209,102,.03)), rgba(22,30,50,.8); box-shadow:inset 0 0 0 1px rgba(255,209,102,.22)}
+.side-menu a:hover{
+  border-color:#3d4f7c; background:rgba(22,30,50,.75);
+  transform: translateY(-1px); transition: transform .12s ease, background .18s ease, border-color .18s ease;
+}
+.side-menu a.active{
+  border-color: color-mix(in oklab, var(--gold) 38%, transparent);
+  background:
+    linear-gradient(100deg, color-mix(in oklab, var(--gold) 18%, transparent), color-mix(in oklab, var(--royal) 12%, transparent)),
+    rgba(22,30,50,.88);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--gold) 26%, transparent),
+    0 12px 28px rgba(0,0,0,.35);
+}
 
+/* 概览卡片（黑金顶部饰条）与通用面板 */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:14px 0}
-.card{background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.5)} /* 重阴影 */
-.card-title{font-size:12px;color:var(--muted)} .card-value{font-size:28px;margin-top:6px}
-.panel{background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);padding:16px;margin-bottom:16px;box-shadow:0 20px 60px rgba(0,0,0,.5)} /* 重阴影 */
+.card,.panel{
+  position:relative;
+  background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);
+  border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
+  padding:16px; box-shadow:0 28px 70px rgba(0,0,0,.55)
+}
+.card::before{
+  content:""; position:absolute; left:12px; right:12px; top:10px; height:2px; border-radius:2px;
+  background:linear-gradient(90deg, color-mix(in oklab, var(--gold) 60%, transparent), transparent);
+  opacity:.85; filter: drop-shadow(0 6px 16px rgba(245,212,121,.3));
+}
+.card-title{font-size:12px;color:var(--muted)} .card-value{font-size:30px;margin-top:8px;letter-spacing:.3px}
 
+/* 表单（更丝滑的聚焦）与按钮 */
 .form{display:flex;flex-wrap:wrap;gap:10px}
-.form input,.form select,.form textarea,.form button{height:38px;padding:6px 12px;border-radius:var(--radius);border:1px solid var(--line);background:#0f1727;color:var(--text);outline:0}
-.form textarea{height:auto;min-height:84px;width:100%;resize:vertical}
-.form input:focus,.form select:focus,.form textarea:focus{border-color:#4a5a86; box-shadow:0 0 0 3px rgba(74,90,134,.28)}
-.btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:var(--radius);border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), rgba(16,22,38,.5);color:var(--text);text-decoration:none;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 8px 18px rgba(0,0,0,.25)}
-.actions{display:flex;gap:10px}
+.form input,.form select,.form textarea,.form button{
+  height:40px; padding:8px 12px; border-radius:14px;
+  border:1px solid var(--line); background:#0e172b; color:var(--text); outline:0
+}
+.form textarea{height:auto;min-height:96px;width:100%;resize:vertical}
+.form input:focus,.form select:focus,.form textarea:focus{
+  border-color:#5c6ea1; box-shadow:0 0 0 3px rgba(92,110,161,.28), inset 0 1px 0 rgba(255,255,255,.06)
+}
 
-/* 高级按钮外观 + 悬浮/按压动效 */
-.btn{ transition: transform .12s ease, box-shadow .18s ease, border-color .18s ease; }
-.btn:hover{ transform: translateY(-1px); box-shadow:0 10px 24px rgba(0,0,0,.28); }
-.btn:active{ transform: translateY(0); box-shadow:0 6px 16px rgba(0,0,0,.24); }
+.btn{
+  display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px;
+  border-radius:14px; border:1px solid rgba(255,255,255,.08);
+  background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), rgba(16,22,38,.6);
+  color:var(--text); text-decoration:none; cursor:pointer;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.28);
+  transition: transform .12s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+}
+.btn:hover{ transform: translateY(-1px); box-shadow:0 16px 34px rgba(0,0,0,.32) }
+.btn:active{ transform: translateY(0); box-shadow:0 8px 18px rgba(0,0,0,.26) }
 .btn-edit{
-  background: linear-gradient(135deg, rgba(81,118,255,.45), rgba(124,58,237,.40)), #13203a !important;
-  border-color: rgba(132,94,247,.45) !important;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--royal) 55%, transparent), color-mix(in oklab, var(--gold) 38%, transparent)), #141f38 !important;
+  border-color: color-mix(in oklab, var(--royal) 55%, transparent) !important;
 }
 .btn-delete{
-  background: linear-gradient(135deg, rgba(239,71,111,.50), rgba(244,114,182,.45)), #2a1416 !important;
-  border-color: rgba(239,71,111,.55) !important;
+  background: linear-gradient(135deg, rgba(239,71,111,.62), rgba(244,114,182,.55)), #2a1416 !important;
+  border-color: rgba(239,71,111,.62) !important;
 }
 
-/* 启用/停用开关 */
-.toggle{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:999px;border:1px solid rgba(255,255,255,.08);font-weight:600;background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), rgba(18,26,44,.6);color:#dbeafe}
+/* 启用/停用开关（黑金胶囊） */
+.toggle{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.08);font-weight:700;background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), rgba(18,26,44,.62);color:#f4f7ff}
 .toggle .dot{width:10px;height:10px;border-radius:50%}
-.toggle.on{border-color:#1d4630;background:#0f1f18;color:#bbf7d0}.toggle.on .dot{background:#22c55e}
-.toggle.off{border-color:#4a1d1d;background:#241112;color:#fecaca}.toggle.off .dot{background:#ef4444}
+.toggle.on{border-color:#2a6a4c;background:#0d1f18;color:#ccffe9}.toggle.on .dot{background:var(--emerald)}
+.toggle.off{border-color:#5a1f2a;background:#241016;color:#ffd6e1}.toggle.off .dot{background:var(--ruby)}
 
 /* 表格 */
-.table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.5)} /* 重阴影 */
+.table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);box-shadow:0 28px 68px rgba(0,0,0,.52)}
 table{border-collapse:separate;border-spacing:0;width:100%}
-th{position:sticky; top:0; background:rgba(15,22,38,.9);backdrop-filter:blur(4px); font-weight:600; font-size:12px; color:#bcd0e6; border-bottom:1px solid var(--line); text-align:left; padding:12px}
+th{
+  position:sticky; top:0; background:rgba(16,24,44,.92);backdrop-filter:blur(4px);
+  font-weight:700; font-size:12px; letter-spacing:.3px; color:#d8e3ff; border-bottom:1px solid var(--line); text-align:left; padding:12px
+}
 td{padding:12px;border-bottom:1px solid var(--line)}
-tbody tr:hover{background: linear-gradient(90deg, rgba(255,209,102,.06), transparent 60%) !important;} /* hover 高亮 */
-tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
+tbody tr:hover{background: linear-gradient(90deg, color-mix(in oklab, var(--gold) 10%, transparent), transparent 60%) !important}
+tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 
-/* ===== 删除确认小弹窗 ===== */
-.modal-backdrop{position:fixed; inset:0; z-index:50; display:none; background:radial-gradient(1200px 600px at 15% -10%, rgba(255,209,102,.12), transparent 60%), radial-gradient(1200px 600px at 120% 10%, rgba(92,198,255,.12), transparent 60%), rgba(5,8,14,.58); backdrop-filter:blur(10px) saturate(140%)}
-.modal-backdrop.open{display:flex; align-items:center; justify-content:center; padding:20px}
-.modal{width:min(420px,100%); border-radius:var(--radius); padding:18px; background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), #0e1626; border:1px solid rgba(255,255,255,.12); box-shadow:0 30px 70px rgba(0,0,0,.55); opacity:0; transform:translateY(10px) scale(.985); transition:opacity .18s ease, transform .18s ease} /* 更快动画 */
+/* ===== 删除确认小弹窗（黑金） ===== */
+.modal-backdrop{position:fixed; inset:0; z-index:50; display:none; background:radial-gradient(1200px 600px at 15% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%), radial-gradient(1200px 600px at 120% 10%, color-mix(in oklab, var(--royal) 14%, transparent), transparent 60%), rgba(5,8,14,.62); backdrop-filter:blur(10px) saturate(140%)}
+.modal-backdrop.open{display:flex; align-items:center; justify-content:center; padding:22px}
+.modal{
+  width:min(440px,100%); border-radius:var(--radius); padding:18px;
+  background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), #0e1528;
+  border:1px solid rgba(255,255,255,.14); box-shadow:0 34px 80px rgba(0,0,0,.58);
+  opacity:0; transform:translateY(10px) scale(.985); transition:opacity .18s ease, transform .18s ease;
+  position:relative;
+}
 .modal-backdrop.open .modal{opacity:1; transform:none}
-.modal h3{margin:0 0 10px; font-weight:800}
-.modal p{margin:0 0 14px; color:#9db0c8}
+.modal::before{
+  content:"⚠️"; position:absolute; left:18px; top:16px; font-size:18px; opacity:.95;
+  filter: drop-shadow(0 6px 16px color-mix(in oklab, var(--gold) 45%, transparent));
+}
+.modal h3{margin:0 0 10px; padding-left:28px; font-weight:900; letter-spacing:.3px}
+.modal p{margin:0 0 14px; color:#c0cbe6}
 .modal-actions{display:flex; gap:10px; justify-content:flex-end}
-.btn-ghost{background:rgba(15,22,38,.55)}
+.btn-ghost{background:rgba(16,22,38,.6)}
 
-/* ===== 高级大弹窗（Premium Big Modal） ===== */
-.big-backdrop{position:fixed; inset:0; z-index:55; display:none; background: radial-gradient(1600px 600px at 10% -10%, rgba(255,209,102,.08), transparent 60%), radial-gradient(1400px 560px at 120% 0%, rgba(92,198,255,.10), transparent 60%), rgba(6,10,18,.62); backdrop-filter: blur(14px) saturate(140%)}
-.big-backdrop.open{display:flex; align-items:center; justify-content:center; padding:28px}
+/* ===== 大弹窗（黑金豪华） ===== */
+.big-backdrop{
+  position:fixed; inset:0; z-index:55; display:none;
+  background:
+    radial-gradient(1800px 760px at 10% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%),
+    radial-gradient(1600px 640px at 120% 0%, color-mix(in oklab, var(--royal) 16%, transparent), transparent 60%),
+    linear-gradient(180deg, rgba(6,10,18,.74), rgba(6,10,18,.64));
+  backdrop-filter: blur(14px) saturate(140%);
+  animation: luxBackdropPan 26s linear infinite; background-size: 120% 100%, 120% 100%, 100% 100%;
+}
+@keyframes luxBackdropPan{
+  0%{ background-position: 0% 0%, 100% 0%, 0 0; }
+  50%{ background-position: 8% -2%, 92% 2%, 0 0; }
+  100%{ background-position: 0% 0%, 100% 0%, 0 0; }
+}
+.big-backdrop.open{display:flex; align-items:center; justify-content:center; padding:30px}
 .big-backdrop.closing{pointer-events:none}
+
 .big-modal{
-  width:min(1080px, 96vw); /* 更宽 */
-  max-height:90vh; overflow:auto; position:relative; border-radius:var(--radius);
-  background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), linear-gradient(180deg, #0f1a2c, #0d1728);
-  border:1px solid rgba(255,255,255,.14); box-shadow:0 60px 140px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.06); /* 加强阴影 */
-  opacity:0; transform:translateY(14px) scale(.985); transition:opacity .18s ease, transform .18s ease; /* 更快动画 */
+  width:min(1080px, 96vw); max-height:90vh; overflow:auto; position:relative; border-radius:20px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), transparent 58%),
+    radial-gradient(1200px 220px at 50% -8%, rgba(255,255,255,.12), transparent 60%),
+    linear-gradient(180deg, #10182c, #0e1628);
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow: 0 80px 180px rgba(0,0,0,.76), inset 0 1px 0 rgba(255,255,255,.06);
+  transform-origin: 50% 46%;
+  opacity:0; transform:translateY(14px) scale(.985);
+  transition:opacity .18s ease, transform .18s ease;
+  animation: bigIn .22s cubic-bezier(.2,.8,.2,1) both;
 }
 .big-backdrop.open .big-modal{opacity:1; transform:none}
-.big-backdrop.closing .big-modal{opacity:0; transform:translateY(6px) scale(.985)}
-.big-modal::before{content:""; position:absolute; inset:-1px; border-radius:inherit; z-index:-1; background: linear-gradient(120deg, rgba(255,209,102,.35), rgba(92,198,255,.28), rgba(255,209,102,.25)); filter: blur(20px); opacity:.22}
-.big-modal::after{content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background: linear-gradient(180deg, rgba(255,255,255,.14), transparent 35%), radial-gradient(600px 120px at 50% -10%, rgba(255,255,255,.10), transparent 60%); mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000); -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000); padding:1px; border-radius:inherit; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); opacity:.30}
-.big-header{position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; background: linear-gradient(180deg, rgba(16,26,41,.92), rgba(12,19,33,.86)); border-bottom: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(8px)}
-.big-title{font-weight:800; letter-spacing:.2px; display:flex; align-items:center; gap:10px}
-.big-title::before{content:"✨"; filter:saturate(130%)}
-.big-close{padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 70%); color:var(--text); cursor:pointer; transition:transform .16s ease, box-shadow .2s ease, border-color .2s ease; box-shadow:0 0 0 1px rgba(255,255,255,.06), 0 10px 30px rgba(0,0,0,.45)}
-.big-close:hover{transform:translateY(-1px); border-color:#3e4f78; box-shadow:0 14px 32px rgba(0,0,0,.40)}
-.big-body{padding:18px}
-.big-body .form input,.big-body .form select,.big-body .form textarea{border-radius:14px; border-color:#324160; background:#0f1727}
-.big-body .form input:focus,.big-body .form select:focus,.big-body .form textarea:focus{border-color:#4d66a1; box-shadow:0 0 0 4px rgba(77,102,161,.28)}
-.spinner{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.25);border-top-color:rgba(255,255,255,.8);animation:spin .8s linear infinite;display:inline-block}
-@keyframes spin{to{transform:rotate(360deg)}}
-*::-webkit-scrollbar{height:10px;width:10px} *::-webkit-scrollbar-thumb{background:#2a3754;border-radius:10px;border:2px solid #0f1522}
+.big-backdrop.closing .big-modal{animation: bigOut .18s ease both}
+@keyframes bigIn{0%{opacity:0;transform: translateY(18px) scale(.975)}60%{opacity:1;transform: translateY(2px) scale(1.002)}100%{opacity:1;transform: translateY(0) scale(1)}}
+@keyframes bigOut{0%{opacity:1;transform: translateY(0) scale(1)}100%{opacity:0;transform: translateY(8px) scale(.985)}}
+
+/* 金色发光环 */
+.big-modal::before{
+  content:""; position:absolute; inset:-2px; border-radius:inherit; z-index:2; pointer-events:none;
+  background: conic-gradient(from 0deg, color-mix(in oklab, var(--gold) 65%, transparent), color-mix(in oklab, var(--royal) 50%, transparent), color-mix(in oklab, var(--gold) 65%, transparent));
+  filter: blur(22px); opacity:.26; animation: ringSpin 12s linear infinite;
+}
+@keyframes ringSpin{ to{ transform: rotate(360deg); } }
+
+/* 顶栏与标题 */
+.big-header{
+  position:sticky; top:0; display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px;
+  background:
+    linear-gradient(180deg, rgba(18,26,44,.92), rgba(12,19,33,.86)),
+    linear-gradient(180deg, rgba(255,255,255,.06), transparent);
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(8px);
+}
+.big-title{
+  font-weight:900; letter-spacing:.3px; display:flex; align-items:center; gap:10px;
+  background: linear-gradient(90deg, var(--gold), var(--royal));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.big-close{
+  padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.16);
+  background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 70%);
+  color:var(--text); cursor:pointer;
+  transition:transform .16s ease, box-shadow .2s ease, border-color .2s ease;
+  box-shadow:0 0 0 1px rgba(255,255,255,.06), 0 12px 36px rgba(0,0,0,.45)
+}
+.big-close:hover{transform:translateY(-1px); border-color:#4a5a86; box-shadow:0 18px 40px rgba(0,0,0,.45)}
+.big-body{padding:20px}
+
+/* 内部面板与 12 栅格表单 */
+.big-body .panel{
+  background: linear-gradient(180deg, rgba(255,255,255,.05), transparent 55%), rgba(18,26,44,.58) !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 28px 70px rgba(0,0,0,.42) !important;
+  border-radius: 18px !important;
+}
+.big-body h2{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.3px;margin:6px 0 14px 2px}
+.big-body h2::before{
+  content:"+"; font-size:22px; background: linear-gradient(90deg, var(--royal), var(--gold));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter: drop-shadow(0 6px 14px color-mix(in oklab, var(--gold) 45%, transparent));
+}
+/* 12列表单布局 */
+.big-body .form{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.big-body .form input,.big-body .form select,.big-body .form textarea{
+  grid-column:span 4;height:44px;
+  background: linear-gradient(180deg, rgba(255,255,255,.02), transparent 60%), #0f1729;
+  border:1px solid #2e3d5f; border-radius:14px; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); color:var(--text)
+}
+.big-body .form textarea{grid-column:1 / -1; min-height:110px}
+.big-body .form button{grid-column:10 / -1; justify-self:end; height:44px}
+.big-body .form input:focus,.big-body .form select:focus,.big-body .form textarea:focus{
+  border-color:#6b7fc0 !important; box-shadow:0 0 0 4px rgba(107,127,192,.28), inset 0 1px 0 rgba(255,255,255,.08) !important; outline:none
+}
+.big-body .form select{
+  appearance:none;-webkit-appearance:none;-moz-appearance:none;padding-right:38px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23c8d6f2' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center
+}
+.big-body .btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 12px 28px rgba(0,0,0,.34)}
+.big-body .btn-edit{
+  background: linear-gradient(135deg, color-mix(in oklab, var(--royal) 55%, transparent), color-mix(in oklab, var(--gold) 45%, transparent)), #12203a !important;
+  border-color: color-mix(in oklab, var(--royal) 55%, transparent) !important;
+}
+.big-body .btn-delete{
+  background: linear-gradient(135deg, rgba(239,71,111,.60), rgba(244,114,182,.52)), #2a1416 !important;
+  border-color: rgba(239,71,111,.60) !important;
+}
+
+/* 滚动条 */
+.big-modal *::-webkit-scrollbar{ height:10px; width:10px }
+.big-modal *::-webkit-scrollbar-thumb{
+  background: linear-gradient(180deg, #2b3a59, #23314d);
+  border: 2px solid #0f1522; border-radius: 10px;
+}
+.big-modal *::-webkit-scrollbar-track{ background: #11182a }
+.big-body ::placeholder{ color:#9fb1d3; opacity:.95 }
 """
 
 @app.get("/static/style.css")
 def static_style(): return Response(STYLE_CSS, mimetype="text/css")
 
-# ----------- 内置模板（无需 templates/ 目录）-----------
+# ----------------------- 内置模板（无需 templates/ 目录） -----------------------
 TEMPLATES = {
 "base.html": """<!doctype html>
 <html lang="zh">
@@ -142,11 +296,11 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=90">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=120">
 </head>
-<body>
+<body class="luxury">
   <header class="topbar">
-    <div class="brand">⚜️ Admin Panel</div>
+    <div class="brand">Admin Royale</div>
     <nav class="nav">
       {% if session.get('user_id') %}
         <span>👤 {{ session.get('user_id') }}</span>
@@ -172,7 +326,7 @@ TEMPLATES = {
     <main class="main">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          <div class="panel">
+          <div class="panel" style="margin-bottom:16px">
             {% for category, message in messages %}
               <div>{{ message }}</div>
             {% endfor %}
@@ -234,7 +388,7 @@ TEMPLATES = {
       backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
     })();
 
-    // 高级大弹窗加载器
+    // 大弹窗加载器
     (function(){
       const big = document.getElementById('bigBackdrop');
       const content = document.getElementById('bigContent');
@@ -470,6 +624,7 @@ TEMPLATES = {
 </div>
 {% endblock %}
 """,
+# ——————————— 弹窗 Partial 表单 ———————————
 "partials/workers_form.html": """
 <div class="panel">
   <h2 style="margin-top:0">{{ '✏️ 编辑工人' if r else '➕ 新增工人' }}</h2>
@@ -608,7 +763,7 @@ def _any(e):
     import traceback; traceback.print_exc()
     return (f"Error: <b>{e.__class__.__name__}</b><br>Message: {str(e)}", 500)
 
-# ----------- 文案与多语言（保留中文）-----------
+# ----------------------- 文案 / 多语言 -----------------------
 I18N = {
     "zh": {
         "app_name": "NepWin Ops",
@@ -629,7 +784,7 @@ I18N = {
 def get_lang(): return request.args.get("lang") or request.cookies.get("lang") or "zh"
 def T(): return I18N.get(get_lang(), I18N["zh"])
 
-# ----------- DB 工具与初始化-----------
+# ----------------------- DB 工具与初始化 -----------------------
 def conn():
     c = sqlite3.connect(APP_DB)
     c.row_factory = sqlite3.Row
@@ -686,13 +841,14 @@ def _ctx():
 def _inject():
     return {"t": T(), "lang": get_lang()}
 
-# ----------- 鉴权 -----------
+# ----------------------- 鉴权 -----------------------
 def require_login():
     if not session.get("user_id"):
         return redirect(url_for("login", next=request.path))
 
 @app.get("/login")
 def login(): return render_template("login.html")
+
 @app.post("/login")
 def login_post():
     username = request.form.get("username","").strip()
@@ -703,10 +859,11 @@ def login_post():
             flash("用户名或密码不正确", "error"); return redirect(url_for("login"))
         session["user_id"] = u["username"]
     return redirect(url_for("dashboard"))
+
 @app.get("/logout")
 def logout(): session.clear(); return redirect(url_for("login"))
 
-# ----------- Dashboard -----------
+# ----------------------- Dashboard -----------------------
 @app.get("/")
 def dashboard():
     if require_login(): return require_login()
@@ -717,7 +874,7 @@ def dashboard():
         total_expenses = c.execute("SELECT IFNULL(SUM(amount),0) s FROM expenses").fetchone()["s"]
     return render_template("dashboard.html", total_workers=total_workers,total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
 
-# ----------- 账号安全 -----------
+# ----------------------- 账号安全 -----------------------
 @app.get("/account-security")
 def account_security():
     if require_login(): return require_login()
@@ -756,9 +913,6 @@ def account_change_password():
 def account_change_password_post():
     if require_login(): return require_login()
     old_pw = request.form.get("old_password",""); new_pw = request.form.get("new_password","")
-    with conn() as c:
-        u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"]),).fetchone()
-        # 上一行为了最兼容旧 SQLite 版本，改成下面更稳：
     with conn() as c:
         u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"],)).fetchone()
         if not u or not check_password_hash(u["password_hash"], old_pw):
@@ -808,7 +962,7 @@ def account_reset_post():
         c.commit()
     flash("目标用户密码已重置", "success"); return redirect(url_for("account_security"))
 
-# ----------- 工人 / 平台 -----------
+# ----------------------- 工人 / 平台 -----------------------
 @app.get("/workers")
 def workers_list():
     if require_login(): return require_login()
@@ -883,7 +1037,7 @@ def export_workers():
     mem = io.BytesIO(out.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="workers.csv")
 
-# ----------- 银行账户 -----------
+# ----------------------- 银行账户 -----------------------
 @app.get("/bank-accounts")
 def bank_accounts_list():
     if require_login(): return require_login()
@@ -957,7 +1111,7 @@ def export_bank_accounts():
     mem = io.BytesIO(out.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="bank_accounts.csv")
 
-# ----------- 银行卡租金 -----------
+# ----------------------- 银行卡租金 -----------------------
 @app.get("/card-rentals")
 def card_rentals_list():
     if require_login(): return require_login()
@@ -1040,7 +1194,7 @@ def export_card_rentals():
     mem = io.BytesIO(out.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="card_rentals.csv")
 
-# ----------- 出粮记录 -----------
+# ----------------------- 出粮记录 -----------------------
 @app.get("/salaries")
 def salaries_list():
     if require_login(): return require_login()
@@ -1116,11 +1270,11 @@ def export_salaries():
     w.writerow(["id","worker_id","amount","pay_date","note","status","created_at"])
     with conn() as c:
         for r in c.execute("SELECT * FROM salaries ORDER BY id DESC"):
-            w.writerow([r['id'],r['worker_id'],r['amount'],r['pay_date'],r['note'],'{0}'.format(r['status']),r['created_at']])
+            w.writerow([r['id'],r['worker_id'],r['amount'],r['pay_date'],r['note'],r['status'],r['created_at']])
     mem = io.BytesIO(out.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="salaries.csv")
 
-# ----------- 开销记录 -----------
+# ----------------------- 开销记录 -----------------------
 @app.get("/expenses")
 def expenses_list():
     if require_login(): return require_login()
@@ -1200,7 +1354,7 @@ def export_expenses():
     mem = io.BytesIO(out.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="expenses.csv")
 
-# ----------- 启动 -----------
+# ----------------------- 启动 -----------------------
 def _bootstrap():
     try:
         init_db()
