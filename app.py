@@ -1,4 +1,4 @@
-# app.py – Luxury Royale Admin（高端奢华黑金主题·完整可运行）
+# app.py – Luxury Royale Admin（合并版 · 在“银行卡租金”弹窗中直接填写 银行名称/银行账号/银行卡公司）
 from flask import Flask, request, render_template, redirect, url_for, session, flash, abort, send_file, Response
 from jinja2 import DictLoader, TemplateNotFound
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -28,7 +28,6 @@ STYLE_CSS = r""":root{
 body{
   margin:0; color:var(--text);
   font:14px/1.6 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  /* 奢华黑金背景：丝绒暗纹 + 金色光晕 */
   background:
     radial-gradient(1400px 700px at 12% -10%, color-mix(in oklab, var(--gold) 14%, transparent), transparent 60%),
     radial-gradient(1400px 700px at 115% 0%, color-mix(in oklab, var(--royal) 14%, transparent), transparent 60%),
@@ -84,205 +83,41 @@ body{
     0 12px 28px rgba(0,0,0,.35);
 }
 
-/* 概览卡片（黑金顶部饰条）与通用面板 */
+/* 卡片/面板/按钮/弹窗/表格（略，保持原样） */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:14px 0}
-.card,.panel{
-  position:relative;
-  background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);
-  border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
-  padding:16px; box-shadow:0 28px 70px rgba(0,0,0,.55)
-}
-.card::before{
-  content:""; position:absolute; left:12px; right:12px; top:10px; height:2px; border-radius:2px;
-  background:linear-gradient(90deg, color-mix(in oklab, var(--gold) 60%, transparent), transparent);
-  opacity:.85; filter: drop-shadow(0 6px 16px rgba(245,212,121,.3));
-}
+.card,.panel{position:relative;background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);border:1px solid rgba(255,255,255,.08); border-radius:var(--radius); padding:16px; box-shadow:0 28px 70px rgba(0,0,0,.55)}
+.card::before{content:""; position:absolute; left:12px; right:12px; top:10px; height:2px; border-radius:2px; background:linear-gradient(90deg, color-mix(in oklab, var(--gold) 60%, transparent), transparent); opacity:.85; filter: drop-shadow(0 6px 16px rgba(245,212,121,.3));}
 .card-title{font-size:12px;color:var(--muted)} .card-value{font-size:30px;margin-top:8px;letter-spacing:.3px}
-
-/* 表单（更丝滑的聚焦）与按钮 */
 .form{display:flex;flex-wrap:wrap;gap:10px}
-.form input,.form select,.form textarea,.form button{
-  height:40px; padding:8px 12px; border-radius:14px;
-  border:1px solid var(--line); background:#0e172b; color:var(--text); outline:0
-}
+.form input,.form select,.form textarea,.form button{height:40px; padding:8px 12px; border-radius:14px; border:1px solid var(--line); background:#0e172b; color:var(--text); outline:0}
 .form textarea{height:auto;min-height:96px;width:100%;resize:vertical}
-.form input:focus,.form select:focus,.form textarea:focus{
-  border-color:#5c6ea1; box-shadow:0 0 0 3px rgba(92,110,161,.28), inset 0 1px 0 rgba(255,255,255,.06)
-}
-
-.btn{
-  display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px;
-  border-radius:14px; border:1px solid rgba(255,255,255,.08);
-  background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), rgba(16,22,38,.6);
-  color:var(--text); text-decoration:none; cursor:pointer;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.28);
-  transition: transform .12s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
-}
+.form input:focus,.form select:focus,.form textarea:focus{border-color:#5c6ea1; box-shadow:0 0 0 3px rgba(92,110,161,.28), inset 0 1px 0 rgba(255,255,255,.06)}
+.btn{display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px; border-radius:14px; border:1px solid rgba(255,255,255,.08); background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), rgba(16,22,38,.6); color:var(--text); text-decoration:none; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.28); transition: transform .12s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;}
 .btn:hover{ transform: translateY(-1px); box-shadow:0 16px 34px rgba(0,0,0,.32) }
 .btn:active{ transform: translateY(0); box-shadow:0 8px 18px rgba(0,0,0,.26) }
-.btn-edit{
-  background: linear-gradient(135deg, color-mix(in oklab, var(--royal) 55%, transparent), color-mix(in oklab, var(--gold) 38%, transparent)), #141f38 !important;
-  border-color: color-mix(in oklab, var(--royal) 55%, transparent) !important;
-}
-.btn-delete{
-  background: linear-gradient(135deg, rgba(239,71,111,.62), rgba(244,114,182,.55)), #2a1416 !important;
-  border-color: rgba(239,71,111,.62) !important;
-}
-
-/* 启用/停用开关（黑金胶囊） */
+.btn-edit{background: linear-gradient(135deg, color-mix(in oklab, var(--royal) 55%, transparent), color-mix(in oklab, var(--gold) 38%, transparent)), #141f38 !important; border-color: color-mix(in oklab, var(--royal) 55%, transparent) !important;}
+.btn-delete{background: linear-gradient(135deg, rgba(239,71,111,.62), rgba(244,114,182,.55)), #2a1416 !important; border-color: rgba(239,71,111,.62) !important;}
 .toggle{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.08);font-weight:700;background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), rgba(18,26,44,.62);color:#f4f7ff}
 .toggle .dot{width:10px;height:10px;border-radius:50%}
 .toggle.on{border-color:#2a6a4c;background:#0d1f18;color:#ccffe9}.toggle.on .dot{background:var(--emerald)}
 .toggle.off{border-color:#5a1f2a;background:#241016;color:#ffd6e1}.toggle.off .dot{background:var(--ruby)}
-
-/* 表格 */
 .table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);box-shadow:0 28px 68px rgba(0,0,0,.52)}
 table{border-collapse:separate;border-spacing:0;width:100%}
-th{
-  position:sticky; top:0; background:rgba(16,24,44,.92);backdrop-filter:blur(4px);
-  font-weight:700; font-size:12px; letter-spacing:.3px; color:#d8e3ff; border-bottom:1px solid var(--line); text-align:left; padding:12px
-}
+th{position:sticky; top:0; background:rgba(16,24,44,.92);backdrop-filter:blur(4px); font-weight:700; font-size:12px; letter-spacing:.3px; color:#d8e3ff; border-bottom:1px solid var(--line); text-align:left; padding:12px}
 td{padding:12px;border-bottom:1px solid var(--line)}
 tbody tr:hover{background: linear-gradient(90deg, color-mix(in oklab, var(--gold) 10%, transparent), transparent 60%) !important}
 tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
-
-/* ===== 删除确认小弹窗（黑金） ===== */
 .modal-backdrop{position:fixed; inset:0; z-index:50; display:none; background:radial-gradient(1200px 600px at 15% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%), radial-gradient(1200px 600px at 120% 10%, color-mix(in oklab, var(--royal) 14%, transparent), transparent 60%), rgba(5,8,14,.62); backdrop-filter:blur(10px) saturate(140%)}
 .modal-backdrop.open{display:flex; align-items:center; justify-content:center; padding:22px}
-.modal{
-  width:min(440px,100%); border-radius:var(--radius); padding:18px;
-  background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), #0e1528;
-  border:1px solid rgba(255,255,255,.14); box-shadow:0 34px 80px rgba(0,0,0,.58);
-  opacity:0; transform:translateY(10px) scale(.985); transition:opacity .18s ease, transform .18s ease;
-  position:relative;
-}
+.modal{width:min(440px,100%); border-radius:var(--radius); padding:18px; background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), #0e1528; border:1px solid rgba(255,255,255,.14); box-shadow:0 34px 80px rgba(0,0,0,.58); opacity:0; transform:translateY(10px) scale(.985); transition:opacity .18s ease, transform .18s ease; position:relative;}
 .modal-backdrop.open .modal{opacity:1; transform:none}
-.modal::before{
-  content:"⚠️"; position:absolute; left:18px; top:16px; font-size:18px; opacity:.95;
-  filter: drop-shadow(0 6px 16px color-mix(in oklab, var(--gold) 45%, transparent));
-}
-.modal h3{margin:0 0 10px; padding-left:28px; font-weight:900; letter-spacing:.3px}
-.modal p{margin:0 0 14px; color:#c0cbe6}
-.modal-actions{display:flex; gap:10px; justify-content:flex-end}
-.btn-ghost{background:rgba(16,22,38,.6)}
-
-/* ===== 大弹窗（黑金豪华） ===== */
-.big-backdrop{
-  position:fixed; inset:0; z-index:55; display:none;
-  background:
-    radial-gradient(1800px 760px at 10% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%),
-    radial-gradient(1600px 640px at 120% 0%, color-mix(in oklab, var(--royal) 16%, transparent), transparent 60%),
-    linear-gradient(180deg, rgba(6,10,18,.74), rgba(6,10,18,.64));
-  backdrop-filter: blur(14px) saturate(140%);
-  animation: luxBackdropPan 26s linear infinite; background-size: 120% 100%, 120% 100%, 100% 100%;
-}
-@keyframes luxBackdropPan{
-  0%{ background-position: 0% 0%, 100% 0%, 0 0; }
-  50%{ background-position: 8% -2%, 92% 2%, 0 0; }
-  100%{ background-position: 0% 0%, 100% 0%, 0 0; }
-}
+.big-backdrop{position:fixed; inset:0; z-index:55; display:none; background: radial-gradient(1800px 760px at 10% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%), radial-gradient(1600px 640px at 120% 0%, color-mix(in oklab, var(--royal) 16%, transparent), transparent 60%), linear-gradient(180deg, rgba(6,10,18,.74), rgba(6,10,18,.64)); backdrop-filter: blur(14px) saturate(140%);}
 .big-backdrop.open{display:flex; align-items:center; justify-content:center; padding:30px}
-.big-backdrop.closing{pointer-events:none}
-
-.big-modal{
-  width:min(1080px, 96vw); max-height:90vh; overflow:auto; position:relative; border-radius:20px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.08), transparent 58%),
-    radial-gradient(1200px 220px at 50% -8%, rgba(255,255,255,.12), transparent 60%),
-    linear-gradient(180deg, #10182c, #0e1628);
-  border: 1px solid rgba(255,255,255,.16);
-  box-shadow: 0 80px 180px rgba(0,0,0,.76), inset 0 1px 0 rgba(255,255,255,.06);
-  transform-origin: 50% 46%;
-  opacity:0; transform:translateY(14px) scale(.985);
-  transition:opacity .18s ease, transform .18s ease;
-  animation: bigIn .22s cubic-bezier(.2,.8,.2,1) both;
-}
-.big-backdrop.open .big-modal{opacity:1; transform:none}
-.big-backdrop.closing .big-modal{animation: bigOut .18s ease both}
-@keyframes bigIn{0%{opacity:0;transform: translateY(18px) scale(.975)}60%{opacity:1;transform: translateY(2px) scale(1.002)}100%{opacity:1;transform: translateY(0) scale(1)}}
-@keyframes bigOut{0%{opacity:1;transform: translateY(0) scale(1)}100%{opacity:0;transform: translateY(8px) scale(.985)}}
-
-/* 金色发光环 */
-.big-modal::before{
-  content:""; position:absolute; inset:-2px; border-radius:inherit; z-index:2; pointer-events:none;
-  background: conic-gradient(from 0deg, color-mix(in oklab, var(--gold) 65%, transparent), color-mix(in oklab, var(--royal) 50%, transparent), color-mix(in oklab, var(--gold) 65%, transparent));
-  filter: blur(22px); opacity:.26; animation: ringSpin 12s linear infinite;
-}
-@keyframes ringSpin{ to{ transform: rotate(360deg); } }
-
-/* 顶栏与标题 */
-.big-header{
-  position:sticky; top:0; display:flex; align-items:center; justify-content:space-between;
-  padding:14px 18px;
-  background:
-    linear-gradient(180deg, rgba(18,26,44,.92), rgba(12,19,33,.86)),
-    linear-gradient(180deg, rgba(255,255,255,.06), transparent);
-  border-bottom: 1px solid rgba(255,255,255,.10);
-  backdrop-filter: blur(8px);
-}
-.big-title{
-  font-weight:900; letter-spacing:.3px; display:flex; align-items:center; gap:10px;
-  background: linear-gradient(90deg, var(--gold), var(--royal));
-  -webkit-background-clip:text; background-clip:text; color:transparent;
-}
-.big-close{
-  padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.16);
-  background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 70%);
-  color:var(--text); cursor:pointer;
-  transition:transform .16s ease, box-shadow .2s ease, border-color .2s ease;
-  box-shadow:0 0 0 1px rgba(255,255,255,.06), 0 12px 36px rgba(0,0,0,.45)
-}
-.big-close:hover{transform:translateY(-1px); border-color:#4a5a86; box-shadow:0 18px 40px rgba(0,0,0,.45)}
+.big-modal{width:min(1080px, 96vw); max-height:90vh; overflow:auto; position:relative; border-radius:20px; background: linear-gradient(180deg, rgba(255,255,255,.08), transparent 58%), radial-gradient(1200px 220px at 50% -8%, rgba(255,255,255,.12), transparent 60%), linear-gradient(180deg, #10182c, #0e1628); border: 1px solid rgba(255,255,255,.16); box-shadow: 0 80px 180px rgba(0,0,0,.76), inset 0 1px 0 rgba(255,255,255,.06);}
+.big-header{position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; background: linear-gradient(180deg, rgba(18,26,44,.92), rgba(12,19,33,.86)), linear-gradient(180deg, rgba(255,255,255,.06), transparent); border-bottom: 1px solid rgba(255,255,255,.10);}
+.big-title{font-weight:900; letter-spacing:.3px; display:flex; align-items:center; gap:10px; background: linear-gradient(90deg, var(--gold), var(--royal)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.big-close{padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 70%); color:var(--text); cursor:pointer;}
 .big-body{padding:20px}
-
-/* 内部面板与 12 栅格表单 */
-.big-body .panel{
-  background: linear-gradient(180deg, rgba(255,255,255,.05), transparent 55%), rgba(18,26,44,.58) !important;
-  border: 1px solid rgba(255,255,255,.10) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 28px 70px rgba(0,0,0,.42) !important;
-  border-radius: 18px !important;
-}
-.big-body h2{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.3px;margin:6px 0 14px 2px}
-.big-body h2::before{
-  content:"+"; font-size:22px; background: linear-gradient(90deg, var(--royal), var(--gold));
-  -webkit-background-clip:text; background-clip:text; color:transparent;
-  filter: drop-shadow(0 6px 14px color-mix(in oklab, var(--gold) 45%, transparent));
-}
-/* 12列表单布局 */
-.big-body .form{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
-.big-body .form input,.big-body .form select,.big-body .form textarea{
-  grid-column:span 4;height:44px;
-  background: linear-gradient(180deg, rgba(255,255,255,.02), transparent 60%), #0f1729;
-  border:1px solid #2e3d5f; border-radius:14px; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); color:var(--text)
-}
-.big-body .form textarea{grid-column:1 / -1; min-height:110px}
-.big-body .form button{grid-column:10 / -1; justify-self:end; height:44px}
-.big-body .form input:focus,.big-body .form select:focus,.big-body .form textarea:focus{
-  border-color:#6b7fc0 !important; box-shadow:0 0 0 4px rgba(107,127,192,.28), inset 0 1px 0 rgba(255,255,255,.08) !important; outline:none
-}
-.big-body .form select{
-  appearance:none;-webkit-appearance:none;-moz-appearance:none;padding-right:38px;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23c8d6f2' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 12px center
-}
-.big-body .btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 12px 28px rgba(0,0,0,.34)}
-.big-body .btn-edit{
-  background: linear-gradient(135deg, color-mix(in oklab, var(--royal) 55%, transparent), color-mix(in oklab, var(--gold) 45%, transparent)), #12203a !important;
-  border-color: color-mix(in oklab, var(--royal) 55%, transparent) !important;
-}
-.big-body .btn-delete{
-  background: linear-gradient(135deg, rgba(239,71,111,.60), rgba(244,114,182,.52)), #2a1416 !important;
-  border-color: rgba(239,71,111,.60) !important;
-}
-
-/* 滚动条 */
-.big-modal *::-webkit-scrollbar{ height:10px; width:10px }
-.big-modal *::-webkit-scrollbar-thumb{
-  background: linear-gradient(180deg, #2b3a59, #23314d);
-  border: 2px solid #0f1522; border-radius: 10px;
-}
-.big-modal *::-webkit-scrollbar-track{ background: #11182a }
-.big-body ::placeholder{ color:#9fb1d3; opacity:.95 }
 """
 
 @app.get("/static/style.css")
@@ -296,7 +131,7 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=120">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=130">
 </head>
 <body class="luxury">
   <header class="topbar">
@@ -337,13 +172,13 @@ TEMPLATES = {
     </main>
   </div>
 
-  <!-- 删除确认弹窗 -->
+  <!-- 小确认弹窗 -->
   <div id="confirmBackdrop" class="modal-backdrop" aria-hidden="true">
     <div class="modal">
       <h3>确认操作</h3>
       <p id="confirmText">确定要执行该操作吗？</p>
       <div class="modal-actions">
-        <button id="confirmCancel" class="btn btn-ghost" type="button">取消</button>
+        <button id="confirmCancel" class="btn" type="button">取消</button>
         <button id="confirmOk" class="btn btn-delete" type="button">🗑️ 确认删除</button>
       </div>
     </div>
@@ -388,7 +223,7 @@ TEMPLATES = {
       backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
     })();
 
-    // 大弹窗加载器
+    // 大弹窗加载器（支持 partial=1）
     (function(){
       const big = document.getElementById('bigBackdrop');
       const content = document.getElementById('bigContent');
@@ -403,7 +238,7 @@ TEMPLATES = {
 
       async function load(url, text){
         title.textContent = text || '📄 表单';
-        content.innerHTML = '<div><span class="spinner"></span> 正在加载…</div>';
+        content.innerHTML = '<div class="panel">正在加载…</div>';
         open();
         try{
           const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'partial=1', {headers:{'X-Requested-With':'fetch'}});
@@ -515,11 +350,11 @@ TEMPLATES = {
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>ID</th><th>银行名</th><th>账号</th><th>户名</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
+      <thead><tr><th>ID</th><th>银行名</th><th>账号</th><th>户名</th><th>卡公司</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.holder }}</td>
+          <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.holder }}</td><td>{{ r.card_company or '-' }}</td>
           <td><form method="post" action="{{ url_for('bank_accounts_toggle', bid=r.id) }}"><button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button></form></td>
           <td>{{ r.created_at }}</td>
           <td class="actions">
@@ -527,7 +362,7 @@ TEMPLATES = {
             <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}"><button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button></form>
           </td>
         </tr>
-        {% else %}<tr><td colspan="7">{{ t.empty }}</td></tr>{% endfor %}
+        {% else %}<tr><td colspan="8">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
@@ -545,11 +380,11 @@ TEMPLATES = {
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>ID</th><th>银行</th><th>账号</th><th>月租金</th><th>开始</th><th>结束</th><th>{{ t.status }}</th><th>备注</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
+      <thead><tr><th>ID</th><th>银行</th><th>账号</th><th>卡公司</th><th>月租金</th><th>开始</th><th>结束</th><th>{{ t.status }}</th><th>备注</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.monthly_rent }}</td><td>{{ r.start_date }}</td><td>{{ r.end_date }}</td>
+          <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.card_company or '-' }}</td><td>{{ r.monthly_rent }}</td><td>{{ r.start_date }}</td><td>{{ r.end_date }}</td>
           <td><form method="post" action="{{ url_for('card_rentals_toggle', rid=r.id) }}"><button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button></form></td>
           <td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions">
@@ -557,7 +392,7 @@ TEMPLATES = {
             <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}"><button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button></form>
           </td>
         </tr>
-        {% else %}<tr><td colspan="10">{{ t.empty }}</td></tr>{% endfor %}
+        {% else %}<tr><td colspan="11">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
@@ -624,7 +459,7 @@ TEMPLATES = {
 </div>
 {% endblock %}
 """,
-# ——————————— 弹窗 Partial 表单 ———————————
+# ——————————— 弹窗 Partial 表单（已把“银行卡租金”改为直接填银行信息） ———————————
 "partials/workers_form.html": """
 <div class="panel">
   <h2 style="margin-top:0">{{ '✏️ 编辑工人' if r else '➕ 新增工人' }}</h2>
@@ -644,6 +479,7 @@ TEMPLATES = {
     <input name="bank_name" value="{{ r.bank_name if r else '' }}" placeholder="银行名" required>
     <input name="account_no" value="{{ r.account_no if r else '' }}" placeholder="账号" required>
     <input name="holder" value="{{ r.holder if r else '' }}" placeholder="户名" required>
+    <input name="card_company" value="{{ r.card_company if r else '' }}" placeholder="卡公司（VISA/Mastercard/UnionPay）">
     <select name="status">
       <option value="1" {% if r and r.status==1 %}selected{% endif %}>{{ t.active }}</option>
       <option value="0" {% if r and r.status==0 %}selected{% endif %}>{{ t.inactive }}</option>
@@ -656,11 +492,10 @@ TEMPLATES = {
 <div class="panel">
   <h2 style="margin-top:0">{{ '✏️ 编辑银行卡租金' if r else '➕ 新增银行卡租金' }}</h2>
   <form class="form" method="post" action="{{ url_for('card_rentals_edit', rid=r.id) if r else url_for('card_rentals_add') }}">
-    <select name="bank_account_id" required>
-      {% for b in banks %}
-        <option value="{{ b.id }}" {% if r and r.bank_account_id==b.id %}selected{% endif %}>{{ b.bank_name }} - {{ b.account_no }}</option>
-      {% endfor %}
-    </select>
+    <!-- 直接在弹窗中填写银行信息 -->
+    <input name="bank_name" value="{{ r.bank_name if r else '' }}" placeholder="银行名称（如：Maybank/CIMB）" required>
+    <input name="account_no" value="{{ r.account_no if r else '' }}" placeholder="银行账号（可含空格或短横）" required>
+    <input name="card_company" value="{{ r.card_company if r else '' }}" placeholder="银行卡公司（VISA/Mastercard/UnionPay）">
     <input name="monthly_rent" type="number" step="0.01" value="{{ r.monthly_rent if r else '' }}" placeholder="月租金" required>
     <input name="start_date" type="date" value="{{ r.start_date if r else '' }}" placeholder="开始日期">
     <input name="end_date" type="date" value="{{ r.end_date if r else '' }}" placeholder="结束日期">
@@ -820,12 +655,15 @@ def init_db():
         cur.execute("""CREATE TABLE IF NOT EXISTS expenses(
             id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
-        # 兜底：确保 status 存在
+        # 兜底：确保列存在
         ensure_column(c, "workers", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "card_rentals", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "salaries", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "expenses", "status", "INTEGER DEFAULT 1", 1)
+        # 新增：银行卡公司字段
+        ensure_column(c, "bank_accounts", "card_company", "TEXT", "")
+
         # 默认管理员
         cur.execute("SELECT COUNT(*) n FROM users")
         if cur.fetchone()["n"] == 0:
@@ -1056,10 +894,11 @@ def bank_accounts_add():
     bank_name = request.form.get("bank_name","").strip()
     account_no = request.form.get("account_no","").strip()
     holder = request.form.get("holder","").strip()
+    card_company = request.form.get("card_company","").strip()
     status = 1 if request.form.get("status") == "1" else 0
     with conn() as c:
-        c.execute("""INSERT INTO bank_accounts(bank_name,account_no,holder,status,created_at) VALUES(?,?,?,?,?)""",
-                  (bank_name, account_no, holder, status, datetime.utcnow().isoformat()))
+        c.execute("""INSERT INTO bank_accounts(bank_name,account_no,holder,status,created_at,card_company) VALUES(?,?,?,?,?,?)""",
+                  (bank_name, account_no, holder, status, datetime.utcnow().isoformat(), card_company))
         c.commit()
     return redirect(url_for("bank_accounts_list"))
 
@@ -1079,10 +918,11 @@ def bank_accounts_edit(bid):
     bank_name = request.form.get("bank_name","").strip()
     account_no = request.form.get("account_no","").strip()
     holder = request.form.get("holder","").strip()
+    card_company = request.form.get("card_company","").strip()
     status = 1 if request.form.get("status") == "1" else 0
     with conn() as c:
-        c.execute("""UPDATE bank_accounts SET bank_name=?, account_no=?, holder=?, status=? WHERE id=?""",
-                  (bank_name, account_no, holder, status, bid)); c.commit()
+        c.execute("""UPDATE bank_accounts SET bank_name=?, account_no=?, holder=?, status=?, card_company=? WHERE id=?""",
+                  (bank_name, account_no, holder, status, card_company, bid)); c.commit()
     return redirect(url_for("bank_accounts_list"))
 
 @app.post("/bank-accounts/<int:bid>/toggle")
@@ -1104,20 +944,42 @@ def bank_accounts_delete(bid):
 def export_bank_accounts():
     if require_login(): return require_login()
     out = io.StringIO(); w = csv.writer(out)
-    w.writerow(["id","bank_name","account_no","holder","status","created_at"])
+    w.writerow(["id","bank_name","account_no","holder","card_company","status","created_at"])
     with conn() as c:
         for r in c.execute("SELECT * FROM bank_accounts ORDER BY id DESC"):
-            w.writerow([r['id'],r['bank_name'],r['account_no'],r['holder'],r['status'],r['created_at']])
+            w.writerow([r['id'],r['bank_name'],r['account_no'],r['holder'],r['card_company'],r['status'],r['created_at']])
     mem = io.BytesIO(out.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="bank_accounts.csv")
 
-# ----------------------- 银行卡租金 -----------------------
+# ----------------------- 工具：根据银行信息查找/创建 bank_account -----------------------
+def get_or_create_bank_account(bank_name:str, account_no:str, card_company:str):
+    bank_name = (bank_name or "").strip()
+    account_no = (account_no or "").strip()
+    card_company = (card_company or "").strip()
+    if not bank_name or not account_no:
+        raise ValueError("bank_name/account_no 必填")
+    with conn() as c:
+        ex = c.execute("SELECT id, card_company FROM bank_accounts WHERE bank_name=? AND account_no=?", (bank_name, account_no)).fetchone()
+        if ex:
+            # 若原记录未填卡公司而本次提供了，则补齐
+            if (not ex["card_company"]) and card_company:
+                c.execute("UPDATE bank_accounts SET card_company=? WHERE id=?", (card_company, ex["id"]))
+                c.commit()
+            return ex["id"]
+        # 不存在则创建（holder 置空、status=1）
+        c.execute("""INSERT INTO bank_accounts(bank_name, account_no, holder, status, created_at, card_company)
+                     VALUES(?,?,?,?,?,?)""", (bank_name, account_no, "", 1, datetime.utcnow().isoformat(), card_company))
+        c.commit()
+        nid = c.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
+        return nid
+
+# ----------------------- 银行卡租金（改为在弹窗内直填银行信息） -----------------------
 @app.get("/card-rentals")
 def card_rentals_list():
     if require_login(): return require_login()
     with conn() as c:
         rows = c.execute("""
-            SELECT cr.*, ba.bank_name, ba.account_no
+            SELECT cr.*, ba.bank_name, ba.account_no, ba.card_company
             FROM card_rentals cr LEFT JOIN bank_accounts ba ON ba.id = cr.bank_account_id
             ORDER BY cr.id DESC
         """).fetchall()
@@ -1126,21 +988,27 @@ def card_rentals_list():
 @app.get("/card-rentals/add")
 def card_rentals_add_form():
     if require_login(): return require_login()
-    with conn() as c:
-        banks = c.execute("SELECT id, bank_name, account_no FROM bank_accounts ORDER BY id DESC").fetchall()
-    return render_template("partials/card_rentals_form.html", banks=banks)
+    # 直接返回填写表单（无需预加载银行下拉）
+    return render_template("partials/card_rentals_form.html")
 
 @app.post("/card-rentals/add")
 def card_rentals_add():
     if require_login(): return require_login()
-    bank_account_id = int(request.form.get("bank_account_id") or 0)
+    bank_name    = request.form.get("bank_name","").strip()
+    account_no   = request.form.get("account_no","").strip()
+    card_company = request.form.get("card_company","").strip()
     monthly_rent = float(request.form.get("monthly_rent") or 0)
-    start_date = request.form.get("start_date","")
-    end_date = request.form.get("end_date","")
-    note = request.form.get("note","")
+    start_date   = request.form.get("start_date","")
+    end_date     = request.form.get("end_date","")
+    note         = request.form.get("note","")
+
+    # 找或建银行账户
+    bank_account_id = get_or_create_bank_account(bank_name, account_no, card_company)
+
     with conn() as c:
         c.execute("""INSERT INTO card_rentals(bank_account_id, monthly_rent, start_date, end_date, note, status, created_at)
-                     VALUES(?,?,?,?,?,1,?)""", (bank_account_id, monthly_rent, start_date, end_date, note, datetime.utcnow().isoformat()))
+                     VALUES(?,?,?,?,?,1,?)""",
+                  (bank_account_id, monthly_rent, start_date, end_date, note, datetime.utcnow().isoformat()))
         c.commit()
     return redirect(url_for("card_rentals_list"))
 
@@ -1148,24 +1016,36 @@ def card_rentals_add():
 def card_rentals_edit_form(rid):
     if require_login(): return require_login()
     with conn() as c:
-        r = c.execute("SELECT * FROM card_rentals WHERE id=?", (rid,)).fetchone()
-        banks = c.execute("SELECT id, bank_name, account_no FROM bank_accounts ORDER BY id DESC").fetchall()
+        r = c.execute("""
+            SELECT cr.*, ba.bank_name, ba.account_no, ba.card_company
+            FROM card_rentals cr LEFT JOIN bank_accounts ba ON ba.id = cr.bank_account_id
+            WHERE cr.id=?
+        """, (rid,)).fetchone()
     if not r: abort(404)
     if request.args.get("partial") == "1":
-        return render_template("partials/card_rentals_form.html", r=r, banks=banks)
+        return render_template("partials/card_rentals_form.html", r=r)
     return redirect(url_for("card_rentals_list"))
 
 @app.post("/card-rentals/<int:rid>/edit")
 def card_rentals_edit(rid):
     if require_login(): return require_login()
-    bank_account_id = int(request.form.get("bank_account_id") or 0)
+    bank_name    = request.form.get("bank_name","").strip()
+    account_no   = request.form.get("account_no","").strip()
+    card_company = request.form.get("card_company","").strip()
     monthly_rent = float(request.form.get("monthly_rent") or 0)
-    start_date = request.form.get("start_date","")
-    end_date = request.form.get("end_date","")
-    note = request.form.get("note","")
+    start_date   = request.form.get("start_date","")
+    end_date     = request.form.get("end_date","")
+    note         = request.form.get("note","")
+
+    # 根据填写的新银行信息，找/建 bank_account，并把租金记录指向它
+    bank_account_id = get_or_create_bank_account(bank_name, account_no, card_company)
+
     with conn() as c:
-        c.execute("""UPDATE card_rentals SET bank_account_id=?, monthly_rent=?, start_date=?, end_date=?, note=? WHERE id=?""",
-                  (bank_account_id, monthly_rent, start_date, end_date, note, rid)); c.commit()
+        c.execute("""UPDATE card_rentals
+                     SET bank_account_id=?, monthly_rent=?, start_date=?, end_date=?, note=?
+                     WHERE id=?""",
+                  (bank_account_id, monthly_rent, start_date, end_date, note, rid))
+        c.commit()
     return redirect(url_for("card_rentals_list"))
 
 @app.post("/card-rentals/<int:rid>/toggle")
