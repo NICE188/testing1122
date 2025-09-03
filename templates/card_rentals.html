@@ -1,51 +1,39 @@
 {% extends "base.html" %}
 {% block title %}{{ t.card_rentals }} · {{ t.app_name }}{% endblock %}
 {% block content %}
-<h1 class="page-title">💳 {{ t.card_rentals }}</h1>
-
+<h1>💳 {{ t.card_rentals }}</h1>
 <div class="panel">
-  <form class="form" action="{{ url_for('card_rentals_add') }}" method="post">
-    <select name="bank_account_id" required>
-      {% for b in banks %}
-      <option value="{{ b.id }}">{{ b.bank_name }} - {{ b.account_no }}</option>
-      {% endfor %}
-    </select>
-    <input name="monthly_rent" type="number" step="0.01" placeholder="月租金" required>
-    <input name="start_date" type="date" placeholder="开始日期">
-    <input name="end_date" type="date" placeholder="结束日期">
-    <input name="note" placeholder="备注">
-    <button class="btn" type="submit">{{ t.add }}</button>
+  <div class="actions" style="margin-bottom:12px">
+    <a class="btn btn-edit js-open-modal" href="{{ url_for('card_rentals_add_form') }}" data-title="➕ 新增银行卡租金">➕ {{ t.add }}</a>
     <a class="btn" href="{{ url_for('export_card_rentals') }}">⤓ {{ t.export_rentals }}</a>
-  </form>
-
+  </div>
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>ID</th><th>银行</th><th>账号</th><th>月租金</th><th>开始</th><th>结束</th><th>备注</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+          <th>ID</th><th>银行</th><th>账号</th><th>卡公司</th><th>月租金</th><th>开始</th><th>结束</th><th>备注</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
         </tr>
       </thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td>
-          <td>{{ r.bank_name }}</td>
-          <td>{{ r.account_no }}</td>
-          <td>{{ r.monthly_rent }}</td>
-          <td>{{ r.start_date }}</td>
-          <td>{{ r.end_date }}</td>
-          <td>{{ r.note }}</td>
-          <td>{{ r.created_at }}</td>
-          <td class="actions">
-            <a class="btn" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}">{{ t.edit }}</a>
-            <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
-              <button class="btn danger" type="submit">{{ t.delete }}</button>
-            </form>
+          <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.card_company or '-' }}</td>
+          <td>{{ r.monthly_rent }}</td><td>{{ r.start_date }}</td><td>{{ r.end_date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
+          <td class="actions-cell">
+            <div class="actions-inline">
+              <form method="post" action="{{ url_for('card_rentals_toggle', rid=r.id) }}">
+                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit">
+                  <span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}
+                </button>
+              </form>
+              <a class="btn btn-edit js-open-modal" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}" data-title="✏️ 编辑银行卡租金">✏️ {{ t.edit }}</a>
+              <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+              </form>
+            </div>
           </td>
         </tr>
-        {% else %}
-        <tr><td colspan="9">{{ t.empty }}</td></tr>
-        {% endfor %}
+        {% else %}<tr><td colspan="10">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
