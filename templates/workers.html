@@ -1,44 +1,40 @@
 {% extends "base.html" %}
 {% block title %}{{ t.workers }} · {{ t.app_name }}{% endblock %}
 {% block content %}
-<h1 class="page-title">👨‍💼 {{ t.workers }}</h1>
-
+<h1>👨‍💼 {{ t.workers }}</h1>
 <div class="panel">
-  <form class="form" action="{{ url_for('workers_add') }}" method="post">
-    <input name="name" placeholder="{{ t.name }}" required>
-    <input name="company" placeholder="{{ t.company }}">
-    <input name="commission" type="number" step="0.01" placeholder="{{ t.commission }}">
-    <input name="expenses" type="number" step="0.01" placeholder="{{ t.expenses }}">
-    <button class="btn" type="submit">{{ t.add }}</button>
+  <div class="actions" style="margin-bottom:12px">
+    <a class="btn btn-edit js-open-modal" href="{{ url_for('workers_add_form') }}" data-title="➕ 新增工人">➕ {{ t.add }}</a>
     <a class="btn" href="{{ url_for('export_workers') }}">⤓ {{ t.export_workers }}</a>
-  </form>
-
+  </div>
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+          <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th>
+          <th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
         </tr>
       </thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td>
-          <td>{{ r.name }}</td>
-          <td>{{ r.company }}</td>
-          <td>{{ r.commission }}</td>
-          <td>{{ r.expenses }}</td>
+          <td>{{ r.id }}</td><td>{{ r.name }}</td><td>{{ r.company }}</td><td>{{ r.commission }}</td><td>{{ r.expenses }}</td>
           <td>{{ r.created_at }}</td>
-          <td class="actions">
-            <a class="btn" href="{{ url_for('workers_edit_form', wid=r.id) }}">{{ t.edit }}</a>
-            <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
-              <button class="btn danger" type="submit">{{ t.delete }}</button>
-            </form>
+          <td class="actions-cell">
+            <div class="actions-inline">
+              <form method="post" action="{{ url_for('workers_toggle', wid=r.id) }}">
+                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit">
+                  <span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}
+                </button>
+              </form>
+              <a class="btn btn-edit js-open-modal" href="{{ url_for('workers_edit_form', wid=r.id) }}" data-title="✏️ 编辑工人">✏️ {{ t.edit }}</a>
+              <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+              </form>
+            </div>
           </td>
         </tr>
-        {% else %}
-        <tr><td colspan="7">{{ t.empty }}</td></tr>
-        {% endfor %}
+        {% else %}<tr><td colspan="7">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
