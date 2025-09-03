@@ -1,47 +1,39 @@
 {% extends "base.html" %}
 {% block title %}{{ t.bank_accounts }} · {{ t.app_name }}{% endblock %}
 {% block content %}
-<h1 class="page-title">🏦 {{ t.bank_accounts }}</h1>
-
+<h1>🏦 {{ t.bank_accounts }}</h1>
 <div class="panel">
-  <form class="form" action="{{ url_for('bank_accounts_add') }}" method="post">
-    <input name="bank_name" placeholder="银行名" required>
-    <input name="account_no" placeholder="账号" required>
-    <input name="holder" placeholder="户名" required>
-    <select name="status">
-      <option value="1">{{ t.active }}</option>
-      <option value="0">{{ t.inactive }}</option>
-    </select>
-    <button class="btn" type="submit">{{ t.add }}</button>
+  <div class="actions" style="margin-bottom:12px">
+    <a class="btn btn-edit js-open-modal" href="{{ url_for('bank_accounts_add_form') }}" data-title="➕ 新增银行账户">➕ {{ t.add }}</a>
     <a class="btn" href="{{ url_for('export_bank_accounts') }}">⤓ {{ t.export_bank }}</a>
-  </form>
-
+  </div>
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>ID</th><th>银行名</th><th>账号</th><th>户名</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+          <th>ID</th><th>银行名</th><th>账号</th><th>户名</th><th>卡公司</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
         </tr>
       </thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td>
-          <td>{{ r.bank_name }}</td>
-          <td>{{ r.account_no }}</td>
-          <td>{{ r.holder }}</td>
-          <td>{{ t.active if r.status==1 else t.inactive }}</td>
+          <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.holder }}</td><td>{{ r.card_company or '-' }}</td>
           <td>{{ r.created_at }}</td>
-          <td class="actions">
-            <a class="btn" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}">{{ t.edit }}</a>
-            <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" onsubmit="return confirm('{{ t.confirm_delete }}')">
-              <button class="btn danger" type="submit">{{ t.delete }}</button>
-            </form>
+          <td class="actions-cell">
+            <div class="actions-inline">
+              <form method="post" action="{{ url_for('bank_accounts_toggle', bid=r.id) }}">
+                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit">
+                  <span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}
+                </button>
+              </form>
+              <a class="btn btn-edit js-open-modal" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}" data-title="✏️ 编辑银行账户">✏️ {{ t.edit }}</a>
+              <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+              </form>
+            </div>
           </td>
         </tr>
-        {% else %}
-        <tr><td colspan="7">{{ t.empty }}</td></tr>
-        {% endfor %}
+        {% else %}<tr><td colspan="7">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
