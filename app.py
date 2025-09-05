@@ -1,4 +1,4 @@
-# app.py – Luxury Royale Admin（合并版 · 在“银行卡租金”弹窗中直接填写 银行名称/银行账号/银行卡公司）
+# app.py – Luxury Royale Admin（合并版 · 操作按钮一排靠右 + 银行卡公司）
 from flask import Flask, request, render_template, redirect, url_for, session, flash, abort, send_file, Response
 from jinja2 import DictLoader, TemplateNotFound
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -83,34 +83,73 @@ body{
     0 12px 28px rgba(0,0,0,.35);
 }
 
-/* 卡片/面板/按钮/弹窗/表格（略，保持原样） */
+/* 概览卡片与通用面板 */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:14px 0}
-.card,.panel{position:relative;background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);border:1px solid rgba(255,255,255,.08); border-radius:var(--radius); padding:16px; box-shadow:0 28px 70px rgba(0,0,0,.55)}
-.card::before{content:""; position:absolute; left:12px; right:12px; top:10px; height:2px; border-radius:2px; background:linear-gradient(90deg, color-mix(in oklab, var(--gold) 60%, transparent), transparent); opacity:.85; filter: drop-shadow(0 6px 16px rgba(245,212,121,.3));}
+.card,.panel{
+  position:relative;
+  background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);
+  border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
+  padding:16px; box-shadow:0 28px 70px rgba(0,0,0,.55)
+}
+.card::before{
+  content:""; position:absolute; left:12px; right:12px; top:10px; height:2px; border-radius:2px;
+  background:linear-gradient(90deg, color-mix(in oklab, var(--gold) 60%, transparent), transparent);
+  opacity:.85; filter: drop-shadow(0 6px 16px rgba(245,212,121,.3));
+}
 .card-title{font-size:12px;color:var(--muted)} .card-value{font-size:30px;margin-top:8px;letter-spacing:.3px}
+
+/* 表单与按钮 */
 .form{display:flex;flex-wrap:wrap;gap:10px}
-.form input,.form select,.form textarea,.form button{height:40px; padding:8px 12px; border-radius:14px; border:1px solid var(--line); background:#0e172b; color:var(--text); outline:0}
+.form input,.form select,.form textarea,.form button{
+  height:40px; padding:8px 12px; border-radius:14px;
+  border:1px solid var(--line); background:#0e172b; color:var(--text); outline:0
+}
 .form textarea{height:auto;min-height:96px;width:100%;resize:vertical}
-.form input:focus,.form select:focus,.form textarea:focus{border-color:#5c6ea1; box-shadow:0 0 0 3px rgba(92,110,161,.28), inset 0 1px 0 rgba(255,255,255,.06)}
-.btn{display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px; border-radius:14px; border:1px solid rgba(255,255,255,.08); background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), rgba(16,22,38,.6); color:var(--text); text-decoration:none; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.28); transition: transform .12s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;}
+.form input:focus,.form select:focus,.form textarea:focus{
+  border-color:#5c6ea1; box-shadow:0 0 0 3px rgba(92,110,161,.28), inset 0 1px 0 rgba(255,255,255,.06)
+}
+.btn{
+  display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px;
+  border-radius:14px; border:1px solid rgba(255,255,255,.08);
+  background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), rgba(16,22,38,.6);
+  color:var(--text); text-decoration:none; cursor:pointer;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.28);
+  transition: transform .12s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+}
 .btn:hover{ transform: translateY(-1px); box-shadow:0 16px 34px rgba(0,0,0,.32) }
 .btn:active{ transform: translateY(0); box-shadow:0 8px 18px rgba(0,0,0,.26) }
-.btn-edit{background: linear-gradient(135deg, color-mix(in oklab, var(--royal) 55%, transparent), color-mix(in oklab, var(--gold) 38%, transparent)), #141f38 !important; border-color: color-mix(in oklab, var(--royal) 55%, transparent) !important;}
-.btn-delete{background: linear-gradient(135deg, rgba(239,71,111,.62), rgba(244,114,182,.55)), #2a1416 !important; border-color: rgba(239,71,111,.62) !important;}
+.btn-edit{
+  background: linear-gradient(135deg, color-mix(in oklab, var(--royal) 55%, transparent), color-mix(in oklab, var(--gold) 38%, transparent)), #141f38 !important;
+  border-color: color-mix(in oklab, var(--royal) 55%, transparent) !important;
+}
+.btn-delete{
+  background: linear-gradient(135deg, rgba(239,71,111,.62), rgba(244,114,182,.55)), #2a1416 !important;
+  border-color: rgba(239,71,111,.62) !important;
+}
+
+/* 启用/停用开关 */
 .toggle{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.08);font-weight:700;background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), rgba(18,26,44,.62);color:#f4f7ff}
 .toggle .dot{width:10px;height:10px;border-radius:50%}
 .toggle.on{border-color:#2a6a4c;background:#0d1f18;color:#ccffe9}.toggle.on .dot{background:var(--emerald)}
 .toggle.off{border-color:#5a1f2a;background:#241016;color:#ffd6e1}.toggle.off .dot{background:var(--ruby)}
+
+/* 表格 */
 .table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);box-shadow:0 28px 68px rgba(0,0,0,.52)}
 table{border-collapse:separate;border-spacing:0;width:100%}
-th{position:sticky; top:0; background:rgba(16,24,44,.92);backdrop-filter:blur(4px); font-weight:700; font-size:12px; letter-spacing:.3px; color:#d8e3ff; border-bottom:1px solid var(--line); text-align:left; padding:12px}
+th{
+  position:sticky; top:0; background:rgba(16,24,44,.92);backdrop-filter:blur(4px);
+  font-weight:700; font-size:12px; letter-spacing:.3px; color:#d8e3ff; border-bottom:1px solid var(--line); text-align:left; padding:12px
+}
 td{padding:12px;border-bottom:1px solid var(--line)}
 tbody tr:hover{background: linear-gradient(90deg, color-mix(in oklab, var(--gold) 10%, transparent), transparent 60%) !important}
 tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+
+/* ===== 小/大弹窗省略若干，与原版一致（保留结构即可） ===== */
 .modal-backdrop{position:fixed; inset:0; z-index:50; display:none; background:radial-gradient(1200px 600px at 15% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%), radial-gradient(1200px 600px at 120% 10%, color-mix(in oklab, var(--royal) 14%, transparent), transparent 60%), rgba(5,8,14,.62); backdrop-filter:blur(10px) saturate(140%)}
 .modal-backdrop.open{display:flex; align-items:center; justify-content:center; padding:22px}
 .modal{width:min(440px,100%); border-radius:var(--radius); padding:18px; background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), #0e1528; border:1px solid rgba(255,255,255,.14); box-shadow:0 34px 80px rgba(0,0,0,.58); opacity:0; transform:translateY(10px) scale(.985); transition:opacity .18s ease, transform .18s ease; position:relative;}
 .modal-backdrop.open .modal{opacity:1; transform:none}
+
 .big-backdrop{position:fixed; inset:0; z-index:55; display:none; background: radial-gradient(1800px 760px at 10% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%), radial-gradient(1600px 640px at 120% 0%, color-mix(in oklab, var(--royal) 16%, transparent), transparent 60%), linear-gradient(180deg, rgba(6,10,18,.74), rgba(6,10,18,.64)); backdrop-filter: blur(14px) saturate(140%);}
 .big-backdrop.open{display:flex; align-items:center; justify-content:center; padding:30px}
 .big-modal{width:min(1080px, 96vw); max-height:90vh; overflow:auto; position:relative; border-radius:20px; background: linear-gradient(180deg, rgba(255,255,255,.08), transparent 58%), radial-gradient(1200px 220px at 50% -8%, rgba(255,255,255,.12), transparent 60%), linear-gradient(180deg, #10182c, #0e1628); border: 1px solid rgba(255,255,255,.16); box-shadow: 0 80px 180px rgba(0,0,0,.76), inset 0 1px 0 rgba(255,255,255,.06);}
@@ -118,6 +157,18 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 .big-title{font-weight:900; letter-spacing:.3px; display:flex; align-items:center; gap:10px; background: linear-gradient(90deg, var(--gold), var(--royal)); -webkit-background-clip:text; background-clip:text; color:transparent;}
 .big-close{padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 70%); color:var(--text); cursor:pointer;}
 .big-body{padding:20px}
+
+/* —— 操作列：一排靠右 —— */
+.actions-cell{ text-align:right; }
+.actions-inline{
+  display:flex; justify-content:flex-end; align-items:center;
+  gap:8px; flex-wrap:wrap;
+}
+.actions-inline form{ margin:0; }
+.actions-inline .btn,
+.actions-inline .toggle{
+  height:34px; padding:0 12px; border-radius:12px;
+}
 """
 
 @app.get("/static/style.css")
@@ -131,7 +182,7 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=130">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=132">
 </head>
 <body class="luxury">
   <header class="topbar">
@@ -172,7 +223,7 @@ TEMPLATES = {
     </main>
   </div>
 
-  <!-- 小确认弹窗 -->
+  <!-- 删除确认弹窗 -->
   <div id="confirmBackdrop" class="modal-backdrop" aria-hidden="true">
     <div class="modal">
       <h3>确认操作</h3>
@@ -223,7 +274,7 @@ TEMPLATES = {
       backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
     })();
 
-    // 大弹窗加载器（支持 partial=1）
+    // 大弹窗加载器（partial=1）
     (function(){
       const big = document.getElementById('bigBackdrop');
       const content = document.getElementById('bigContent');
@@ -259,7 +310,6 @@ TEMPLATES = {
         }
       });
 
-      // 弹窗内表单提交（AJAX）
       big.addEventListener('submit', async function(ev){
         const f = ev.target;
         if(!big.contains(f)) return;
@@ -268,8 +318,7 @@ TEMPLATES = {
         const btn = f.querySelector('button[type="submit"]'); if(btn){ btn.disabled=true; btn.style.opacity=.75; }
         try{
           await fetch(f.action, {method: f.method || 'POST', body: data, headers:{'X-Requested-With':'fetch'}});
-          close();
-          location.reload();
+          close(); location.reload();
         }catch(e){ alert('提交失败，请重试'); } finally{ if(btn){ btn.disabled=false; btn.style.opacity=1; } }
       });
 
@@ -281,6 +330,7 @@ TEMPLATES = {
 </body>
 </html>
 """,
+
 "login.html": """{% extends "base.html" %}
 {% block title %}登录 · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -295,6 +345,7 @@ TEMPLATES = {
 </div>
 {% endblock %}
 """,
+
 "dashboard.html": """{% extends "base.html" %}
 {% block title %}Dashboard · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -307,6 +358,8 @@ TEMPLATES = {
 </div>
 {% endblock %}
 """,
+
+# ===== 列表页：状态+编辑+删除 一排靠右 =====
 "workers_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.workers }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -318,27 +371,39 @@ TEMPLATES = {
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
+      <thead>
+        <tr>
+          <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th>
+          <th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+        </tr>
+      </thead>
       <tbody>
         {% for r in rows %}
         <tr>
           <td>{{ r.id }}</td><td>{{ r.name }}</td><td>{{ r.company }}</td><td>{{ r.commission }}</td><td>{{ r.expenses }}</td>
-          <td>
-            <form method="post" action="{{ url_for('workers_toggle', wid=r.id) }}"><button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button></form>
-          </td>
           <td>{{ r.created_at }}</td>
-          <td class="actions">
-            <a class="btn btn-edit js-open-modal" href="{{ url_for('workers_edit_form', wid=r.id) }}" data-title="✏️ 编辑工人">✏️ {{ t.edit }}</a>
-            <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}"><button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button></form>
+          <td class="actions-cell">
+            <div class="actions-inline">
+              <form method="post" action="{{ url_for('workers_toggle', wid=r.id) }}">
+                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit">
+                  <span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}
+                </button>
+              </form>
+              <a class="btn btn-edit js-open-modal" href="{{ url_for('workers_edit_form', wid=r.id) }}" data-title="✏️ 编辑工人">✏️ {{ t.edit }}</a>
+              <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+              </form>
+            </div>
           </td>
         </tr>
-        {% else %}<tr><td colspan="8">{{ t.empty }}</td></tr>{% endfor %}
+        {% else %}<tr><td colspan="7">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
 </div>
 {% endblock %}
 """,
+
 "bank_accounts_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.bank_accounts }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -350,25 +415,36 @@ TEMPLATES = {
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>ID</th><th>银行名</th><th>账号</th><th>户名</th><th>卡公司</th><th>{{ t.status }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
+      <thead>
+        <tr>
+          <th>ID</th><th>银行名</th><th>账号</th><th>户名</th><th>卡公司</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+        </tr>
+      </thead>
       <tbody>
         {% for r in rows %}
         <tr>
           <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.holder }}</td><td>{{ r.card_company or '-' }}</td>
-          <td><form method="post" action="{{ url_for('bank_accounts_toggle', bid=r.id) }}"><button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button></form></td>
           <td>{{ r.created_at }}</td>
-          <td class="actions">
-            <a class="btn btn-edit js-open-modal" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}" data-title="✏️ 编辑银行账户">✏️ {{ t.edit }}</a>
-            <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}"><button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button></form>
+          <td class="actions-cell">
+            <div class="actions-inline">
+              <form method="post" action="{{ url_for('bank_accounts_toggle', bid=r.id) }}">
+                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button>
+              </form>
+              <a class="btn btn-edit js-open-modal" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}" data-title="✏️ 编辑银行账户">✏️ {{ t.edit }}</a>
+              <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+              </form>
+            </div>
           </td>
         </tr>
-        {% else %}<tr><td colspan="8">{{ t.empty }}</td></tr>{% endfor %}
+        {% else %}<tr><td colspan="7">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
 </div>
 {% endblock %}
 """,
+
 "card_rentals_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.card_rentals }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -380,25 +456,36 @@ TEMPLATES = {
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>ID</th><th>银行</th><th>账号</th><th>卡公司</th><th>月租金</th><th>开始</th><th>结束</th><th>{{ t.status }}</th><th>备注</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
+      <thead>
+        <tr>
+          <th>ID</th><th>银行</th><th>账号</th><th>卡公司</th><th>月租金</th><th>开始</th><th>结束</th><th>备注</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+        </tr>
+      </thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.card_company or '-' }}</td><td>{{ r.monthly_rent }}</td><td>{{ r.start_date }}</td><td>{{ r.end_date }}</td>
-          <td><form method="post" action="{{ url_for('card_rentals_toggle', rid=r.id) }}"><button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button></form></td>
-          <td>{{ r.note }}</td><td>{{ r.created_at }}</td>
-          <td class="actions">
-            <a class="btn btn-edit js-open-modal" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}" data-title="✏️ 编辑银行卡租金">✏️ {{ t.edit }}</a>
-            <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}"><button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button></form>
+          <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.card_company or '-' }}</td>
+          <td>{{ r.monthly_rent }}</td><td>{{ r.start_date }}</td><td>{{ r.end_date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
+          <td class="actions-cell">
+            <div class="actions-inline">
+              <form method="post" action="{{ url_for('card_rentals_toggle', rid=r.id) }}">
+                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button>
+              </form>
+              <a class="btn btn-edit js-open-modal" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}" data-title="✏️ 编辑银行卡租金">✏️ {{ t.edit }}</a>
+              <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+              </form>
+            </div>
           </td>
         </tr>
-        {% else %}<tr><td colspan="11">{{ t.empty }}</td></tr>{% endfor %}
+        {% else %}<tr><td colspan="10">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
 </div>
 {% endblock %}
 """,
+
 "salaries_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.salaries }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -410,25 +497,35 @@ TEMPLATES = {
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.salary_amount }}</th><th>{{ t.pay_date }}</th><th>{{ t.status }}</th><th>{{ t.note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
+      <thead>
+        <tr>
+          <th>ID</th><th>{{ t.worker }}</th><th>{{ t.salary_amount }}</th><th>{{ t.pay_date }}</th><th>{{ t.note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+        </tr>
+      </thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.pay_date }}</td>
-          <td><form method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}"><button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button></form></td>
-          <td>{{ r.note }}</td><td>{{ r.created_at }}</td>
-          <td class="actions">
-            <a class="btn btn-edit js-open-modal" href="{{ url_for('salaries_edit_form', sid=r.id) }}" data-title="✏️ 编辑出粮记录">✏️ {{ t.edit }}</a>
-            <form method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}"><button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button></form>
+          <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.pay_date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
+          <td class="actions-cell">
+            <div class="actions-inline">
+              <form method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}">
+                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button>
+              </form>
+              <a class="btn btn-edit js-open-modal" href="{{ url_for('salaries_edit_form', sid=r.id) }}" data-title="✏️ 编辑出粮记录">✏️ {{ t.edit }}</a>
+              <form method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+              </form>
+            </div>
           </td>
         </tr>
-        {% else %}<tr><td colspan="8">{{ t.empty }}</td></tr>{% endfor %}
+        {% else %}<tr><td colspan="7">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
 </div>
 {% endblock %}
 """,
+
 "expenses_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.expenses }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -440,99 +537,36 @@ TEMPLATES = {
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>ID</th><th>{{ t.worker }}</th><th>{{ t.expense_amount }}</th><th>{{ t.date }}</th><th>{{ t.status }}</th><th>{{ t.expenses_note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th></tr></thead>
+      <thead>
+        <tr>
+          <th>ID</th><th>{{ t.worker }}</th><th>{{ t.expense_amount }}</th><th>{{ t.date }}</th><th>{{ t.expenses_note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+        </tr>
+      </thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.date }}</td>
-          <td><form method="post" action="{{ url_for('expenses_toggle', eid=r.id) }}"><button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button></form></td>
-          <td>{{ r.note }}</td><td>{{ r.created_at }}</td>
-          <td class="actions">
-            <a class="btn btn-edit js-open-modal" href="{{ url_for('expenses_edit_form', eid=r.id) }}" data-title="✏️ 编辑开销记录">✏️ {{ t.edit }}</a>
-            <form method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}"><button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button></form>
+          <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
+          <td class="actions-cell">
+            <div class="actions-inline">
+              <form method="post" action="{{ url_for('expenses_toggle', eid=r.id) }}">
+                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button>
+              </form>
+              <a class="btn btn-edit js-open-modal" href="{{ url_for('expenses_edit_form', eid=r.id) }}" data-title="✏️ 编辑开销记录">✏️ {{ t.edit }}</a>
+              <form method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
+                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+              </form>
+            </div>
           </td>
         </tr>
-        {% else %}<tr><td colspan="8">{{ t.empty }}</td></tr>{% endfor %}
+        {% else %}<tr><td colspan="7">{{ t.empty }}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
 </div>
 {% endblock %}
 """,
-# ——————————— 弹窗 Partial 表单（已把“银行卡租金”改为直接填银行信息） ———————————
-"partials/workers_form.html": """
-<div class="panel">
-  <h2 style="margin-top:0">{{ '✏️ 编辑工人' if r else '➕ 新增工人' }}</h2>
-  <form class="form" method="post" action="{{ url_for('workers_edit', wid=r.id) if r else url_for('workers_add') }}">
-    <input name="name" value="{{ r.name if r else '' }}" placeholder="{{ t.name }}" required>
-    <input name="company" value="{{ r.company if r else '' }}" placeholder="{{ t.company }}">
-    <input name="commission" type="number" step="0.01" value="{{ r.commission if r else '' }}" placeholder="{{ t.commission }}">
-    <input name="expenses" type="number" step="0.01" value="{{ r.expenses if r else '' }}" placeholder="{{ t.expenses }}">
-    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
-  </form>
-</div>
-""",
-"partials/bank_accounts_form.html": """
-<div class="panel">
-  <h2 style="margin-top:0">{{ '✏️ 编辑银行账户' if r else '➕ 新增银行账户' }}</h2>
-  <form class="form" method="post" action="{{ url_for('bank_accounts_edit', bid=r.id) if r else url_for('bank_accounts_add') }}">
-    <input name="bank_name" value="{{ r.bank_name if r else '' }}" placeholder="银行名" required>
-    <input name="account_no" value="{{ r.account_no if r else '' }}" placeholder="账号" required>
-    <input name="holder" value="{{ r.holder if r else '' }}" placeholder="户名" required>
-    <input name="card_company" value="{{ r.card_company if r else '' }}" placeholder="卡公司（VISA/Mastercard/UnionPay）">
-    <select name="status">
-      <option value="1" {% if r and r.status==1 %}selected{% endif %}>{{ t.active }}</option>
-      <option value="0" {% if r and r.status==0 %}selected{% endif %}>{{ t.inactive }}</option>
-    </select>
-    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
-  </form>
-</div>
-""",
-"partials/card_rentals_form.html": """
-<div class="panel">
-  <h2 style="margin-top:0">{{ '✏️ 编辑银行卡租金' if r else '➕ 新增银行卡租金' }}</h2>
-  <form class="form" method="post" action="{{ url_for('card_rentals_edit', rid=r.id) if r else url_for('card_rentals_add') }}">
-    <!-- 直接在弹窗中填写银行信息 -->
-    <input name="bank_name" value="{{ r.bank_name if r else '' }}" placeholder="银行名称（如：Maybank/CIMB）" required>
-    <input name="account_no" value="{{ r.account_no if r else '' }}" placeholder="银行账号（可含空格或短横）" required>
-    <input name="card_company" value="{{ r.card_company if r else '' }}" placeholder="银行卡公司（VISA/Mastercard/UnionPay）">
-    <input name="monthly_rent" type="number" step="0.01" value="{{ r.monthly_rent if r else '' }}" placeholder="月租金" required>
-    <input name="start_date" type="date" value="{{ r.start_date if r else '' }}" placeholder="开始日期">
-    <input name="end_date" type="date" value="{{ r.end_date if r else '' }}" placeholder="结束日期">
-    <textarea name="note" placeholder="备注">{{ r.note if r else '' }}</textarea>
-    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
-  </form>
-</div>
-""",
-"partials/salaries_form.html": """
-<div class="panel">
-  <h2 style="margin-top:0">{{ '✏️ 编辑出粮记录' if r else '➕ 新增出粮记录' }}</h2>
-  <form class="form" method="post" action="{{ url_for('salaries_edit', sid=r.id) if r else url_for('salaries_add') }}">
-    <select name="worker_id">
-      {% for w in workers %}<option value="{{ w.id }}" {% if r and r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>{% endfor %}
-    </select>
-    <input name="amount" type="number" step="0.01" value="{{ r.amount if r else '' }}" placeholder="{{ t.salary_amount }}" required>
-    <input name="pay_date" type="date" value="{{ r.pay_date if r else '' }}" placeholder="{{ t.pay_date }}" required>
-    <textarea name="note" placeholder="{{ t.note }}">{{ r.note if r else '' }}</textarea>
-    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
-  </form>
-</div>
-""",
-"partials/expenses_form.html": """
-<div class="panel">
-  <h2 style="margin-top:0">{{ '✏️ 编辑开销记录' if r else '➕ 新增开销记录' }}</h2>
-  <form class="form" method="post" action="{{ url_for('expenses_edit', eid=r.id) if r else url_for('expenses_add') }}">
-    <select name="worker_id">
-      <option value="">不关联工人</option>
-      {% for w in workers %}<option value="{{ w.id }}" {% if r and r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>{% endfor %}
-    </select>
-    <input name="amount" type="number" step="0.01" value="{{ r.amount if r else '' }}" placeholder="{{ t.expense_amount }}" required>
-    <input name="date" type="date" value="{{ r.date if r else '' }}" placeholder="{{ t.date }}" required>
-    <textarea name="note" placeholder="{{ t.expenses_note }}">{{ r.note if r else '' }}</textarea>
-    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
-  </form>
-</div>
-""",
+
+# ———— 账号安全页（保持原有功能） ————
 "account_security.html": """{% extends "base.html" %}
 {% block title %}账号安全 · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -655,13 +689,13 @@ def init_db():
         cur.execute("""CREATE TABLE IF NOT EXISTS expenses(
             id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
-        # 兜底：确保列存在
+        # 兜底列
         ensure_column(c, "workers", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "card_rentals", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "salaries", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "expenses", "status", "INTEGER DEFAULT 1", 1)
-        # 新增：银行卡公司字段
+        # 新增：银行卡公司
         ensure_column(c, "bank_accounts", "card_company", "TEXT", "")
 
         # 默认管理员
@@ -951,7 +985,7 @@ def export_bank_accounts():
     mem = io.BytesIO(out.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="bank_accounts.csv")
 
-# ----------------------- 工具：根据银行信息查找/创建 bank_account -----------------------
+# ----------------------- 工具：找/建银行账户（卡公司可写入） -----------------------
 def get_or_create_bank_account(bank_name:str, account_no:str, card_company:str):
     bank_name = (bank_name or "").strip()
     account_no = (account_no or "").strip()
@@ -961,19 +995,17 @@ def get_or_create_bank_account(bank_name:str, account_no:str, card_company:str):
     with conn() as c:
         ex = c.execute("SELECT id, card_company FROM bank_accounts WHERE bank_name=? AND account_no=?", (bank_name, account_no)).fetchone()
         if ex:
-            # 若原记录未填卡公司而本次提供了，则补齐
             if (not ex["card_company"]) and card_company:
                 c.execute("UPDATE bank_accounts SET card_company=? WHERE id=?", (card_company, ex["id"]))
                 c.commit()
             return ex["id"]
-        # 不存在则创建（holder 置空、status=1）
         c.execute("""INSERT INTO bank_accounts(bank_name, account_no, holder, status, created_at, card_company)
                      VALUES(?,?,?,?,?,?)""", (bank_name, account_no, "", 1, datetime.utcnow().isoformat(), card_company))
         c.commit()
         nid = c.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
         return nid
 
-# ----------------------- 银行卡租金（改为在弹窗内直填银行信息） -----------------------
+# ----------------------- 银行卡租金 -----------------------
 @app.get("/card-rentals")
 def card_rentals_list():
     if require_login(): return require_login()
@@ -988,7 +1020,6 @@ def card_rentals_list():
 @app.get("/card-rentals/add")
 def card_rentals_add_form():
     if require_login(): return require_login()
-    # 直接返回填写表单（无需预加载银行下拉）
     return render_template("partials/card_rentals_form.html")
 
 @app.post("/card-rentals/add")
@@ -1002,9 +1033,7 @@ def card_rentals_add():
     end_date     = request.form.get("end_date","")
     note         = request.form.get("note","")
 
-    # 找或建银行账户
     bank_account_id = get_or_create_bank_account(bank_name, account_no, card_company)
-
     with conn() as c:
         c.execute("""INSERT INTO card_rentals(bank_account_id, monthly_rent, start_date, end_date, note, status, created_at)
                      VALUES(?,?,?,?,?,1,?)""",
@@ -1037,9 +1066,7 @@ def card_rentals_edit(rid):
     end_date     = request.form.get("end_date","")
     note         = request.form.get("note","")
 
-    # 根据填写的新银行信息，找/建 bank_account，并把租金记录指向它
     bank_account_id = get_or_create_bank_account(bank_name, account_no, card_company)
-
     with conn() as c:
         c.execute("""UPDATE card_rentals
                      SET bank_account_id=?, monthly_rent=?, start_date=?, end_date=?, note=?
@@ -1074,7 +1101,7 @@ def export_card_rentals():
     mem = io.BytesIO(out.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="card_rentals.csv")
 
-# ----------------------- 出粮记录 -----------------------
+# ----------------------- 开销/出粮记录 -----------------------
 @app.get("/salaries")
 def salaries_list():
     if require_login(): return require_login()
@@ -1154,7 +1181,6 @@ def export_salaries():
     mem = io.BytesIO(out.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="salaries.csv")
 
-# ----------------------- 开销记录 -----------------------
 @app.get("/expenses")
 def expenses_list():
     if require_login(): return require_login()
