@@ -1,4 +1,4 @@
-# app.py – Luxury Royale Admin（合并版 · 操作按钮一排靠右 + 银行卡公司）
+# app.py – Luxury Royale Admin（完整版 · 含全部 partials · 按钮一排靠右 + 银行卡公司）
 from flask import Flask, request, render_template, redirect, url_for, session, flash, abort, send_file, Response
 from jinja2 import DictLoader, TemplateNotFound
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -144,7 +144,7 @@ td{padding:12px;border-bottom:1px solid var(--line)}
 tbody tr:hover{background: linear-gradient(90deg, color-mix(in oklab, var(--gold) 10%, transparent), transparent 60%) !important}
 tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 
-/* ===== 小/大弹窗省略若干，与原版一致（保留结构即可） ===== */
+/* 小/大弹窗（精简） */
 .modal-backdrop{position:fixed; inset:0; z-index:50; display:none; background:radial-gradient(1200px 600px at 15% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%), radial-gradient(1200px 600px at 120% 10%, color-mix(in oklab, var(--royal) 14%, transparent), transparent 60%), rgba(5,8,14,.62); backdrop-filter:blur(10px) saturate(140%)}
 .modal-backdrop.open{display:flex; align-items:center; justify-content:center; padding:22px}
 .modal{width:min(440px,100%); border-radius:var(--radius); padding:18px; background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), #0e1528; border:1px solid rgba(255,255,255,.14); box-shadow:0 34px 80px rgba(0,0,0,.58); opacity:0; transform:translateY(10px) scale(.985); transition:opacity .18s ease, transform .18s ease; position:relative;}
@@ -182,7 +182,7 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=132">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=133">
 </head>
 <body class="luxury">
   <header class="topbar">
@@ -228,7 +228,7 @@ TEMPLATES = {
     <div class="modal">
       <h3>确认操作</h3>
       <p id="confirmText">确定要执行该操作吗？</p>
-      <div class="modal-actions">
+      <div class="modal-actions" style="display:flex;gap:10px;justify-content:flex-end">
         <button id="confirmCancel" class="btn" type="button">取消</button>
         <button id="confirmOk" class="btn btn-delete" type="button">🗑️ 确认删除</button>
       </div>
@@ -243,7 +243,7 @@ TEMPLATES = {
         <button id="bigClose" class="big-close" type="button">✖</button>
       </div>
       <div id="bigContent" class="big-body">
-        <div style="display:flex;align-items:center;gap:10px"><span class="spinner"></span> 等待加载…</div>
+        <div class="panel">等待加载…</div>
       </div>
     </div>
   </div>
@@ -581,6 +581,8 @@ TEMPLATES = {
 </div>
 {% endblock %}
 """,
+
+# ———— 账号安全 partials ————
 "partials/account_credentials_form.html": """
 <div class="panel">
   <h2>🧑‍💻 修改登录账号/密码</h2>
@@ -617,6 +619,84 @@ TEMPLATES = {
     <input name="target_username" placeholder="目标用户名" required>
     <input name="new_password" type="password" placeholder="新密码" required>
     <button class="btn btn-delete" type="submit">💾 {{ t.save }}</button>
+  </form>
+</div>
+""",
+
+# ———— 业务 partials：全部补齐（避免 TemplateNotFound） ————
+"partials/workers_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑工人' if r else '➕ 新增工人' }}</h2>
+  <form class="form" method="post" action="{{ url_for('workers_edit', wid=r.id) if r else url_for('workers_add') }}">
+    <input name="name" value="{{ r.name if r else '' }}" placeholder="{{ t.name }}" required>
+    <input name="company" value="{{ r.company if r else '' }}" placeholder="{{ t.company }}">
+    <input name="commission" type="number" step="0.01" value="{{ r.commission if r else '' }}" placeholder="{{ t.commission }}">
+    <input name="expenses" type="number" step="0.01" value="{{ r.expenses if r else '' }}" placeholder="{{ t.expenses }}">
+    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
+  </form>
+</div>
+""",
+"partials/bank_accounts_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑银行账户' if r else '➕ 新增银行账户' }}</h2>
+  <form class="form" method="post" action="{{ url_for('bank_accounts_edit', bid=r.id) if r else url_for('bank_accounts_add') }}">
+    <input name="bank_name" value="{{ r.bank_name if r else '' }}" placeholder="银行名" required>
+    <input name="account_no" value="{{ r.account_no if r else '' }}" placeholder="账号" required>
+    <input name="holder" value="{{ r.holder if r else '' }}" placeholder="户名" required>
+    <input name="card_company" value="{{ r.card_company if r else '' }}" placeholder="银行卡公司（如 Visa / Master / 银联）">
+    <select name="status">
+      <option value="1" {% if r and r.status==1 %}selected{% endif %}>{{ t.active }}</option>
+      <option value="0" {% if r and r.status==0 %}selected{% endif %}>{{ t.inactive }}</option>
+    </select>
+    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
+  </form>
+</div>
+""",
+"partials/card_rentals_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑银行卡租金' if r else '➕ 新增银行卡租金' }}</h2>
+  <form class="form" method="post" action="{{ url_for('card_rentals_edit', rid=r.id) if r else url_for('card_rentals_add') }}">
+    <input name="bank_name"    value="{{ r.bank_name if r else '' }}" placeholder="银行名称" required>
+    <input name="account_no"   value="{{ r.account_no if r else '' }}" placeholder="银行账号" required>
+    <input name="card_company" value="{{ r.card_company if r else '' }}" placeholder="银行卡公司（如 Visa / Master / 银联）">
+    <input name="monthly_rent" type="number" step="0.01" value="{{ r.monthly_rent if r else '' }}" placeholder="月租金" required>
+    <input name="start_date"   type="date" value="{{ r.start_date if r else '' }}" placeholder="开始日期">
+    <input name="end_date"     type="date" value="{{ r.end_date if r else '' }}" placeholder="结束日期">
+    <textarea name="note" placeholder="备注">{{ r.note if r else '' }}</textarea>
+    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
+  </form>
+</div>
+""",
+"partials/salaries_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑出粮记录' if r else '➕ 新增出粮记录' }}</h2>
+  <form class="form" method="post" action="{{ url_for('salaries_edit', sid=r.id) if r else url_for('salaries_add') }}">
+    <select name="worker_id">
+      {% for w in workers %}
+        <option value="{{ w.id }}" {% if r and r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>
+      {% endfor %}
+    </select>
+    <input name="amount" type="number" step="0.01" value="{{ r.amount if r else '' }}" placeholder="{{ t.salary_amount }}" required>
+    <input name="pay_date" type="date" value="{{ r.pay_date if r else '' }}" placeholder="{{ t.pay_date }}" required>
+    <textarea name="note" placeholder="{{ t.note }}">{{ r.note if r else '' }}</textarea>
+    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
+  </form>
+</div>
+""",
+"partials/expenses_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑开销记录' if r else '➕ 新增开销记录' }}</h2>
+  <form class="form" method="post" action="{{ url_for('expenses_edit', eid=r.id) if r else url_for('expenses_add') }}">
+    <select name="worker_id">
+      <option value="">不关联工人</option>
+      {% for w in workers %}
+        <option value="{{ w.id }}" {% if r and r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>
+      {% endfor %}
+    </select>
+    <input name="amount" type="number" step="0.01" value="{{ r.amount if r else '' }}" placeholder="{{ t.expense_amount }}" required>
+    <input name="date" type="date" value="{{ r.date if r else '' }}" placeholder="{{ t.date }}" required>
+    <textarea name="note" placeholder="{{ t.expenses_note }}">{{ r.note if r else '' }}</textarea>
+    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
   </form>
 </div>
 """,
@@ -1101,7 +1181,7 @@ def export_card_rentals():
     mem = io.BytesIO(out.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="card_rentals.csv")
 
-# ----------------------- 开销/出粮记录 -----------------------
+# ----------------------- 出粮记录 -----------------------
 @app.get("/salaries")
 def salaries_list():
     if require_login(): return require_login()
@@ -1181,6 +1261,7 @@ def export_salaries():
     mem = io.BytesIO(out.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="salaries.csv")
 
+# ----------------------- 开销记录 -----------------------
 @app.get("/expenses")
 def expenses_list():
     if require_login(): return require_login()
