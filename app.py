@@ -1,4 +1,4 @@
-# app.py – Luxury Royale Admin（完整版 · 含全部 partials · 按钮一排靠右 + 银行卡公司）
+# app.py – Luxury Royale Admin（按钮纯图标 + 紧凑高度 + 手机端两行折叠 · 完整版）
 from flask import Flask, request, render_template, redirect, url_for, session, flash, abort, send_file, Response
 from jinja2 import DictLoader, TemplateNotFound
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -83,7 +83,7 @@ body{
     0 12px 28px rgba(0,0,0,.35);
 }
 
-/* 概览卡片与通用面板 */
+/* 概览卡片与通用面板（略） */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:14px 0}
 .card,.panel{
   position:relative;
@@ -98,7 +98,7 @@ body{
 }
 .card-title{font-size:12px;color:var(--muted)} .card-value{font-size:30px;margin-top:8px;letter-spacing:.3px}
 
-/* 表单与按钮 */
+/* 表单与按钮（基础） */
 .form{display:flex;flex-wrap:wrap;gap:10px}
 .form input,.form select,.form textarea,.form button{
   height:40px; padding:8px 12px; border-radius:14px;
@@ -127,24 +127,37 @@ body{
   border-color: rgba(239,71,111,.62) !important;
 }
 
-/* 启用/停用开关 */
-.toggle{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.08);font-weight:700;background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), rgba(18,26,44,.62);color:#f4f7ff}
-.toggle .dot{width:10px;height:10px;border-radius:50%}
-.toggle.on{border-color:#2a6a4c;background:#0d1f18;color:#ccffe9}.toggle.on .dot{background:var(--emerald)}
-.toggle.off{border-color:#5a1f2a;background:#241016;color:#ffd6e1}.toggle.off .dot{background:var(--ruby)}
+/* —— 操作列：一排靠右（纯图标 + 紧凑） —— */
+.actions-cell{ text-align:right; }
+.actions-inline{
+  display:flex; justify-content:flex-end; align-items:center;
+  gap:8px; flex-wrap:wrap;
+}
+.actions-inline form{ margin:0; display:inline-flex; }
 
-/* 表格 */
+/* 纯图标按钮（用于编辑/删除/启停） */
+.btn-icon{
+  width:34px; height:34px; padding:0;
+  border-radius:12px;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:16px; line-height:1;
+}
+.btn-icon:hover{ transform:translateY(-1px) }
+.btn-icon:active{ transform:translateY(0) }
+
+/* 表格更紧凑 */
 .table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);box-shadow:0 28px 68px rgba(0,0,0,.52)}
 table{border-collapse:separate;border-spacing:0;width:100%}
 th{
   position:sticky; top:0; background:rgba(16,24,44,.92);backdrop-filter:blur(4px);
-  font-weight:700; font-size:12px; letter-spacing:.3px; color:#d8e3ff; border-bottom:1px solid var(--line); text-align:left; padding:12px
+  font-weight:700; font-size:12px; letter-spacing:.3px; color:#d8e3ff;
+  border-bottom:1px solid var(--line); text-align:left; padding:10px;
 }
-td{padding:12px;border-bottom:1px solid var(--line)}
+td{padding:10px;border-bottom:1px solid var(--line)}
 tbody tr:hover{background: linear-gradient(90deg, color-mix(in oklab, var(--gold) 10%, transparent), transparent 60%) !important}
 tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 
-/* 小/大弹窗（精简） */
+/* 小/大弹窗（略保留） */
 .modal-backdrop{position:fixed; inset:0; z-index:50; display:none; background:radial-gradient(1200px 600px at 15% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%), radial-gradient(1200px 600px at 120% 10%, color-mix(in oklab, var(--royal) 14%, transparent), transparent 60%), rgba(5,8,14,.62); backdrop-filter:blur(10px) saturate(140%)}
 .modal-backdrop.open{display:flex; align-items:center; justify-content:center; padding:22px}
 .modal{width:min(440px,100%); border-radius:var(--radius); padding:18px; background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), #0e1528; border:1px solid rgba(255,255,255,.14); box-shadow:0 34px 80px rgba(0,0,0,.58); opacity:0; transform:translateY(10px) scale(.985); transition:opacity .18s ease, transform .18s ease; position:relative;}
@@ -158,16 +171,14 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 .big-close{padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 70%); color:var(--text); cursor:pointer;}
 .big-body{padding:20px}
 
-/* —— 操作列：一排靠右 —— */
-.actions-cell{ text-align:right; }
-.actions-inline{
-  display:flex; justify-content:flex-end; align-items:center;
-  gap:8px; flex-wrap:wrap;
-}
-.actions-inline form{ margin:0; }
-.actions-inline .btn,
-.actions-inline .toggle{
-  height:34px; padding:0 12px; border-radius:12px;
+/* —— 手机端优化：操作列自动折两行 —— */
+@media (max-width: 640px){
+  th, td { padding:8px; }
+  .actions-inline{ gap:6px; }
+  /* 让第一个动作（通常是启停）独占一行靠右，其余图标在下一行 */
+  .actions-inline > form:first-child{ order:0; flex-basis:100%; display:flex; justify-content:flex-end; }
+  .actions-inline > *:not(:first-child){ order:1; }
+  .btn-icon{ width:32px; height:32px; font-size:15px; border-radius:10px; }
 }
 """
 
@@ -182,7 +193,7 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=133">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=140">
 </head>
 <body class="luxury">
   <header class="topbar">
@@ -230,7 +241,7 @@ TEMPLATES = {
       <p id="confirmText">确定要执行该操作吗？</p>
       <div class="modal-actions" style="display:flex;gap:10px;justify-content:flex-end">
         <button id="confirmCancel" class="btn" type="button">取消</button>
-        <button id="confirmOk" class="btn btn-delete" type="button">🗑️ 确认删除</button>
+        <button id="confirmOk" class="btn btn-delete" type="button" title="确认删除" aria-label="确认删除">🗑️</button>
       </div>
     </div>
   </div>
@@ -359,7 +370,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ===== 列表页：状态+编辑+删除 一排靠右 =====
+# ===== 列表页：状态/编辑/删除 纯图标，一排靠右，手机端两行 =====
 "workers_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.workers }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -385,13 +396,14 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('workers_toggle', wid=r.id) }}">
-                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit">
-                  <span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}
+                <button class="btn btn-icon" type="submit"
+                        title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
+                  {{ '✅' if r.status==1 else '🚫' }}
                 </button>
               </form>
-              <a class="btn btn-edit js-open-modal" href="{{ url_for('workers_edit_form', wid=r.id) }}" data-title="✏️ 编辑工人">✏️ {{ t.edit }}</a>
+              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('workers_edit_form', wid=r.id) }}" data-title="✏️ 编辑工人" title="编辑" aria-label="编辑">✏️</a>
               <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
-                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+                <button class="btn btn-delete btn-icon" type="submit" title="删除" aria-label="删除">🗑️</button>
               </form>
             </div>
           </td>
@@ -428,11 +440,14 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('bank_accounts_toggle', bid=r.id) }}">
-                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button>
+                <button class="btn btn-icon" type="submit"
+                        title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
+                  {{ '✅' if r.status==1 else '🚫' }}
+                </button>
               </form>
-              <a class="btn btn-edit js-open-modal" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}" data-title="✏️ 编辑银行账户">✏️ {{ t.edit }}</a>
+              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}" data-title="✏️ 编辑银行账户" title="编辑" aria-label="编辑">✏️</a>
               <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
-                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+                <button class="btn btn-delete btn-icon" type="submit" title="删除" aria-label="删除">🗑️</button>
               </form>
             </div>
           </td>
@@ -469,11 +484,14 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('card_rentals_toggle', rid=r.id) }}">
-                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button>
+                <button class="btn btn-icon" type="submit"
+                        title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
+                  {{ '✅' if r.status==1 else '🚫' }}
+                </button>
               </form>
-              <a class="btn btn-edit js-open-modal" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}" data-title="✏️ 编辑银行卡租金">✏️ {{ t.edit }}</a>
+              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}" data-title="✏️ 编辑银行卡租金" title="编辑" aria-label="编辑">✏️</a>
               <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
-                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+                <button class="btn btn-delete btn-icon" type="submit" title="删除" aria-label="删除">🗑️</button>
               </form>
             </div>
           </td>
@@ -509,11 +527,14 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}">
-                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button>
+                <button class="btn btn-icon" type="submit"
+                        title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
+                  {{ '✅' if r.status==1 else '🚫' }}
+                </button>
               </form>
-              <a class="btn btn-edit js-open-modal" href="{{ url_for('salaries_edit_form', sid=r.id) }}" data-title="✏️ 编辑出粮记录">✏️ {{ t.edit }}</a>
+              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('salaries_edit_form', sid=r.id) }}" data-title="✏️ 编辑出粮记录" title="编辑" aria-label="编辑">✏️</a>
               <form method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
-                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+                <button class="btn btn-delete btn-icon" type="submit" title="删除" aria-label="删除">🗑️</button>
               </form>
             </div>
           </td>
@@ -549,11 +570,14 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('expenses_toggle', eid=r.id) }}">
-                <button class="toggle {{ 'on' if r.status==1 else 'off' }}" type="submit"><span class="dot"></span>{{ t.active if r.status==1 else t.inactive }}</button>
+                <button class="btn btn-icon" type="submit"
+                        title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
+                  {{ '✅' if r.status==1 else '🚫' }}
+                </button>
               </form>
-              <a class="btn btn-edit js-open-modal" href="{{ url_for('expenses_edit_form', eid=r.id) }}" data-title="✏️ 编辑开销记录">✏️ {{ t.edit }}</a>
+              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('expenses_edit_form', eid=r.id) }}" data-title="✏️ 编辑开销记录" title="编辑" aria-label="编辑">✏️</a>
               <form method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
-                <button class="btn btn-delete" type="submit">🗑️ {{ t.delete }}</button>
+                <button class="btn btn-delete btn-icon" type="submit" title="删除" aria-label="删除">🗑️</button>
               </form>
             </div>
           </td>
@@ -566,7 +590,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ———— 账号安全页（保持原有功能） ————
+# ———— 账号安全页（与原版一致） ————
 "account_security.html": """{% extends "base.html" %}
 {% block title %}账号安全 · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -582,7 +606,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ———— 账号安全 partials ————
+# ———— partials（保持原有功能，无需改动） ————
 "partials/account_credentials_form.html": """
 <div class="panel">
   <h2>🧑‍💻 修改登录账号/密码</h2>
@@ -623,7 +647,6 @@ TEMPLATES = {
 </div>
 """,
 
-# ———— 业务 partials：全部补齐（避免 TemplateNotFound） ————
 "partials/workers_form.html": """
 <div class="panel">
   <h2 style="margin-top:0">{{ '✏️ 编辑工人' if r else '➕ 新增工人' }}</h2>
@@ -769,14 +792,13 @@ def init_db():
         cur.execute("""CREATE TABLE IF NOT EXISTS expenses(
             id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
-        # 兜底列
+        # 兜底列 & 卡公司
         ensure_column(c, "workers", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "status", "INTEGER DEFAULT 1", 1)
+        ensure_column(c, "bank_accounts", "card_company", "TEXT", "")
         ensure_column(c, "card_rentals", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "salaries", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "expenses", "status", "INTEGER DEFAULT 1", 1)
-        # 新增：银行卡公司
-        ensure_column(c, "bank_accounts", "card_company", "TEXT", "")
 
         # 默认管理员
         cur.execute("SELECT COUNT(*) n FROM users")
@@ -826,7 +848,7 @@ def dashboard():
         total_expenses = c.execute("SELECT IFNULL(SUM(amount),0) s FROM expenses").fetchone()["s"]
     return render_template("dashboard.html", total_workers=total_workers,total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
 
-# ----------------------- 账号安全 -----------------------
+# ----------------------- 账号安全（保持不变） -----------------------
 @app.get("/account-security")
 def account_security():
     if require_login(): return require_login()
@@ -866,7 +888,7 @@ def account_change_password_post():
     if require_login(): return require_login()
     old_pw = request.form.get("old_password",""); new_pw = request.form.get("new_password","")
     with conn() as c:
-        u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"],)).fetchone()
+        u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"]),).fetchone()
         if not u or not check_password_hash(u["password_hash"], old_pw):
             flash("旧密码不正确", "error"); return redirect(url_for("account_security"))
         c.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new_pw), u["id"]))
@@ -1065,7 +1087,7 @@ def export_bank_accounts():
     mem = io.BytesIO(out.getvalue().encode("utf-8"))
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="bank_accounts.csv")
 
-# ----------------------- 工具：找/建银行账户（卡公司可写入） -----------------------
+# ----------------------- 银行卡租金 -----------------------
 def get_or_create_bank_account(bank_name:str, account_no:str, card_company:str):
     bank_name = (bank_name or "").strip()
     account_no = (account_no or "").strip()
@@ -1085,7 +1107,6 @@ def get_or_create_bank_account(bank_name:str, account_no:str, card_company:str):
         nid = c.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
         return nid
 
-# ----------------------- 银行卡租金 -----------------------
 @app.get("/card-rentals")
 def card_rentals_list():
     if require_login(): return require_login()
@@ -1112,7 +1133,6 @@ def card_rentals_add():
     start_date   = request.form.get("start_date","")
     end_date     = request.form.get("end_date","")
     note         = request.form.get("note","")
-
     bank_account_id = get_or_create_bank_account(bank_name, account_no, card_company)
     with conn() as c:
         c.execute("""INSERT INTO card_rentals(bank_account_id, monthly_rent, start_date, end_date, note, status, created_at)
@@ -1145,7 +1165,6 @@ def card_rentals_edit(rid):
     start_date   = request.form.get("start_date","")
     end_date     = request.form.get("end_date","")
     note         = request.form.get("note","")
-
     bank_account_id = get_or_create_bank_account(bank_name, account_no, card_company)
     with conn() as c:
         c.execute("""UPDATE card_rentals
