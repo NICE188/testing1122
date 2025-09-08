@@ -1,4 +1,4 @@
-# app.py – Admin Royale（修复 account_security BuildError + 登录页山景玻璃风 + 未登录隐藏侧栏 + 亮/暗主题 + 操作列右对齐）
+# app.py – Admin Royale（登录页使用自定义背景图 + 玻璃卡片 + 未登录隐藏侧栏 + 亮/暗主题 + 操作列右对齐）
 from flask import Flask, request, render_template, redirect, url_for, session, flash, abort, send_file, Response
 from jinja2 import DictLoader, TemplateNotFound
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -10,6 +10,9 @@ ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 SECRET_KEY    = os.environ.get("SECRET_KEY", "dev-secret")
 
+# 可选：用环境变量覆盖登录背景图
+LOGIN_BG_URL = os.environ.get("LOGIN_BG_URL", "https://i.imgur.com/KYuKCyo.png")
+
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 app.permanent_session_lifetime = timedelta(days=30)
@@ -17,159 +20,164 @@ app.permanent_session_lifetime = timedelta(days=30)
 @app.get("/health")
 def health(): return "ok", 200
 
-# ----------------------- 样式（含登录页山景插画 & Light/Dark） -----------------------
-STYLE_CSS = r""":root{
+# ----------------------- 样式（登录页背景 = 你的图片） -----------------------
+STYLE_CSS = rf""":root{{
   --bg:#0a0c12; --bg-2:#0d111b; --surface:#0f1522; --line:#212a3d;
   --text:#eaeef7; --muted:#a8b4cc;
   --gold:#f5d479; --gold-2:#ffd166;
   --royal:#8f7aff; --emerald:#25d0a5; --ruby:#ef476f;
   --radius:16px;
-}
-*{box-sizing:border-box} html,body{height:100%}
-body{
+  /* 登录页背景图（可改成你自己的地址） */
+  --login-bg: url('{LOGIN_BG_URL}');
+}}
+*{{box-sizing:border-box}} html,body{{height:100%}}
+body{{
   margin:0; color:var(--text);
   font:14px/1.6 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
   background:
     radial-gradient(1400px 700px at 12% -10%, color-mix(in oklab, var(--gold) 14%, transparent), transparent 60%),
     radial-gradient(1400px 700px at 115% 0%, color-mix(in oklab, var(--royal) 14%, transparent), transparent 60%),
     linear-gradient(180deg, var(--bg), var(--bg-2) 1200px);
-}
+}}
 
 /* 顶部栏（登录页隐藏） */
-.topbar{
+.topbar{{
   position:sticky; top:0; z-index:30;
   display:flex; align-items:center; justify-content:space-between;
   padding:12px 16px; border-bottom:1px solid var(--line);
   background:rgba(10,14,24,.72); backdrop-filter:blur(10px) saturate(140%);
   box-shadow:0 8px 28px rgba(0,0,0,.35);
-}
-.brand{display:flex;align-items:center;gap:10px;font-weight:900; letter-spacing:.3px}
-.brand::before{content:"♛"; font-size:16px; filter: drop-shadow(0 6px 18px rgba(245,212,121,.35))}
-.brand::after{content:""; width:7px; height:7px; border-radius:50%;
-  background:conic-gradient(from 0deg, var(--gold), var(--royal), var(--gold)); box-shadow:0 0 10px var(--gold)}
+}}
+.brand{{display:flex;align-items:center;gap:10px;font-weight:900; letter-spacing:.3px}}
+.brand::before{{content:"♛"; font-size:16px; filter: drop-shadow(0 6px 18px rgba(245,212,121,.35))}}
+.brand::after{{content:""; width:7px; height:7px; border-radius:50%;
+  background:conic-gradient(from 0deg, var(--gold), var(--royal), var(--gold)); box-shadow:0 0 10px var(--gold)}}
 
-/* 登录页全屏 Hero（山景插画 + 圆角面板） */
-.auth-hero{ min-height:100vh; display:grid; place-items:center; padding:34px 20px }
-.auth-frame{
-  width:min(1120px,96vw); height:min(78vh,640px);
+/* 登录页：全屏背景图 + 玻璃卡片 + 暗层遮罩 */
+.auth-hero{{ min-height:100vh; display:grid; place-items:center; padding:34px 20px }}
+.auth-frame{{
+  width:min(1120px,96vw); height:min(78vh,720px);
   border-radius:28px; position:relative; overflow:hidden;
   box-shadow:0 40px 120px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
-  background: radial-gradient(1200px 520px at 50% -12%, rgba(255,255,255,.06), transparent 60%),
-             linear-gradient(180deg, rgba(6,10,18,.14), rgba(6,10,18,.22));
-}
-.auth-frame::before{ content:""; position:absolute; inset:0; z-index:0;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 600' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='sky' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23c7d6ff'/%3E%3Cstop offset='1' stop-color='%238aa6ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23sky)' width='1200' height='600'/%3E%3Cpath fill='%238c8dff' d='M0 360 L120 320 260 350 380 290 520 360 680 300 820 360 980 320 1200 360 1200 600 0 600z'/%3E%3Cpath fill='%235553c9' d='M0 420 L140 390 270 430 410 400 560 430 710 410 860 440 1020 420 1200 440 1200 600 0 600z'/%3E%3Cpath fill='%23152132' d='M0 520 C120 500 220 560 360 540 C520 520 620 580 760 560 C860 546 980 570 1200 560 L1200 600 L0 600z'/%3E%3C/svg%3E");
-  background-size:cover; background-position:center; filter:saturate(110%) contrast(105%) }
-.auth-card{
+}}
+/* 背景图 */
+.auth-frame::before{{
+  content:""; position:absolute; inset:0; z-index:0;
+  background-image: var(--login-bg);
+  background-size:cover; background-position:center; background-repeat:no-repeat;
+  filter: saturate(110%) contrast(105%) brightness(90%);
+}}
+/* 顶部&底部暗层，让表单更清晰 */
+.auth-frame::after{{
+  content:""; position:absolute; inset:0; z-index:1;
+  background: linear-gradient(180deg, rgba(0,0,0,.45), rgba(0,0,0,.25) 30%, rgba(0,0,0,.45));
+}}
+/* 玻璃卡片 */
+.auth-card{{
   position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-  width:min(560px,92vw); border-radius:22px; padding:22px 22px 20px;
-  background:color-mix(in oklab, #ffffff 8%, transparent);
+  width:min(560px,92vw); border-radius:22px; padding:22px 22px 20px; z-index:2;
+  background:color-mix(in oklab, #ffffff 12%, transparent);
   border:1px solid rgba(255,255,255,.28);
   backdrop-filter: blur(16px) saturate(130%);
-  box-shadow:0 24px 60px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.35); z-index:2;
-}
-.auth-title{ text-align:center; font-size:22px; font-weight:900; letter-spacing:.4px; margin:4px 0 14px; }
-.auth-form{ display:grid; gap:12px }
-.input{ position:relative; display:flex; align-items:center; height:44px; border-radius:14px;
-  border:1px solid rgba(255,255,255,.36); background:linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.12)); overflow:hidden }
-.input input{ flex:1; height:44px; background:transparent; border:0; outline:0; color:#fff; padding:0 40px 0 14px; font-size:14px }
-.input .i-right{ position:absolute; right:10px; width:22px; height:22px; opacity:.9; pointer-events:none; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)) }
-.auth-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px; color:#e8ecff }
-.auth-row a{ color:#e8ecff; text-decoration:none; opacity:.9 } .auth-row a:hover{ text-decoration:underline }
-.auth-primary{ height:44px; border-radius:999px; border:1px solid rgba(255,255,255,.45);
+  box-shadow:0 24px 60px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.35);
+}}
+.auth-title{{ text-align:center; font-size:22px; font-weight:900; letter-spacing:.4px; margin:4px 0 14px; }}
+.auth-form{{ display:grid; gap:12px }}
+.input{{ position:relative; display:flex; align-items:center; height:44px; border-radius:14px;
+  border:1px solid rgba(255,255,255,.36); background:linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.12)); overflow:hidden }}
+.input input{{ flex:1; height:44px; background:transparent; border:0; outline:0; color:#fff; padding:0 40px 0 14px; font-size:14px }}
+.input .i-right{{ position:absolute; right:10px; width:22px; height:22px; opacity:.9; pointer-events:none; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)) }}
+.auth-row{{ display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px; color:#e8ecff }}
+.auth-row a{{ color:#e8ecff; text-decoration:none; opacity:.9 }} .auth-row a:hover{{ text-decoration:underline }}
+.auth-primary{{ height:44px; border-radius:999px; border:1px solid rgba(255,255,255,.45);
   background:linear-gradient(180deg, rgba(255,255,255,.65), rgba(255,255,255,.35)); color:#0f1730;
-  font-weight:800; letter-spacing:.2px; cursor:pointer; box-shadow:0 16px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.8) }
-.auth-primary:hover{ transform:translateY(-1px) } .auth-primary:active{ transform:translateY(0) }
-.auth-foot{ text-align:center; font-size:12px; margin-top:2px; color:#e8ecff }
-.auth-flash{ margin-bottom:12px; border-radius:14px; padding:10px 12px; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18) }
+  font-weight:800; letter-spacing:.2px; cursor:pointer; box-shadow:0 16px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.8) }}
+.auth-primary:hover{{ transform:translateY(-1px) }} .auth-primary:active{{ transform:translateY(0) }}
+.auth-foot{{ text-align:center; font-size:12px; margin-top:2px; color:#e8ecff }}
+.auth-flash{{ margin-bottom:12px; border-radius:14px; padding:10px 12px; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18) }}
 
-/* 常规布局（登录后） */
-.layout{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 56px)}
-.sidebar{ position:sticky; top:56px; height:calc(100vh - 56px);
-  padding:14px 12px; background:linear-gradient(180deg, rgba(22,26,44,.66), rgba(12,18,34,.86)); border-right:1px solid var(--line) }
-.main{padding:22px}
-
-/* 侧栏菜单 */
-.side-menu{display:grid;gap:10px}
-.side-menu a{ display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:var(--radius);
+/* 登录后布局 */
+.layout{{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 56px)}}
+.sidebar{{ position:sticky; top:56px; height:calc(100vh - 56px);
+  padding:14px 12px; background:linear-gradient(180deg, rgba(22,26,44,.66), rgba(12,18,34,.86)); border-right:1px solid var(--line) }}
+.main{{padding:22px}}
+.side-menu{{display:grid;gap:10px}}
+.side-menu a{{ display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:var(--radius);
   border:1px solid rgba(255,255,255,.06); text-decoration:none; color:var(--text);
-  background:linear-gradient(180deg, rgba(255,255,255,.025), transparent 60%), rgba(16,22,38,.6); box-shadow:inset 0 1px 0 rgba(255,255,255,.04) }
-.side-menu a .icon{width:22px;text-align:center}
-.side-menu a:hover{border-color:#3d4f7c; background:rgba(22,30,50,.75); transform: translateY(-1px); transition: .18s}
-.side-menu a.active{ border-color: color-mix(in oklab, var(--gold) 38%, transparent);
+  background:linear-gradient(180deg, rgba(255,255,255,.025), transparent 60%), rgba(16,22,38,.6); box-shadow:inset 0 1px 0 rgba(255,255,255,.04) }}
+.side-menu a .icon{{width:22px;text-align:center}}
+.side-menu a:hover{{border-color:#3d4f7c; background:rgba(22,30,50,.75); transform: translateY(-1px); transition: .18s}}
+.side-menu a.active{{ border-color: color-mix(in oklab, var(--gold) 38%, transparent);
   background:linear-gradient(100deg, color-mix(in oklab, var(--gold) 18%, transparent), color-mix(in oklab, var(--royal) 12%, transparent)), rgba(22,30,50,.88);
-  box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--gold) 26%, transparent), 0 12px 28px rgba(0,0,0,.35) }
+  box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--gold) 26%, transparent), 0 12px 28px rgba(0,0,0,.35) }}
 
-/* 卡片与面板 */
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:14px 0}
-.card,.panel{ position:relative; background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);
-  border:1px solid rgba(255,255,255,.08); border-radius:var(--radius); padding:16px; box-shadow:0 28px 70px rgba(0,0,0,.55) }
-.card::before{ content:""; position:absolute; left:12px; right:12px; top:10px; height:2px; border-radius:2px;
-  background:linear-gradient(90deg, color-mix(in oklab, var(--gold) 60%, transparent), transparent); opacity:.85 }
-
-/* 表单/按钮 */
-.form{display:flex;flex-wrap:wrap;gap:10px}
-.form input,.form select,.form textarea,.form button{ height:40px; padding:8px 12px; border-radius:14px; border:1px solid var(--line); background:#0e172b; color:var(--text); outline:0 }
-.form textarea{height:auto;min-height:96px;width:100%;resize:vertical}
-.form input:focus,.form select:focus,.form textarea:focus{ border-color:#5c6ea1; box-shadow:0 0 0 3px rgba(92,110,161,.28), inset 0 1px 0 rgba(255,255,255,.06) }
-.btn{ display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px; border-radius:14px; border:1px solid rgba(255,255,255,.08);
+/* 卡片/面板/表单/按钮（省略注释保持原样） */
+.cards{{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:14px 0}}
+.card,.panel{{ position:relative; background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);
+  border:1px solid rgba(255,255,255,.08); border-radius:var(--radius); padding:16px; box-shadow:0 28px 70px rgba(0,0,0,.55) }}
+.card::before{{ content:""; position:absolute; left:12px; right:12px; top:10px; height:2px; border-radius:2px;
+  background:linear-gradient(90deg, color-mix(in oklab, var(--gold) 60%, transparent), transparent); opacity:.85 }}
+.form{{display:flex;flex-wrap:wrap;gap:10px}}
+.form input,.form select,.form textarea,.form button{{ height:40px; padding:8px 12px; border-radius:14px; border:1px solid var(--line); background:#0e172b; color:var(--text); outline:0 }}
+.form textarea{{height:auto;min-height:96px;width:100%;resize:vertical}}
+.form input:focus,.form select:focus,.form textarea:focus{{ border-color:#5c6ea1; box-shadow:0 0 0 3px rgba(92,110,161,.28), inset 0 1px 0 rgba(255,255,255,.06) }}
+.btn{{ display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px; border-radius:14px; border:1px solid rgba(255,255,255,.08);
   background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), rgba(16,22,38,.6); color:var(--text); text-decoration:none; cursor:pointer;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.28); transition:.18s }
-.btn:hover{ transform: translateY(-1px) } .btn:active{ transform: translateY(0) }
-.btn-edit{ background: linear-gradient(135deg, color-mix(in oklab, var(--royal) 55%, transparent), color-mix(in oklab, var(--gold) 38%, transparent)), #141f38 !important;
-  border-color: color-mix(in oklab, var(--royal) 55%, transparent) !important }
-.btn-delete{ background: linear-gradient(135deg, rgba(239,71,111,.62), rgba(244,114,182,.55)), #2a1416 !important; border-color: rgba(239,71,111,.62) !important }
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.28); transition:.18s }}
+.btn:hover{{ transform: translateY(-1px) }} .btn:active{{ transform: translateY(0) }}
+.btn-edit{{ background: linear-gradient(135deg, color-mix(in oklab, var(--royal) 55%, transparent), color-mix(in oklab, var(--gold) 38%, transparent)), #141f38 !important;
+  border-color: color-mix(in oklab, var(--royal) 55%, transparent) !important }}
+.btn-delete{{ background: linear-gradient(135deg, rgba(239,71,111,.62), rgba(244,114,182,.55)), #2a1416 !important; border-color: rgba(239,71,111,.62) !important }}
 
-/* 操作列：一排靠右（纯图标） */
-.actions-cell{ text-align:right } .actions-inline{ display:flex; justify-content:flex-end; align-items:center; gap:8px; flex-wrap:wrap }
-.actions-inline form{ margin:0; display:inline-flex } .btn-icon{ width:34px; height:34px; padding:0; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1 }
+/* 操作列一排靠右 + 纯图标按钮 */
+.actions-cell{{ text-align:right }} .actions-inline{{ display:flex; justify-content:flex-end; align-items:center; gap:8px; flex-wrap:wrap }}
+.actions-inline form{{ margin:0; display:inline-flex }} .btn-icon{{ width:34px; height:34px; padding:0; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1 }}
 
 /* 表格 */
-.table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);box-shadow:0 28px 68px rgba(0,0,0,.52)}
-table{border-collapse:separate;border-spacing:0;width:100%}
-th{ position:sticky; top:0; background:rgba(16,24,44,.92);backdrop-filter:blur(4px); font-weight:700; font-size:12px; letter-spacing:.3px; color:#d8e3ff; border-bottom:1px solid var(--line); text-align:left; padding:10px }
-td{padding:10px;border-bottom:1px solid var(--line)}
-tbody tr:hover{background: linear-gradient(90deg, color-mix(in oklab, var(--gold) 10%, transparent), transparent 60%) !important}
-tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+.table-wrap{{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);box-shadow:0 28px 68px rgba(0,0,0,.52)}}
+table{{border-collapse:separate;border-spacing:0;width:100%}}
+th{{ position:sticky; top:0; background:rgba(16,24,44,.92);backdrop-filter:blur(4px); font-weight:700; font-size:12px; letter-spacing:.3px; color:#d8e3ff; border-bottom:1px solid var(--line); text-align:left; padding:10px }}
+td{{padding:10px;border-bottom:1px solid var(--line)}}
+tbody tr:hover{{background: linear-gradient(90deg, color-mix(in oklab, var(--gold) 10%, transparent), transparent 60%) !important}}
+tbody tr:nth-child(even){{background:rgba(255,255,255,.02)}}
 
-/* 简易弹窗（确认 & 大弹窗） */
-.modal-backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60;
+/* 简易弹窗 */
+.modal-backdrop{{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60;
   background:radial-gradient(1200px 600px at 15% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%),
              radial-gradient(1200px 600px at 120% 10%, color-mix(in oklab, var(--royal) 14%, transparent), transparent 60%),
-             rgba(5,8,14,.62); backdrop-filter:blur(10px) saturate(140%) }
-.modal-backdrop.open{ display:flex }
-.big-backdrop{ position:fixed; inset:0; display:none; z-index:55;
+             rgba(5,8,14,.62); backdrop-filter:blur(10px) saturate(140%) }}
+.modal-backdrop.open{{ display:flex }}
+.big-backdrop{{ position:fixed; inset:0; display:none; z-index:55;
   background: radial-gradient(1800px 760px at 10% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%),
              radial-gradient(1600px 640px at 120% 0%, color-mix(in oklab, var(--royal) 16%, transparent), transparent 60%),
-             linear-gradient(180deg, rgba(6,10,18,.74), rgba(6,10,18,.64)); backdrop-filter: blur(14px) saturate(140%) }
-.big-backdrop.open{ display:flex; align-items:center; justify-content:center; padding:30px }
-.big-modal{ width:min(980px, 96vw); max-height:90vh; overflow:auto; position:relative; border-radius:20px;
+             linear-gradient(180deg, rgba(6,10,18,.74), rgba(6,10,18,.64)); backdrop-filter: blur(14px) saturate(140%) }}
+.big-backdrop.open{{ display:flex; align-items:center; justify-content:center; padding:30px }}
+.big-modal{{ width:min(980px, 96vw); max-height:90vh; overflow:auto; position:relative; border-radius:20px;
   background: linear-gradient(180deg, rgba(255,255,255,.08), transparent 58%), linear-gradient(180deg, #10182c, #0e1628);
-  border: 1px solid rgba(255,255,255,.16); box-shadow: 0 60px 160px rgba(0,0,0,.76) }
-.big-header{ position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; padding:14px 18px;
-  background: linear-gradient(180deg, rgba(18,26,44,.92), rgba(12,19,33,.86)); border-bottom: 1px solid rgba(255,255,255,.10); backdrop-filter: blur(8px) }
-.big-title{ font-weight:900; letter-spacing:.3px }
-.big-close{ padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 70%); color:var(--text); cursor:pointer }
-.big-body{ padding:18px }
+  border: 1px solid rgba(255,255,255,.16); box-shadow: 0 60px 160px rgba(0,0,0,.76) }}
+.big-header{{ position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; padding:14px 18px;
+  background: linear-gradient(180deg, rgba(18,26,44,.92), rgba(12,19,33,.86)); border-bottom: 1px solid rgba(255,255,255,.10); backdrop-filter: blur(8px) }}
+.big-title{{ font-weight:900; letter-spacing:.3px }} .big-close{{ padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 70%); color:var(--text); cursor:pointer }}
+.big-body{{ padding:18px }}
 
 /* 手机端 */
-@media (max-width: 640px){
-  .auth-frame{ height:520px } .auth-card{ width:min(520px,94vw) }
-  th, td { padding:8px } .actions-inline{ gap:6px } .btn-icon{ width:32px; height:32px; font-size:15px; border-radius:10px }
-}
+@media (max-width: 640px){{
+  .auth-frame{{ height:560px }} .auth-card{{ width:min(520px,94vw) }}
+  th, td {{ padding:8px }} .actions-inline{{ gap:6px }} .btn-icon{{ width:32px; height:32px; font-size:15px; border-radius:10px }}
+}}
 
-/* Light Mode 覆写 */
-:root[data-theme="light"]{
+/* Light Mode */
+:root[data-theme="light"]{{
   --bg:#f7f8fb; --bg-2:#eef1f7; --surface:#ffffff; --line:#d8dfec;
   --text:#0b1020; --muted:#5b6780; --gold:#c79f2b; --gold-2:#e2b941; --royal:#5e56ff; --emerald:#16a085; --ruby:#d24a64;
-}
-:root[data-theme="light"] .topbar{ background:rgba(255,255,255,.84); border-bottom:1px solid var(--line); box-shadow:0 8px 28px rgba(0,0,0,.08) }
-:root[data-theme="light"] .sidebar{ background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.98)); border-right:1px solid var(--line) }
-:root[data-theme="light"] .card, :root[data-theme="light"] .panel{ background:linear-gradient(180deg, rgba(0,0,0,.02), transparent 60%), var(--surface); border:1px solid rgba(0,0,0,.06); box-shadow:0 10px 30px rgba(0,0,0,.08) }
-:root[data-theme="light"] .btn{ border-color:rgba(0,0,0,.08); background:linear-gradient(180deg, rgba(0,0,0,.02), transparent 60%), rgba(255,255,255,.9); box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 8px 18px rgba(0,0,0,.08); color:var(--text) }
-:root[data-theme="light"] th{ background:rgba(255,255,255,.92); color:#303a58; border-bottom:1px solid var(--line) }
-:root[data-theme="light"] tbody tr:nth-child(even){ background:rgba(0,0,0,.02) }
-:root[data-theme="light"] .auth-card{ background:color-mix(in oklab, #ffffff 60%, transparent); color:#0b1020 }
+}}
+:root[data-theme="light"] .topbar{{ background:rgba(255,255,255,.84); border-bottom:1px solid var(--line); box-shadow:0 8px 28px rgba(0,0,0,.08) }}
+:root[data-theme="light"] .sidebar{{ background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.98)); border-right:1px solid var(--line) }}
+:root[data-theme="light"] .card, :root[data-theme="light"] .panel{{ background:linear-gradient(180deg, rgba(0,0,0,.02), transparent 60%), var(--surface); border:1px solid rgba(0,0,0,.06); box-shadow:0 10px 30px rgba(0,0,0,.08) }}
+:root[data-theme="light"] .btn{{ border-color:rgba(0,0,0,.08); background:linear-gradient(180deg, rgba(0,0,0,.02), transparent 60%), rgba(255,255,255,.9); box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 8px 18px rgba(0,0,0,.08); color:var(--text) }}
+:root[data-theme="light"] th{{ background:rgba(255,255,255,.92); color:#303a58; border-bottom:1px solid var(--line) }}
+:root[data-theme="light"] tbody tr:nth-child(even){{ background:rgba(0,0,0,.02) }}
+:root[data-theme="light"] .auth-card{{ background:color-mix(in oklab, #ffffff 60%, transparent); color:#0b1020 }}
 """
 
 @app.get("/static/style.css")
@@ -191,7 +199,7 @@ TEMPLATES = {
     } catch (e) {} })();
   </script>
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=201">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=310">
 </head>
 <body>
   {% set auth_mode = (not session.get('user_id')) and request.path.startswith('/login') %}
@@ -242,7 +250,7 @@ TEMPLATES = {
     </div>
   {% endif %}
 
-  <!-- 删除确认弹窗 -->
+  <!-- 删除确认 -->
   <div id="confirmBackdrop" class="modal-backdrop" aria-hidden="true">
     <div class="auth-card" style="max-width:480px; position:static; transform:none">
       <h3 style="margin:0 0 10px">确认操作</h3>
@@ -254,7 +262,7 @@ TEMPLATES = {
     </div>
   </div>
 
-  <!-- 大弹窗（加载 partial 表单） -->
+  <!-- 大弹窗 -->
   <div id="bigBackdrop" class="big-backdrop" aria-hidden="true">
     <div class="big-modal">
       <div class="big-header">
@@ -266,7 +274,7 @@ TEMPLATES = {
   </div>
 
   <script>
-    // 主题按钮
+    // 主题切换
     (function () {
       var btn = document.getElementById('themeToggle'); if (!btn) return;
       function cur(){return document.documentElement.getAttribute('data-theme')||'dark'}
@@ -294,7 +302,7 @@ TEMPLATES = {
       backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
     })();
 
-    // 大弹窗：加载 partial 表单 + AJAX 提交刷新
+    // 大弹窗加载 partial 表单 + 提交
     (function(){
       const big = document.getElementById('bigBackdrop');
       const content = document.getElementById('bigContent');
@@ -328,7 +336,7 @@ TEMPLATES = {
 </html>
 """,
 
-# ===== 登录页（山景 + 玻璃卡片） =====
+# ===== 登录页 =====
 "login.html": """{% extends "base.html" %}
 {% block title %}登录 · {{ t.app_name }}{% endblock %}
 {% block auth_content %}
@@ -361,7 +369,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ===== 业务页面（略） =====
+# ===== 业务页面（与之前一致） =====
 "dashboard.html": """{% extends "base.html" %}
 {% block title %}Dashboard · {{ t.app_name }}{% endblock %}
 {% block app_content %}
@@ -369,7 +377,7 @@ TEMPLATES = {
 <div class="cards">
   <div class="card"><div class="card-title">{{ t.total_workers }}</div><div class="card-value">{{ total_workers }}</div></div>
   <div class="card"><div class="card-title">{{ t.total_rentals }}</div><div class="card-value">{{ '%.2f'|format(total_rentals) }}</div></div>
-  <div class="card"><div class="card-title">{{ t.total_salaries }}</div><div class="card-value">{{ '%.2f'|format(total_salaries) }}</div></div>
+  <div class="card"><div class="card-title>{{ t.total_salaries }}</div><div class="card-value">{{ '%.2f'|format(total_salaries) }}</div></div>
   <div class="card"><div class="card-title">{{ t.total_expenses }}</div><div class="card-value">{{ '%.2f'|format(total_expenses) }}</div></div>
 </div>
 {% endblock %}
@@ -647,11 +655,10 @@ def _any(e):
 I18N = {
     "zh": {
         "app_name": "NepWin Ops",
-        "login_tip": "请输入管理员账号和密码。",
         "username": "用户名","password": "密码","login": "登录",
         "workers": "工人 / 平台","bank_accounts": "银行账户","card_rentals": "银行卡租金",
         "salaries": "出粮记录","expenses": "开销记录","actions": "操作",
-        "add": "新增","edit": "编辑","delete": "删除","save": "保存","back": "返回",
+        "add": "新增","edit": "编辑","delete": "删除","save": "保存",
         "confirm_delete": "确定要删除这条记录吗？","empty": "暂无数据","created_at": "创建时间",
         "status": "状态","active": "启用","inactive": "停用","name": "姓名","company": "公司",
         "commission": "佣金","salary_amount": "工资金额","pay_date": "发放日期","note": "备注",
@@ -755,7 +762,7 @@ def dashboard():
         total_expenses = c.execute("SELECT IFNULL(SUM(amount),0) s FROM expenses").fetchone()["s"]
     return render_template("dashboard.html", total_workers=total_workers,total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
 
-# ----------------------- 账号安全（显式 endpoint） -----------------------
+# ----------------------- 账号安全（显式 endpoint，避免 BuildError） -----------------------
 @app.get("/account-security", endpoint="account_security")
 def account_security_page():
     if require_login(): return require_login()
