@@ -12,7 +12,7 @@ SECRET_KEY    = os.environ.get("SECRET_KEY", "dev-secret")
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
-app.permanent_session_lifetime = timedelta(days=30)  # 记住登录时的会话时长
+app.permanent_session_lifetime = timedelta(days=30)
 
 @app.get("/health")
 def health(): return "ok", 200
@@ -35,7 +35,7 @@ body{
     linear-gradient(180deg, var(--bg), var(--bg-2) 1200px);
 }
 
-/* 顶部栏（登录页会隐藏） */
+/* 顶部栏（登录页隐藏） */
 .topbar{
   position:sticky; top:0; z-index:30;
   display:flex; align-items:center; justify-content:space-between;
@@ -45,198 +45,131 @@ body{
 }
 .brand{display:flex;align-items:center;gap:10px;font-weight:900; letter-spacing:.3px}
 .brand::before{content:"♛"; font-size:16px; filter: drop-shadow(0 6px 18px rgba(245,212,121,.35))}
-.brand::after{
-  content:""; width:7px; height:7px; border-radius:50%;
-  background:conic-gradient(from 0deg, var(--gold), var(--royal), var(--gold));
-  box-shadow:0 0 10px var(--gold);
-}
-.nav a,.nav .btn{margin-left:10px;padding:6px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.06);text-decoration:none;color:var(--text);background:transparent}
-.nav a:hover,.nav .btn:hover{border-color:var(--line)}
+.brand::after{content:""; width:7px; height:7px; border-radius:50%;
+  background:conic-gradient(from 0deg, var(--gold), var(--royal), var(--gold)); box-shadow:0 0 10px var(--gold)}
 
 /* 登录页全屏 Hero（山景插画 + 圆角面板） */
-.auth-hero{
-  min-height:calc(100vh - 0px);
-  display:grid; place-items:center;
-  padding:34px 20px;
-}
+.auth-hero{ min-height:100vh; display:grid; place-items:center; padding:34px 20px }
 .auth-frame{
   width:min(1120px,96vw); height:min(78vh,640px);
   border-radius:28px; position:relative; overflow:hidden;
   box-shadow:0 40px 120px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
-  background:
-    radial-gradient(1200px 520px at 50% -12%, rgba(255,255,255,.06), transparent 60%),
-    linear-gradient(180deg, rgba(6,10,18,.14), rgba(6,10,18,.22));
+  background: radial-gradient(1200px 520px at 50% -12%, rgba(255,255,255,.06), transparent 60%),
+             linear-gradient(180deg, rgba(6,10,18,.14), rgba(6,10,18,.22));
 }
-/* 背景插画：内嵌 SVG（两层山 + 前景剪影） */
-.auth-frame::before{
-  content:""; position:absolute; inset:0; z-index:0;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 600' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='sky' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23c7d6ff'/%3E%3Cstop offset='1' stop-color='%238aa6ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23sky)' width='1200' height='600'/%3E%3Cpath fill='%238c8dff' d='M0 360 L120 320 260 350 380 290 520 360 680 300 820 360 980 320 1200 360 1200 600 0 600z'/%3E%3Cpath fill='%235553c9' d='M0 420 L140 390 270 430 410 400 560 430 710 410 860 440 1020 420 1200 440 1200 600 0 600z'/%3E%3Cpath fill='%23152132' d='M0 520 C120 500 220 560 360 540 C520 520 620 580 760 560 C860 546 980 570 1200 560 L1200 600 L0 600z'/%3E%3C/svg%3E");
-  background-size:cover; background-position:center;
-  filter:saturate(110%) contrast(105%);
-}
-/* 玻璃拟态登录卡片 */
+.auth-frame::before{ content:""; position:absolute; inset:0; z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 600' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='sky' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23c7d6ff'/%3E%3Cstop offset='1' stop-color='%238aa6ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23sky)' width='1200' height='600'/%3E%3Cpath fill='%238c8dff' d='M0 360 L120 320 260 350 380 290 520 360 680 300 820 360 980 320 1200 360 1200 600 0 600z'/%3E%3Cpath fill='%235553c9' d='M0 420 L140 390 270 430 410 400 560 430 710 410 860 440 1020 420 1200 440 1200 600 0 600z'/%3E%3Cpath fill='%23152132' d='M0 520 C120 500 220 560 360 540 C520 520 620 580 760 560 C860 546 980 570 1200 560 L1200 600 L0 600z'/%3E%3C/svg%3E");
+  background-size:cover; background-position:center; filter:saturate(110%) contrast(105%) }
 .auth-card{
-  position:absolute; inset:auto; left:50%; top:50%; transform:translate(-50%,-50%);
-  width:min(560px,92vw);
-  border-radius:22px; padding:22px 22px 20px;
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:min(560px,92vw); border-radius:22px; padding:22px 22px 20px;
   background:color-mix(in oklab, #ffffff 8%, transparent);
   border:1px solid rgba(255,255,255,.28);
   backdrop-filter: blur(16px) saturate(130%);
-  box-shadow:0 24px 60px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.35);
-  z-index:2;
+  box-shadow:0 24px 60px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.35); z-index:2;
 }
 .auth-title{ text-align:center; font-size:22px; font-weight:900; letter-spacing:.4px; margin:4px 0 14px; }
 .auth-form{ display:grid; gap:12px }
-.input{
-  position:relative; display:flex; align-items:center; height:44px; border-radius:14px;
-  border:1px solid rgba(255,255,255,.36);
-  background:linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.12));
-  overflow:hidden;
-}
-.input input{
-  flex:1; height:44px; background:transparent; border:0; outline:0; color:#fff; padding:0 40px 0 14px; font-size:14px;
-}
-.input .i-right{
-  position:absolute; right:10px; width:22px; height:22px; opacity:.9; pointer-events:none;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,.4));
-}
+.input{ position:relative; display:flex; align-items:center; height:44px; border-radius:14px;
+  border:1px solid rgba(255,255,255,.36); background:linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.12)); overflow:hidden }
+.input input{ flex:1; height:44px; background:transparent; border:0; outline:0; color:#fff; padding:0 40px 0 14px; font-size:14px }
+.input .i-right{ position:absolute; right:10px; width:22px; height:22px; opacity:.9; pointer-events:none; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)) }
 .auth-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px; color:#e8ecff }
-.auth-row a{ color:#e8ecff; text-decoration:none; opacity:.9 }
-.auth-row a:hover{ text-decoration:underline; }
-.auth-primary{
-  height:44px; border-radius:999px; border:1px solid rgba(255,255,255,.45);
-  background:linear-gradient(180deg, rgba(255,255,255,.65), rgba(255,255,255,.35));
-  color:#0f1730; font-weight:800; letter-spacing:.2px; cursor:pointer;
-  box-shadow:0 16px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.8);
-}
-.auth-primary:hover{ transform:translateY(-1px); }
-.auth-primary:active{ transform:translateY(0); }
+.auth-row a{ color:#e8ecff; text-decoration:none; opacity:.9 } .auth-row a:hover{ text-decoration:underline }
+.auth-primary{ height:44px; border-radius:999px; border:1px solid rgba(255,255,255,.45);
+  background:linear-gradient(180deg, rgba(255,255,255,.65), rgba(255,255,255,.35)); color:#0f1730;
+  font-weight:800; letter-spacing:.2px; cursor:pointer; box-shadow:0 16px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.8) }
+.auth-primary:hover{ transform:translateY(-1px) } .auth-primary:active{ transform:translateY(0) }
 .auth-foot{ text-align:center; font-size:12px; margin-top:2px; color:#e8ecff }
-
 .auth-flash{ margin-bottom:12px; border-radius:14px; padding:10px 12px; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18) }
 
 /* 常规布局（登录后） */
 .layout{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 56px)}
-.layout-guest{grid-template-columns:1fr}
-.sidebar{
-  position:sticky; top:56px; height:calc(100vh - 56px);
-  padding:14px 12px; background:linear-gradient(180deg, rgba(22,26,44,.66), rgba(12,18,34,.86));
-  border-right:1px solid var(--line)
-}
+.sidebar{ position:sticky; top:56px; height:calc(100vh - 56px);
+  padding:14px 12px; background:linear-gradient(180deg, rgba(22,26,44,.66), rgba(12,18,34,.86)); border-right:1px solid var(--line) }
 .main{padding:22px}
 
 /* 侧栏菜单 */
 .side-menu{display:grid;gap:10px}
-.side-menu a{
-  display:flex; align-items:center; gap:12px; padding:12px 14px;
-  border-radius:var(--radius); border:1px solid rgba(255,255,255,.06);
-  text-decoration:none; color:var(--text);
-  background:linear-gradient(180deg, rgba(255,255,255,.025), transparent 60%), rgba(16,22,38,.6);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
-}
+.side-menu a{ display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:var(--radius);
+  border:1px solid rgba(255,255,255,.06); text-decoration:none; color:var(--text);
+  background:linear-gradient(180deg, rgba(255,255,255,.025), transparent 60%), rgba(16,22,38,.6); box-shadow:inset 0 1px 0 rgba(255,255,255,.04) }
 .side-menu a .icon{width:22px;text-align:center}
-.side-menu a:hover{border-color:#3d4f7c; background:rgba(22,30,50,.75); transform: translateY(-1px); transition: transform .12s ease, background .18s ease, border-color .18s ease;}
-.side-menu a.active{
-  border-color: color-mix(in oklab, var(--gold) 38%, transparent);
+.side-menu a:hover{border-color:#3d4f7c; background:rgba(22,30,50,.75); transform: translateY(-1px); transition: .18s}
+.side-menu a.active{ border-color: color-mix(in oklab, var(--gold) 38%, transparent);
   background:linear-gradient(100deg, color-mix(in oklab, var(--gold) 18%, transparent), color-mix(in oklab, var(--royal) 12%, transparent)), rgba(22,30,50,.88);
-  box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--gold) 26%, transparent), 0 12px 28px rgba(0,0,0,.35);
-}
+  box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--gold) 26%, transparent), 0 12px 28px rgba(0,0,0,.35) }
 
 /* 卡片与面板 */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:14px 0}
-.card,.panel{
-  position:relative;
-  background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);
-  border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
-  padding:16px; box-shadow:0 28px 70px rgba(0,0,0,.55)
-}
-.card::before{
-  content:""; position:absolute; left:12px; right:12px; top:10px; height:2px; border-radius:2px;
-  background:linear-gradient(90deg, color-mix(in oklab, var(--gold) 60%, transparent), transparent);
-  opacity:.85; filter: drop-shadow(0 6px 16px rgba(245,212,121,.3));
-}
-.card-title{font-size:12px;color:var(--muted)} .card-value{font-size:30px;margin-top:8px;letter-spacing:.3px}
+.card,.panel{ position:relative; background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 60%), var(--surface);
+  border:1px solid rgba(255,255,255,.08); border-radius:var(--radius); padding:16px; box-shadow:0 28px 70px rgba(0,0,0,.55) }
+.card::before{ content:""; position:absolute; left:12px; right:12px; top:10px; height:2px; border-radius:2px;
+  background:linear-gradient(90deg, color-mix(in oklab, var(--gold) 60%, transparent), transparent); opacity:.85 }
 
 /* 表单/按钮 */
 .form{display:flex;flex-wrap:wrap;gap:10px}
-.form input,.form select,.form textarea,.form button{
-  height:40px; padding:8px 12px; border-radius:14px;
-  border:1px solid var(--line); background:#0e172b; color:var(--text); outline:0
-}
+.form input,.form select,.form textarea,.form button{ height:40px; padding:8px 12px; border-radius:14px; border:1px solid var(--line); background:#0e172b; color:var(--text); outline:0 }
 .form textarea{height:auto;min-height:96px;width:100%;resize:vertical}
-.form input:focus,.form select:focus,.form textarea:focus{
-  border-color:#5c6ea1; box-shadow:0 0 0 3px rgba(92,110,161,.28), inset 0 1px 0 rgba(255,255,255,.06)
-}
-.btn{
-  display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px;
-  border-radius:14px; border:1px solid rgba(255,255,255,.08);
-  background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), rgba(16,22,38,.6);
-  color:var(--text); text-decoration:none; cursor:pointer;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.28);
-  transition: transform .12s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
-}
-.btn:hover{ transform: translateY(-1px); box-shadow:0 16px 34px rgba(0,0,0,.32) }
-.btn:active{ transform: translateY(0); box-shadow:0 8px 18px rgba(0,0,0,.26) }
-.btn-edit{
-  background: linear-gradient(135deg, color-mix(in oklab, var(--royal) 55%, transparent), color-mix(in oklab, var(--gold) 38%, transparent)), #141f38 !important;
-  border-color: color-mix(in oklab, var(--royal) 55%, transparent) !important;
-}
-.btn-delete{
-  background: linear-gradient(135deg, rgba(239,71,111,.62), rgba(244,114,182,.55)), #2a1416 !important;
-  border-color: rgba(239,71,111,.62) !important;
-}
+.form input:focus,.form select:focus,.form textarea:focus{ border-color:#5c6ea1; box-shadow:0 0 0 3px rgba(92,110,161,.28), inset 0 1px 0 rgba(255,255,255,.06) }
+.btn{ display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px; border-radius:14px; border:1px solid rgba(255,255,255,.08);
+  background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 60%), rgba(16,22,38,.6); color:var(--text); text-decoration:none; cursor:pointer;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.28); transition:.18s }
+.btn:hover{ transform: translateY(-1px) } .btn:active{ transform: translateY(0) }
+.btn-edit{ background: linear-gradient(135deg, color-mix(in oklab, var(--royal) 55%, transparent), color-mix(in oklab, var(--gold) 38%, transparent)), #141f38 !important;
+  border-color: color-mix(in oklab, var(--royal) 55%, transparent) !important }
+.btn-delete{ background: linear-gradient(135deg, rgba(239,71,111,.62), rgba(244,114,182,.55)), #2a1416 !important; border-color: rgba(239,71,111,.62) !important }
 
 /* 操作列：一排靠右（纯图标） */
-.actions-cell{ text-align:right; }
-.actions-inline{ display:flex; justify-content:flex-end; align-items:center; gap:8px; flex-wrap:wrap; }
-.actions-inline form{ margin:0; display:inline-flex; }
-.btn-icon{ width:34px; height:34px; padding:0; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1; }
+.actions-cell{ text-align:right } .actions-inline{ display:flex; justify-content:flex-end; align-items:center; gap:8px; flex-wrap:wrap }
+.actions-inline form{ margin:0; display:inline-flex } .btn-icon{ width:34px; height:34px; padding:0; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1 }
 
 /* 表格 */
 .table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);box-shadow:0 28px 68px rgba(0,0,0,.52)}
 table{border-collapse:separate;border-spacing:0;width:100%}
-th{
-  position:sticky; top:0; background:rgba(16,24,44,.92);backdrop-filter:blur(4px);
-  font-weight:700; font-size:12px; letter-spacing:.3px; color:#d8e3ff;
-  border-bottom:1px solid var(--line); text-align:left; padding:10px;
-}
+th{ position:sticky; top:0; background:rgba(16,24,44,.92);backdrop-filter:blur(4px); font-weight:700; font-size:12px; letter-spacing:.3px; color:#d8e3ff; border-bottom:1px solid var(--line); text-align:left; padding:10px }
 td{padding:10px;border-bottom:1px solid var(--line)}
 tbody tr:hover{background: linear-gradient(90deg, color-mix(in oklab, var(--gold) 10%, transparent), transparent 60%) !important}
 tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 
+/* 简易弹窗（确认 & 大弹窗） */
+.modal-backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60;
+  background:radial-gradient(1200px 600px at 15% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%),
+             radial-gradient(1200px 600px at 120% 10%, color-mix(in oklab, var(--royal) 14%, transparent), transparent 60%),
+             rgba(5,8,14,.62); backdrop-filter:blur(10px) saturate(140%) }
+.modal-backdrop.open{ display:flex }
+.big-backdrop{ position:fixed; inset:0; display:none; z-index:55;
+  background: radial-gradient(1800px 760px at 10% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%),
+             radial-gradient(1600px 640px at 120% 0%, color-mix(in oklab, var(--royal) 16%, transparent), transparent 60%),
+             linear-gradient(180deg, rgba(6,10,18,.74), rgba(6,10,18,.64)); backdrop-filter: blur(14px) saturate(140%) }
+.big-backdrop.open{ display:flex; align-items:center; justify-content:center; padding:30px }
+.big-modal{ width:min(980px, 96vw); max-height:90vh; overflow:auto; position:relative; border-radius:20px;
+  background: linear-gradient(180deg, rgba(255,255,255,.08), transparent 58%), linear-gradient(180deg, #10182c, #0e1628);
+  border: 1px solid rgba(255,255,255,.16); box-shadow: 0 60px 160px rgba(0,0,0,.76) }
+.big-header{ position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; padding:14px 18px;
+  background: linear-gradient(180deg, rgba(18,26,44,.92), rgba(12,19,33,.86)); border-bottom: 1px solid rgba(255,255,255,.10); backdrop-filter: blur(8px) }
+.big-title{ font-weight:900; letter-spacing:.3px }
+.big-close{ padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 70%); color:var(--text); cursor:pointer }
+.big-body{ padding:18px }
+
 /* 手机端 */
 @media (max-width: 640px){
-  .auth-frame{ height:520px }
-  .auth-card{ width:min(520px,94vw); }
-  th, td { padding:8px; }
-  .actions-inline{ gap:6px; }
-  .btn-icon{ width:32px; height:32px; font-size:15px; border-radius:10px; }
+  .auth-frame{ height:520px } .auth-card{ width:min(520px,94vw) }
+  th, td { padding:8px } .actions-inline{ gap:6px } .btn-icon{ width:32px; height:32px; font-size:15px; border-radius:10px }
 }
 
 /* Light Mode 覆写 */
 :root[data-theme="light"]{
   --bg:#f7f8fb; --bg-2:#eef1f7; --surface:#ffffff; --line:#d8dfec;
-  --text:#0b1020; --muted:#5b6780;
-  --gold:#c79f2b; --gold-2:#e2b941; --royal:#5e56ff; --emerald:#16a085; --ruby:#d24a64;
+  --text:#0b1020; --muted:#5b6780; --gold:#c79f2b; --gold-2:#e2b941; --royal:#5e56ff; --emerald:#16a085; --ruby:#d24a64;
 }
-:root[data-theme="light"] .topbar{ background:rgba(255,255,255,.84); border-bottom:1px solid var(--line); box-shadow:0 8px 28px rgba(0,0,0,.08); }
-:root[data-theme="light"] .sidebar{ background:linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.9)); border-right:1px solid var(--line); }
-:root[data-theme="light"] .card, :root[data-theme="light"] .panel{
-  background:linear-gradient(180deg, rgba(0,0,0,.02), transparent 60%), var(--surface);
-  border:1px solid rgba(0,0,0,.06);
-  box-shadow:0 10px 30px rgba(0,0,0,.08);
-}
-:root[data-theme="light"] .btn{
-  border-color:rgba(0,0,0,.08);
-  background:linear-gradient(180deg, rgba(0,0,0,.02), transparent 60%), rgba(255,255,255,.9);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 8px 18px rgba(0,0,0,.08);
-  color:var(--text);
-}
-:root[data-theme="light"] th{ background:rgba(255,255,255,.92); color:#303a58; border-bottom:1px solid var(--line); }
+:root[data-theme="light"] .topbar{ background:rgba(255,255,255,.84); border-bottom:1px solid var(--line); box-shadow:0 8px 28px rgba(0,0,0,.08) }
+:root[data-theme="light"] .sidebar{ background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.98)); border-right:1px solid var(--line) }
+:root[data-theme="light"] .card, :root[data-theme="light"] .panel{ background:linear-gradient(180deg, rgba(0,0,0,.02), transparent 60%), var(--surface); border:1px solid rgba(0,0,0,.06); box-shadow:0 10px 30px rgba(0,0,0,.08) }
+:root[data-theme="light"] .btn{ border-color:rgba(0,0,0,.08); background:linear-gradient(180deg, rgba(0,0,0,.02), transparent 60%), rgba(255,255,255,.9); box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 8px 18px rgba(0,0,0,.08); color:var(--text) }
+:root[data-theme="light"] th{ background:rgba(255,255,255,.92); color:#303a58; border-bottom:1px solid var(--line) }
 :root[data-theme="light"] tbody tr:nth-child(even){ background:rgba(0,0,0,.02) }
-:root[data-theme="light"] .auth-card{ background:color-mix(in oklab, #ffffff 60%, transparent); color:#0b1020; }
-:root[data-theme="light"] .auth-row, :root[data-theme="light"] .auth-foot { color:#263356 }
+:root[data-theme="light"] .auth-card{ background:color-mix(in oklab, #ffffff 60%, transparent); color:#0b1020 }
 """
 
 @app.get("/static/style.css")
@@ -249,23 +182,18 @@ TEMPLATES = {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-
-  <!-- 主题预设，避免闪烁 -->
   <script>
-    (function () {
-      try {
-        var saved = localStorage.getItem('theme');
-        var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var theme = saved || (sysDark ? 'dark' : 'light');
-        document.documentElement.setAttribute('data-theme', theme);
-      } catch (e) {}
-    })();
+    (function () { try {
+      var saved = localStorage.getItem('theme');
+      var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var theme = saved || (sysDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) {} })();
   </script>
-
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=180">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=200">
 </head>
-<body class="luxury">
+<body>
 
   {% set auth_mode = (not session.get('user_id')) and request.path.startswith('/login') %}
   {% if not auth_mode %}
@@ -275,9 +203,9 @@ TEMPLATES = {
         <button id="themeToggle" class="btn" type="button" title="切换主题" aria-label="切换主题">🌙</button>
         {% if session.get('user_id') %}
           <span>👤 {{ session.get('user_id') }}</span>
-          <a href="{{ url_for('logout') }}">退出</a>
+          <a class="btn" href="{{ url_for('logout') }}">退出</a>
         {% else %}
-          <a href="{{ url_for('login') }}">登录</a>
+          <a class="btn" href="{{ url_for('login') }}">登录</a>
         {% endif %}
       </nav>
     </header>
@@ -286,18 +214,11 @@ TEMPLATES = {
   {% if auth_mode %}
     <!-- 登录/登出页：全屏 Hero -->
     <main style="padding:0">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div class="auth-hero"><div class="auth-frame"><div class="auth-card">
-            {% for category, message in messages %}<div class="auth-flash">{{ message }}</div>{% endfor %}
-          </div></div></div>
-        {% endif %}
-      {% endwith %}
-      {% block content %}{% endblock %}
+      {% block auth_content %}{% endblock %}
     </main>
   {% else %}
     <!-- 登录后：常规布局 -->
-    <div class="layout {{ '' if session.get('user_id') else 'layout-guest' }}">
+    <div class="layout">
       {% if session.get('user_id') %}
         <aside class="sidebar">
           <nav class="side-menu">
@@ -315,34 +236,42 @@ TEMPLATES = {
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             <div class="panel" style="margin-bottom:16px">
-              {% for category, message in messages %}
-                <div>{{ message }}</div>
-              {% endfor %}
+              {% for category, message in messages %}<div>{{ message }}</div>{% endfor %}
             </div>
           {% endif %}
         {% endwith %}
-        {% block content %}{% endblock %}
+        {% block app_content %}{% endblock %}
       </main>
     </div>
   {% endif %}
 
   <!-- 删除确认弹窗 -->
   <div id="confirmBackdrop" class="modal-backdrop" aria-hidden="true">
-    <div class="auth-card" style="max-width:480px">
-      <h3>确认操作</h3>
-      <p id="confirmText">确定要执行该操作吗？</p>
-      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px">
+    <div class="auth-card" style="max-width:480px; position:static; transform:none">
+      <h3 style="margin:0 0 10px">确认操作</h3>
+      <p id="confirmText" style="margin:0 0 12px">确定要执行该操作吗？</p>
+      <div style="display:flex; gap:10px; justify-content:flex-end">
         <button id="confirmCancel" class="btn" type="button">取消</button>
         <button id="confirmOk" class="btn btn-delete" type="button" title="确认删除" aria-label="确认删除">🗑️</button>
       </div>
     </div>
   </div>
 
+  <!-- 大弹窗（加载 partial 表单） -->
+  <div id="bigBackdrop" class="big-backdrop" aria-hidden="true">
+    <div class="big-modal">
+      <div class="big-header">
+        <div class="big-title" id="bigTitle">📄 表单</div>
+        <button id="bigClose" class="big-close" type="button">✖</button>
+      </div>
+      <div id="bigContent" class="big-body"><div class="panel">加载中…</div></div>
+    </div>
+  </div>
+
   <script>
     // 主题按钮
     (function () {
-      var btn = document.getElementById('themeToggle');
-      if (!btn) return;
+      var btn = document.getElementById('themeToggle'); if (!btn) return;
       function cur(){return document.documentElement.getAttribute('data-theme')||'dark'}
       function setIcon(){ var c=cur(); btn.textContent=(c==='dark')?'🌙':'☀️'; btn.title = (c==='dark')?'切换到亮色':'切换到暗色'; }
       setIcon();
@@ -360,14 +289,42 @@ TEMPLATES = {
       function close(){ backdrop.classList.remove('open'); backdrop.setAttribute('aria-hidden','true'); pendingForm = null; }
       document.addEventListener('submit', function(e){
         const f = e.target;
-        if(f.matches('.confirm')){
-          e.preventDefault(); pendingForm = f; open(f.dataset.confirm || '确定要删除这条记录吗？');
-        }
+        if(f.matches('.confirm')){ e.preventDefault(); pendingForm = f; open(f.dataset.confirm || '确定要删除这条记录吗？'); }
       }, true);
       btnCancel&&btnCancel.addEventListener('click', close);
       btnOK&&btnOK.addEventListener('click', function(){ if(pendingForm){ const f=pendingForm; pendingForm=null; close(); f.classList.remove('confirm'); f.submit(); } });
       document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
       backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
+    })();
+
+    // 大弹窗：加载 partial 表单 + AJAX 提交刷新
+    (function(){
+      const big = document.getElementById('bigBackdrop');
+      const content = document.getElementById('bigContent');
+      const title = document.getElementById('bigTitle');
+      const closeBtn = document.getElementById('bigClose');
+      function open(){ big.classList.add('open'); big.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; }
+      function close(){ big.classList.remove('open'); big.setAttribute('aria-hidden','true'); document.body.style.overflow=''; content.innerHTML=''; title.textContent='📄 表单'; }
+      async function load(url, text){
+        title.textContent = text || '📄 表单'; content.innerHTML = '<div class="panel">正在加载…</div>'; open();
+        try{
+          const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'partial=1', {headers:{'X-Requested-With':'fetch'}});
+          const html = await res.text(); content.innerHTML = html;
+        }catch(e){ content.innerHTML = '<div class="panel">加载失败，请重试。</div>'; }
+      }
+      document.addEventListener('click', function(ev){
+        const el = ev.target.closest('a.js-open-modal, button.js-open-modal');
+        if(el){ ev.preventDefault(); const href = el.getAttribute('href') || el.dataset.href || '#'; const tt = el.getAttribute('data-title') || el.title || el.textContent.trim(); load(href, tt); }
+      });
+      big.addEventListener('submit', async function(ev){
+        const f = ev.target; if(!big.contains(f)) return; ev.preventDefault();
+        const data = new FormData(f); const btn = f.querySelector('button[type="submit"]'); if(btn){ btn.disabled=true; btn.style.opacity=.75; }
+        try{ await fetch(f.action, {method: f.method || 'POST', body: data, headers:{'X-Requested-With':'fetch'}}); close(); location.reload(); }
+        catch(e){ alert('提交失败，请重试'); } finally{ if(btn){ btn.disabled=false; btn.style.opacity=1; } }
+      });
+      closeBtn.addEventListener('click', close);
+      big.addEventListener('click', (e)=>{ if(e.target===big) close(); });
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && big.classList.contains('open')) close(); });
     })();
   </script>
 </body>
@@ -377,24 +334,25 @@ TEMPLATES = {
 # ===== 登录页（山景 + 玻璃卡片） =====
 "login.html": """{% extends "base.html" %}
 {% block title %}登录 · {{ t.app_name }}{% endblock %}
-{% block content %}
+{% block auth_content %}
 <div class="auth-hero">
   <div class="auth-frame">
     <div class="auth-card" role="dialog" aria-label="登录表单">
+      {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}
+        {% for category, message in messages %}<div class="auth-flash">{{ message }}</div>{% endfor %}
+      {% endif %}{% endwith %}
       <div class="auth-title">Login</div>
       <form class="auth-form" method="post" action="{{ url_for('login_post') }}">
         <label class="input">
           <input name="username" placeholder="Email / 用户名" required>
-          <!-- 邮件图标 -->
           <svg class="i-right" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M20 4H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h16a2 2 0 0 0 2-2V6c0-1.1-.9-2-2-2Zm0 4-8 5-8-5V6l8 5 8-5v2Z"/></svg>
         </label>
         <label class="input">
           <input name="password" type="password" placeholder="Password 密码" required>
-          <!-- 锁图标 -->
           <svg class="i-right" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 1a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V6a5 5 0 0 1 5-5Zm3 8V6a3 3 0 1 0-6 0v3h6Z"/></svg>
         </label>
         <div class="auth-row">
-          <label><input type="checkbox" name="remember" checked>  Remember me</label>
+          <label><input type="checkbox" name="remember" checked> Remember me</label>
           <a href="#" onclick="alert('请联系管理员重置密码');return false;">Forgot Password?</a>
         </div>
         <button class="auth-primary" type="submit">Login</button>
@@ -406,10 +364,10 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ===== 其余页面（保留） =====
+# ===== 业务页面 =====
 "dashboard.html": """{% extends "base.html" %}
 {% block title %}Dashboard · {{ t.app_name }}{% endblock %}
-{% block content %}
+{% block app_content %}
 <h1>🏠 Dashboard</h1>
 <div class="cards">
   <div class="card"><div class="card-title">{{ t.total_workers }}</div><div class="card-value">{{ total_workers }}</div></div>
@@ -422,7 +380,7 @@ TEMPLATES = {
 
 "workers_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.workers }} · {{ t.app_name }}{% endblock %}
-{% block content %}
+{% block app_content %}
 <h1>👨‍💼 {{ t.workers }}</h1>
 <div class="panel">
   <div class="actions" style="margin-bottom:12px">
@@ -431,11 +389,9 @@ TEMPLATES = {
   </div>
   <div class="table-wrap">
     <table>
-      <thead>
-        <tr>
-          <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+      </tr></thead>
       <tbody>
         {% for r in rows %}
         <tr>
@@ -462,7 +418,7 @@ TEMPLATES = {
 
 "bank_accounts_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.bank_accounts }} · {{ t.app_name }}{% endblock %}
-{% block content %}
+{% block app_content %}
 <h1>🏦 {{ t.bank_accounts }}</h1>
 <div class="panel">
   <div class="actions" style="margin-bottom:12px">
@@ -471,11 +427,9 @@ TEMPLATES = {
   </div>
   <div class="table-wrap">
     <table>
-      <thead>
-        <tr>
-          <th>ID</th><th>银行名</th><th>账号</th><th>户名</th><th>卡公司</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>ID</th><th>银行名</th><th>账号</th><th>户名</th><th>卡公司</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+      </tr></thead>
       <tbody>
         {% for r in rows %}
         <tr>
@@ -502,7 +456,7 @@ TEMPLATES = {
 
 "card_rentals_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.card_rentals }} · {{ t.app_name }}{% endblock %}
-{% block content %}
+{% block app_content %}
 <h1>💳 {{ t.card_rentals }}</h1>
 <div class="panel">
   <div class="actions" style="margin-bottom:12px">
@@ -511,11 +465,9 @@ TEMPLATES = {
   </div>
   <div class="table-wrap">
     <table>
-      <thead>
-        <tr>
-          <th>ID</th><th>银行</th><th>账号</th><th>卡公司</th><th>月租金</th><th>开始</th><th>结束</th><th>备注</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>ID</th><th>银行</th><th>账号</th><th>卡公司</th><th>月租金</th><th>开始</th><th>结束</th><th>备注</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+      </tr></thead>
       <tbody>
         {% for r in rows %}
         <tr>
@@ -543,7 +495,7 @@ TEMPLATES = {
 
 "salaries_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.salaries }} · {{ t.app_name }}{% endblock %}
-{% block content %}
+{% block app_content %}
 <h1>💵 {{ t.salaries }}</h1>
 <div class="panel">
   <div class="actions" style="margin-bottom:12px">
@@ -552,11 +504,9 @@ TEMPLATES = {
   </div>
   <div class="table-wrap">
     <table>
-      <thead>
-        <tr>
-          <th>ID</th><th>{{ t.worker }}</th><th>{{ t.salary_amount }}</th><th>{{ t.pay_date }}</th><th>{{ t.note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>ID</th><th>{{ t.worker }}</th><th>{{ t.salary_amount }}</th><th>{{ t.pay_date }}</th><th>{{ t.note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+      </tr></thead>
       <tbody>
         {% for r in rows %}
         <tr>
@@ -583,7 +533,7 @@ TEMPLATES = {
 
 "expenses_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.expenses }} · {{ t.app_name }}{% endblock %}
-{% block content %}
+{% block app_content %}
 <h1>💸 {{ t.expenses }}</h1>
 <div class="panel">
   <div class="actions" style="margin-bottom:12px">
@@ -592,11 +542,9 @@ TEMPLATES = {
   </div>
   <div class="table-wrap">
     <table>
-      <thead>
-        <tr>
-          <th>ID</th><th>{{ t.worker }}</th><th>{{ t.expense_amount }}</th><th>{{ t.date }}</th><th>{{ t.expenses_note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>ID</th><th>{{ t.worker }}</th><th>{{ t.expense_amount }}</th><th>{{ t.date }}</th><th>{{ t.expenses_note }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+      </tr></thead>
       <tbody>
         {% for r in rows %}
         <tr>
@@ -621,15 +569,90 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ———— 登录之外的简短占位页 ——（安全设置）。
 "account_security.html": """{% extends "base.html" %}
 {% block title %}账号安全 · {{ t.app_name }}{% endblock %}
-{% block content %}
-<div class="panel">
-  <h2>🔐 账号安全</h2>
-  <p>忘记密码请联系管理员重置。</p>
-</div>
+{% block app_content %}
+<div class="panel"><h2>🔐 账号安全</h2><p>忘记密码请联系管理员重置。</p></div>
 {% endblock %}
+""",
+
+# ================== partial 表单 ==================
+"partials/workers_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑工人' if r else '➕ 新增工人' }}</h2>
+  <form class="form" method="post" action="{{ url_for('workers_edit', wid=r.id) if r else url_for('workers_add') }}">
+    <input name="name" value="{{ r.name if r else '' }}" placeholder="{{ t.name }}" required>
+    <input name="company" value="{{ r.company if r else '' }}" placeholder="{{ t.company }}">
+    <input name="commission" type="number" step="0.01" value="{{ r.commission if r else '' }}" placeholder="{{ t.commission }}">
+    <input name="expenses" type="number" step="0.01" value="{{ r.expenses if r else '' }}" placeholder="{{ t.expenses }}">
+    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
+  </form>
+</div>
+""",
+
+"partials/bank_accounts_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑银行账户' if r else '➕ 新增银行账户' }}</h2>
+  <form class="form" method="post" action="{{ url_for('bank_accounts_edit', bid=r.id) if r else url_for('bank_accounts_add') }}">
+    <input name="bank_name" value="{{ r.bank_name if r else '' }}" placeholder="银行名" required>
+    <input name="account_no" value="{{ r.account_no if r else '' }}" placeholder="账号" required>
+    <input name="holder" value="{{ r.holder if r else '' }}" placeholder="户名" required>
+    <input name="card_company" value="{{ r.card_company if r else '' }}" placeholder="卡公司（如 Visa/Master）">
+    <select name="status">
+      <option value="1" {% if r and r.status==1 %}selected{% endif %}>{{ t.active }}</option>
+      <option value="0" {% if r and r.status==0 %}selected{% endif %}>{{ t.inactive }}</option>
+    </select>
+    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
+  </form>
+</div>
+""",
+
+"partials/card_rentals_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑银行卡租金' if r else '➕ 新增银行卡租金' }}</h2>
+  <form class="form" method="post" action="{{ url_for('card_rentals_edit', rid=r.id) if r else url_for('card_rentals_add') }}">
+    <input name="bank_name" value="{{ r.bank_name if r else '' }}" placeholder="银行名" required>
+    <input name="account_no" value="{{ r.account_no if r else '' }}" placeholder="账号" required>
+    <input name="card_company" value="{{ r.card_company if r else '' }}" placeholder="卡公司（Visa/Master/银联）">
+    <input name="monthly_rent" type="number" step="0.01" value="{{ r.monthly_rent if r else '' }}" placeholder="月租金" required>
+    <input name="start_date" type="date" value="{{ r.start_date if r else '' }}" placeholder="开始日期">
+    <input name="end_date" type="date" value="{{ r.end_date if r else '' }}" placeholder="结束日期">
+    <textarea name="note" placeholder="备注">{{ r.note if r else '' }}</textarea>
+    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
+  </form>
+  <p style="opacity:.8;margin-top:8px">提示：填写银行名 + 账号 会自动建立/匹配银行账户。</p>
+</div>
+""",
+
+"partials/salaries_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑出粮记录' if r else '➕ 新增出粮记录' }}</h2>
+  <form class="form" method="post" action="{{ url_for('salaries_edit', sid=r.id) if r else url_for('salaries_add') }}">
+    <select name="worker_id">
+      {% for w in workers %}<option value="{{ w.id }}" {% if r and r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>{% endfor %}
+    </select>
+    <input name="amount" type="number" step="0.01" value="{{ r.amount if r else '' }}" placeholder="{{ t.salary_amount }}" required>
+    <input name="pay_date" type="date" value="{{ r.pay_date if r else '' }}" placeholder="{{ t.pay_date }}" required>
+    <textarea name="note" placeholder="{{ t.note }}">{{ r.note if r else '' }}</textarea>
+    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
+  </form>
+</div>
+""",
+
+"partials/expenses_form.html": """
+<div class="panel">
+  <h2 style="margin-top:0">{{ '✏️ 编辑开销记录' if r else '➕ 新增开销记录' }}</h2>
+  <form class="form" method="post" action="{{ url_for('expenses_edit', eid=r.id) if r else url_for('expenses_add') }}">
+    <select name="worker_id">
+      <option value="">不关联工人</option>
+      {% for w in workers %}<option value="{{ w.id }}" {% if r and r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>{% endfor %}
+    </select>
+    <input name="amount" type="number" step="0.01" value="{{ r.amount if r else '' }}" placeholder="{{ t.expense_amount }}" required>
+    <input name="date" type="date" value="{{ r.date if r else '' }}" placeholder="{{ t.date }}" required>
+    <textarea name="note" placeholder="{{ t.expenses_note }}">{{ r.note if r else '' }}</textarea>
+    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
+  </form>
+</div>
 """,
 }
 
@@ -700,14 +723,13 @@ def init_db():
         cur.execute("""CREATE TABLE IF NOT EXISTS expenses(
             id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
-        # 补列
+        # 兜底补列
         ensure_column(c, "workers", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "card_company", "TEXT", "")
         ensure_column(c, "card_rentals", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "salaries", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "expenses", "status", "INTEGER DEFAULT 1", 1)
-
         # 默认管理员
         cur.execute("SELECT COUNT(*) n FROM users")
         if cur.fetchone()["n"] == 0:
@@ -758,7 +780,7 @@ def dashboard():
         total_expenses = c.execute("SELECT IFNULL(SUM(amount),0) s FROM expenses").fetchone()["s"]
     return render_template("dashboard.html", total_workers=total_workers,total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
 
-# ----------------------- CRUD：工人 / 平台 -----------------------
+# ----------------------- 工人 / 平台 -----------------------
 @app.get("/workers")
 def workers_list():
     if require_login(): return require_login()
@@ -1181,12 +1203,10 @@ def export_expenses():
 
 # ----------------------- 启动 -----------------------
 def _bootstrap():
-    try:
-        init_db()
-    except Exception as e:
-        print("DB init error:", e)
+    try: init_db()
+    except Exception as e: print("DB init error:", e)
 
 _bootstrap()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")))
+  app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")))
