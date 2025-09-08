@@ -12,6 +12,7 @@ SECRET_KEY    = os.environ.get("SECRET_KEY", "dev-secret")
 
 # 可选：用环境变量覆盖登录背景图
 LOGIN_BG_URL = os.environ.get("LOGIN_BG_URL", "https://i.imgur.com/KYuKCyo.png")
+APP_BG_URL   = os.environ.get("APP_BG_URL",   "https://i.imgur.com/2K4ZhEE.jpeg")    # 登录后页面
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
