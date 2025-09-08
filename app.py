@@ -1,4 +1,4 @@
-# app.py – Admin Royale（登录页山景玻璃风 + 未登录隐藏侧栏 + 亮/暗主题 + 操作列右对齐 · 完整可运行）
+# app.py – Admin Royale（修复 account_security BuildError + 登录页山景玻璃风 + 未登录隐藏侧栏 + 亮/暗主题 + 操作列右对齐）
 from flask import Flask, request, render_template, redirect, url_for, session, flash, abort, send_file, Response
 from jinja2 import DictLoader, TemplateNotFound
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -175,7 +175,7 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 @app.get("/static/style.css")
 def static_style(): return Response(STYLE_CSS, mimetype="text/css")
 
-# ----------------------- 内置模板（无需 templates/ 目录） -----------------------
+# ----------------------- 内置模板 -----------------------
 TEMPLATES = {
 "base.html": """<!doctype html>
 <html lang="zh">
@@ -191,10 +191,9 @@ TEMPLATES = {
     } catch (e) {} })();
   </script>
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=200">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=201">
 </head>
 <body>
-
   {% set auth_mode = (not session.get('user_id')) and request.path.startswith('/login') %}
   {% if not auth_mode %}
     <header class="topbar">
@@ -212,12 +211,10 @@ TEMPLATES = {
   {% endif %}
 
   {% if auth_mode %}
-    <!-- 登录/登出页：全屏 Hero -->
     <main style="padding:0">
       {% block auth_content %}{% endblock %}
     </main>
   {% else %}
-    <!-- 登录后：常规布局 -->
     <div class="layout">
       {% if session.get('user_id') %}
         <aside class="sidebar">
@@ -364,7 +361,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ===== 业务页面 =====
+# ===== 业务页面（略） =====
 "dashboard.html": """{% extends "base.html" %}
 {% block title %}Dashboard · {{ t.app_name }}{% endblock %}
 {% block app_content %}
@@ -398,13 +395,9 @@ TEMPLATES = {
           <td>{{ r.id }}</td><td>{{ r.name }}</td><td>{{ r.company }}</td><td>{{ r.commission }}</td><td>{{ r.expenses }}</td><td>{{ r.created_at }}</td>
           <td class="actions-cell">
             <div class="actions-inline">
-              <form method="post" action="{{ url_for('workers_toggle', wid=r.id) }}">
-                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button>
-              </form>
-              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('workers_edit_form', wid=r.id) }}" data-title="✏️ 编辑工人" title="编辑" aria-label="编辑">✏️</a>
-              <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
-                <button class="btn btn-delete btn-icon" type="submit" title="删除" aria-label="删除">🗑️</button>
-              </form>
+              <form method="post" action="{{ url_for('workers_toggle', wid=r.id) }}"><button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button></form>
+              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('workers_edit_form', wid=r.id) }}" data-title="✏️ 编辑工人" title="编辑">✏️</a>
+              <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}"><button class="btn btn-delete btn-icon" type="submit" title="删除">🗑️</button></form>
             </div>
           </td>
         </tr>
@@ -436,13 +429,9 @@ TEMPLATES = {
           <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.holder }}</td><td>{{ r.card_company or '-' }}</td><td>{{ r.created_at }}</td>
           <td class="actions-cell">
             <div class="actions-inline">
-              <form method="post" action="{{ url_for('bank_accounts_toggle', bid=r.id) }}">
-                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button>
-              </form>
-              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}" data-title="✏️ 编辑银行账户" title="编辑" aria-label="编辑">✏️</a>
-              <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
-                <button class="btn btn-delete btn-icon" type="submit" title="删除" aria-label="删除">🗑️</button>
-              </form>
+              <form method="post" action="{{ url_for('bank_accounts_toggle', bid=r.id) }}"><button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button></form>
+              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}" data-title="✏️ 编辑银行账户" title="编辑">✏️</a>
+              <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}"><button class="btn btn-delete btn-icon" type="submit" title="删除">🗑️</button></form>
             </div>
           </td>
         </tr>
@@ -475,13 +464,9 @@ TEMPLATES = {
           <td>{{ r.monthly_rent }}</td><td>{{ r.start_date }}</td><td>{{ r.end_date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions-cell">
             <div class="actions-inline">
-              <form method="post" action="{{ url_for('card_rentals_toggle', rid=r.id) }}">
-                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button>
-              </form>
-              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}" data-title="✏️ 编辑银行卡租金" title="编辑" aria-label="编辑">✏️</a>
-              <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
-                <button class="btn btn-delete btn-icon" type="submit" title="删除" aria-label="删除">🗑️</button>
-              </form>
+              <form method="post" action="{{ url_for('card_rentals_toggle', rid=r.id) }}"><button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button></form>
+              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}" data-title="✏️ 编辑银行卡租金" title="编辑">✏️</a>
+              <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}"><button class="btn btn-delete btn-icon" type="submit" title="删除">🗑️</button></form>
             </div>
           </td>
         </tr>
@@ -513,13 +498,9 @@ TEMPLATES = {
           <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.pay_date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions-cell">
             <div class="actions-inline">
-              <form method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}">
-                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button>
-              </form>
-              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('salaries_edit_form', sid=r.id) }}" data-title="✏️ 编辑出粮记录" title="编辑" aria-label="编辑">✏️</a>
-              <form method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
-                <button class="btn btn-delete btn-icon" type="submit" title="删除" aria-label="删除">🗑️</button>
-              </form>
+              <form method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}"><button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button></form>
+              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('salaries_edit_form', sid=r.id) }}" data-title="✏️ 编辑出粮记录" title="编辑">✏️</a>
+              <form method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}"><button class="btn btn-delete btn-icon" type="submit" title="删除">🗑️</button></form>
             </div>
           </td>
         </tr>
@@ -551,13 +532,9 @@ TEMPLATES = {
           <td>{{ r.id }}</td><td>{{ r.worker_name }}</td><td>{{ r.amount }}</td><td>{{ r.date }}</td><td>{{ r.note }}</td><td>{{ r.created_at }}</td>
           <td class="actions-cell">
             <div class="actions-inline">
-              <form method="post" action="{{ url_for('expenses_toggle', eid=r.id) }}">
-                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button>
-              </form>
-              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('expenses_edit_form', eid=r.id) }}" data-title="✏️ 编辑开销记录" title="编辑" aria-label="编辑">✏️</a>
-              <form method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
-                <button class="btn btn-delete btn-icon" type="submit" title="删除" aria-label="删除">🗑️</button>
-              </form>
+              <form method="post" action="{{ url_for('expenses_toggle', eid=r.id) }}"><button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button></form>
+              <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('expenses_edit_form', eid=r.id) }}" data-title="✏️ 编辑开销记录" title="编辑">✏️</a>
+              <form method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}"><button class="btn btn-delete btn-icon" type="submit" title="删除">🗑️</button></form>
             </div>
           </td>
         </tr>
@@ -723,14 +700,12 @@ def init_db():
         cur.execute("""CREATE TABLE IF NOT EXISTS expenses(
             id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
-        # 兜底补列
         ensure_column(c, "workers", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "card_company", "TEXT", "")
         ensure_column(c, "card_rentals", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "salaries", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "expenses", "status", "INTEGER DEFAULT 1", 1)
-        # 默认管理员
         cur.execute("SELECT COUNT(*) n FROM users")
         if cur.fetchone()["n"] == 0:
             cur.execute("INSERT INTO users(username, password_hash, is_admin) VALUES(?,?,1)",
@@ -779,6 +754,12 @@ def dashboard():
         total_salaries = c.execute("SELECT IFNULL(SUM(amount),0) s FROM salaries").fetchone()["s"]
         total_expenses = c.execute("SELECT IFNULL(SUM(amount),0) s FROM expenses").fetchone()["s"]
     return render_template("dashboard.html", total_workers=total_workers,total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
+
+# ----------------------- 账号安全（显式 endpoint） -----------------------
+@app.get("/account-security", endpoint="account_security")
+def account_security_page():
+    if require_login(): return require_login()
+    return render_template("account_security.html")
 
 # ----------------------- 工人 / 平台 -----------------------
 @app.get("/workers")
