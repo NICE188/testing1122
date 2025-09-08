@@ -1,9 +1,9 @@
-# app.py – Admin Royale（未登录隐藏侧边栏 + 亮/暗主题 + 右侧操作列 · 完整可运行）
+# app.py – Admin Royale（登录页山景玻璃风 + 未登录隐藏侧栏 + 亮/暗主题 + 操作列右对齐 · 完整可运行）
 from flask import Flask, request, render_template, redirect, url_for, session, flash, abort, send_file, Response
 from jinja2 import DictLoader, TemplateNotFound
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3, os, io, csv
-from datetime import datetime
+from datetime import datetime, timedelta
 
 APP_DB = os.environ.get("APP_DB", "data.db")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
@@ -12,11 +12,12 @@ SECRET_KEY    = os.environ.get("SECRET_KEY", "dev-secret")
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
+app.permanent_session_lifetime = timedelta(days=30)  # 记住登录时的会话时长
 
 @app.get("/health")
 def health(): return "ok", 200
 
-# ----------------------- 样式（黑金风，含 Light Mode 覆写） -----------------------
+# ----------------------- 样式（含登录页山景插画 & Light/Dark） -----------------------
 STYLE_CSS = r""":root{
   --bg:#0a0c12; --bg-2:#0d111b; --surface:#0f1522; --line:#212a3d;
   --text:#eaeef7; --muted:#a8b4cc;
@@ -34,7 +35,7 @@ body{
     linear-gradient(180deg, var(--bg), var(--bg-2) 1200px);
 }
 
-/* 顶部栏 */
+/* 顶部栏（登录页会隐藏） */
 .topbar{
   position:sticky; top:0; z-index:30;
   display:flex; align-items:center; justify-content:space-between;
@@ -52,7 +53,70 @@ body{
 .nav a,.nav .btn{margin-left:10px;padding:6px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.06);text-decoration:none;color:var(--text);background:transparent}
 .nav a:hover,.nav .btn:hover{border-color:var(--line)}
 
-/* 布局（登录用户=两列；未登录=单列） */
+/* 登录页全屏 Hero（山景插画 + 圆角面板） */
+.auth-hero{
+  min-height:calc(100vh - 0px);
+  display:grid; place-items:center;
+  padding:34px 20px;
+}
+.auth-frame{
+  width:min(1120px,96vw); height:min(78vh,640px);
+  border-radius:28px; position:relative; overflow:hidden;
+  box-shadow:0 40px 120px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+  background:
+    radial-gradient(1200px 520px at 50% -12%, rgba(255,255,255,.06), transparent 60%),
+    linear-gradient(180deg, rgba(6,10,18,.14), rgba(6,10,18,.22));
+}
+/* 背景插画：内嵌 SVG（两层山 + 前景剪影） */
+.auth-frame::before{
+  content:""; position:absolute; inset:0; z-index:0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 600' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='sky' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23c7d6ff'/%3E%3Cstop offset='1' stop-color='%238aa6ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23sky)' width='1200' height='600'/%3E%3Cpath fill='%238c8dff' d='M0 360 L120 320 260 350 380 290 520 360 680 300 820 360 980 320 1200 360 1200 600 0 600z'/%3E%3Cpath fill='%235553c9' d='M0 420 L140 390 270 430 410 400 560 430 710 410 860 440 1020 420 1200 440 1200 600 0 600z'/%3E%3Cpath fill='%23152132' d='M0 520 C120 500 220 560 360 540 C520 520 620 580 760 560 C860 546 980 570 1200 560 L1200 600 L0 600z'/%3E%3C/svg%3E");
+  background-size:cover; background-position:center;
+  filter:saturate(110%) contrast(105%);
+}
+/* 玻璃拟态登录卡片 */
+.auth-card{
+  position:absolute; inset:auto; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:min(560px,92vw);
+  border-radius:22px; padding:22px 22px 20px;
+  background:color-mix(in oklab, #ffffff 8%, transparent);
+  border:1px solid rgba(255,255,255,.28);
+  backdrop-filter: blur(16px) saturate(130%);
+  box-shadow:0 24px 60px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.35);
+  z-index:2;
+}
+.auth-title{ text-align:center; font-size:22px; font-weight:900; letter-spacing:.4px; margin:4px 0 14px; }
+.auth-form{ display:grid; gap:12px }
+.input{
+  position:relative; display:flex; align-items:center; height:44px; border-radius:14px;
+  border:1px solid rgba(255,255,255,.36);
+  background:linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.12));
+  overflow:hidden;
+}
+.input input{
+  flex:1; height:44px; background:transparent; border:0; outline:0; color:#fff; padding:0 40px 0 14px; font-size:14px;
+}
+.input .i-right{
+  position:absolute; right:10px; width:22px; height:22px; opacity:.9; pointer-events:none;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.4));
+}
+.auth-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px; color:#e8ecff }
+.auth-row a{ color:#e8ecff; text-decoration:none; opacity:.9 }
+.auth-row a:hover{ text-decoration:underline; }
+.auth-primary{
+  height:44px; border-radius:999px; border:1px solid rgba(255,255,255,.45);
+  background:linear-gradient(180deg, rgba(255,255,255,.65), rgba(255,255,255,.35));
+  color:#0f1730; font-weight:800; letter-spacing:.2px; cursor:pointer;
+  box-shadow:0 16px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.8);
+}
+.auth-primary:hover{ transform:translateY(-1px); }
+.auth-primary:active{ transform:translateY(0); }
+.auth-foot{ text-align:center; font-size:12px; margin-top:2px; color:#e8ecff }
+
+.auth-flash{ margin-bottom:12px; border-radius:14px; padding:10px 12px; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18) }
+
+/* 常规布局（登录后） */
 .layout{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 56px)}
 .layout-guest{grid-template-columns:1fr}
 .sidebar{
@@ -94,7 +158,7 @@ body{
 }
 .card-title{font-size:12px;color:var(--muted)} .card-value{font-size:30px;margin-top:8px;letter-spacing:.3px}
 
-/* 表单与按钮（基础） */
+/* 表单/按钮 */
 .form{display:flex;flex-wrap:wrap;gap:10px}
 .form input,.form select,.form textarea,.form button{
   height:40px; padding:8px 12px; border-radius:14px;
@@ -123,13 +187,11 @@ body{
   border-color: rgba(239,71,111,.62) !important;
 }
 
-/* —— 操作列：一排靠右（纯图标 + 紧凑） —— */
+/* 操作列：一排靠右（纯图标） */
 .actions-cell{ text-align:right; }
 .actions-inline{ display:flex; justify-content:flex-end; align-items:center; gap:8px; flex-wrap:wrap; }
 .actions-inline form{ margin:0; display:inline-flex; }
 .btn-icon{ width:34px; height:34px; padding:0; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1; }
-.btn-icon:hover{ transform:translateY(-1px) }
-.btn-icon:active{ transform:translateY(0) }
 
 /* 表格 */
 .table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);box-shadow:0 28px 68px rgba(0,0,0,.52)}
@@ -143,30 +205,16 @@ td{padding:10px;border-bottom:1px solid var(--line)}
 tbody tr:hover{background: linear-gradient(90deg, color-mix(in oklab, var(--gold) 10%, transparent), transparent 60%) !important}
 tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 
-/* 小弹窗 / 大弹窗（保留） */
-.modal-backdrop{position:fixed; inset:0; z-index:50; display:none; background:radial-gradient(1200px 600px at 15% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%), radial-gradient(1200px 600px at 120% 10%, color-mix(in oklab, var(--royal) 14%, transparent), transparent 60%), rgba(5,8,14,.62); backdrop-filter:blur(10px) saturate(140%)}
-.modal-backdrop.open{display:flex; align-items:center; justify-content:center; padding:22px}
-.modal{width:min(440px,100%); border-radius:var(--radius); padding:18px; background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), #0e1528; border:1px solid rgba(255,255,255,.14); box-shadow:0 34px 80px rgba(0,0,0,.58); opacity:0; transform:translateY(10px) scale(.985); transition:opacity .18s ease, transform .18s ease; position:relative;}
-.modal-backdrop.open .modal{opacity:1; transform:none}
-
-.big-backdrop{position:fixed; inset:0; z-index:55; display:none; background: radial-gradient(1800px 760px at 10% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%), radial-gradient(1600px 640px at 120% 0%, color-mix(in oklab, var(--royal) 16%, transparent), transparent 60%), linear-gradient(180deg, rgba(6,10,18,.74), rgba(6,10,18,.64)); backdrop-filter: blur(14px) saturate(140%);}
-.big-backdrop.open{display:flex; align-items:center; justify-content:center; padding:30px}
-.big-modal{width:min(1080px, 96vw); max-height:90vh; overflow:auto; position:relative; border-radius:20px; background: linear-gradient(180deg, rgba(255,255,255,.08), transparent 58%), radial-gradient(1200px 220px at 50% -8%, rgba(255,255,255,.12), transparent 60%), linear-gradient(180deg, #10182c, #0e1628); border: 1px solid rgba(255,255,255,.16); box-shadow: 0 80px 180px rgba(0,0,0,.76), inset 0 1px 0 rgba(255,255,255,.06);}
-.big-header{position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; background: linear-gradient(180deg, rgba(18,26,44,.92), rgba(12,19,33,.86)), linear-gradient(180deg, rgba(255,255,255,.06), transparent); border-bottom: 1px solid rgba(255,255,255,.10);}
-.big-title{font-weight:900; letter-spacing:.3px; display:flex; align-items:center; gap:10px; background: linear-gradient(90deg, var(--gold), var(--royal)); -webkit-background-clip:text; background-clip:text; color:transparent;}
-.big-close{padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 70%); color:var(--text); cursor:pointer;}
-.big-body{padding:20px}
-
-/* 手机端优化 */
+/* 手机端 */
 @media (max-width: 640px){
+  .auth-frame{ height:520px }
+  .auth-card{ width:min(520px,94vw); }
   th, td { padding:8px; }
   .actions-inline{ gap:6px; }
-  .actions-inline > form:first-child{ order:0; flex-basis:100%; display:flex; justify-content:flex-end; }
-  .actions-inline > *:not(:first-child){ order:1; }
   .btn-icon{ width:32px; height:32px; font-size:15px; border-radius:10px; }
 }
 
-/* === Light Mode 变量覆写 === */
+/* Light Mode 覆写 */
 :root[data-theme="light"]{
   --bg:#f7f8fb; --bg-2:#eef1f7; --surface:#ffffff; --line:#d8dfec;
   --text:#0b1020; --muted:#5b6780;
@@ -187,6 +235,8 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 }
 :root[data-theme="light"] th{ background:rgba(255,255,255,.92); color:#303a58; border-bottom:1px solid var(--line); }
 :root[data-theme="light"] tbody tr:nth-child(even){ background:rgba(0,0,0,.02) }
+:root[data-theme="light"] .auth-card{ background:color-mix(in oklab, #ffffff 60%, transparent); color:#0b1020; }
+:root[data-theme="light"] .auth-row, :root[data-theme="light"] .auth-foot { color:#263356 }
 """
 
 @app.get("/static/style.css")
@@ -200,7 +250,7 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <!-- 先设定主题，避免闪烁 -->
+  <!-- 主题预设，避免闪烁 -->
   <script>
     (function () {
       try {
@@ -213,97 +263,90 @@ TEMPLATES = {
   </script>
 
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=170">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=180">
 </head>
 <body class="luxury">
-  <header class="topbar">
-    <div class="brand">Admin Royale</div>
-    <nav class="nav">
-      <button id="themeToggle" class="btn" type="button" title="切换主题" aria-label="切换主题">🌙</button>
-      {% if session.get('user_id') %}
-        <span>👤 {{ session.get('user_id') }}</span>
-        <a href="{{ url_for('logout') }}">退出</a>
-      {% else %}
-        <a href="{{ url_for('login') }}">登录</a>
-      {% endif %}
-    </nav>
-  </header>
 
-  {% set is_auth = session.get('user_id') %}
-  <div class="layout {{ '' if is_auth else 'layout-guest' }}">
-    {% if is_auth %}
-      <aside class="sidebar">
-        <nav class="side-menu">
-          <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}"><span class="icon">🏠</span>Dashboard</a>
-          <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}"><span class="icon">👨‍💼</span>工人 / 平台</a>
-          <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}"><span class="icon">🏦</span>银行账户</a>
-          <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}"><span class="icon">💳</span>银行卡租金</a>
-          <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}"><span class="icon">💵</span>出粮记录</a>
-          <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}"><span class="icon">💸</span>开销记录</a>
-          <a href="{{ url_for('account_security') }}" class="{{ 'active' if request.path.startswith('/account') or request.path.startswith('/account-security') else '' }}"><span class="icon">🔐</span>安全设置</a>
-        </nav>
-      </aside>
-    {% endif %}
+  {% set auth_mode = (not session.get('user_id')) and request.path.startswith('/login') %}
+  {% if not auth_mode %}
+    <header class="topbar">
+      <div class="brand">Admin Royale</div>
+      <nav class="nav">
+        <button id="themeToggle" class="btn" type="button" title="切换主题" aria-label="切换主题">🌙</button>
+        {% if session.get('user_id') %}
+          <span>👤 {{ session.get('user_id') }}</span>
+          <a href="{{ url_for('logout') }}">退出</a>
+        {% else %}
+          <a href="{{ url_for('login') }}">登录</a>
+        {% endif %}
+      </nav>
+    </header>
+  {% endif %}
 
-    <main class="main">
+  {% if auth_mode %}
+    <!-- 登录/登出页：全屏 Hero -->
+    <main style="padding:0">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          <div class="panel" style="margin-bottom:16px">
-            {% for category, message in messages %}
-              <div>{{ message }}</div>
-            {% endfor %}
-          </div>
+          <div class="auth-hero"><div class="auth-frame"><div class="auth-card">
+            {% for category, message in messages %}<div class="auth-flash">{{ message }}</div>{% endfor %}
+          </div></div></div>
         {% endif %}
       {% endwith %}
       {% block content %}{% endblock %}
     </main>
-  </div>
+  {% else %}
+    <!-- 登录后：常规布局 -->
+    <div class="layout {{ '' if session.get('user_id') else 'layout-guest' }}">
+      {% if session.get('user_id') %}
+        <aside class="sidebar">
+          <nav class="side-menu">
+            <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}"><span class="icon">🏠</span>Dashboard</a>
+            <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}"><span class="icon">👨‍💼</span>工人 / 平台</a>
+            <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}"><span class="icon">🏦</span>银行账户</a>
+            <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}"><span class="icon">💳</span>银行卡租金</a>
+            <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}"><span class="icon">💵</span>出粮记录</a>
+            <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}"><span class="icon">💸</span>开销记录</a>
+            <a href="{{ url_for('account_security') }}" class="{{ 'active' if request.path.startswith('/account') or request.path.startswith('/account-security') else '' }}"><span class="icon">🔐</span>安全设置</a>
+          </nav>
+        </aside>
+      {% endif %}
+      <main class="main">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="panel" style="margin-bottom:16px">
+              {% for category, message in messages %}
+                <div>{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  {% endif %}
 
   <!-- 删除确认弹窗 -->
   <div id="confirmBackdrop" class="modal-backdrop" aria-hidden="true">
-    <div class="modal">
+    <div class="auth-card" style="max-width:480px">
       <h3>确认操作</h3>
       <p id="confirmText">确定要执行该操作吗？</p>
-      <div class="modal-actions" style="display:flex;gap:10px;justify-content:flex-end">
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px">
         <button id="confirmCancel" class="btn" type="button">取消</button>
         <button id="confirmOk" class="btn btn-delete" type="button" title="确认删除" aria-label="确认删除">🗑️</button>
       </div>
     </div>
   </div>
 
-  <!-- 大表单弹窗 -->
-  <div id="bigBackdrop" class="big-backdrop" aria-hidden="true">
-    <div class="big-modal">
-      <div class="big-header">
-        <div class="big-title" id="bigTitle">📄 表单</div>
-        <button id="bigClose" class="big-close" type="button">✖</button>
-      </div>
-      <div id="bigContent" class="big-body">
-        <div class="panel">等待加载…</div>
-      </div>
-    </div>
-  </div>
-
   <script>
-    // 主题按钮逻辑（本地记忆）
+    // 主题按钮
     (function () {
       var btn = document.getElementById('themeToggle');
       if (!btn) return;
-      function currentTheme() { return document.documentElement.getAttribute('data-theme') || 'dark'; }
-      function setIcon() {
-        var cur = currentTheme();
-        btn.textContent = (cur === 'dark') ? '🌙' : '☀️';
-        btn.setAttribute('aria-label', cur === 'dark' ? '切换到亮色' : '切换到暗色');
-        btn.title = btn.getAttribute('aria-label');
-      }
+      function cur(){return document.documentElement.getAttribute('data-theme')||'dark'}
+      function setIcon(){ var c=cur(); btn.textContent=(c==='dark')?'🌙':'☀️'; btn.title = (c==='dark')?'切换到亮色':'切换到暗色'; }
       setIcon();
-      btn.addEventListener('click', function () {
-        var cur = currentTheme();
-        var next = cur === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        try { localStorage.setItem('theme', next); } catch (e) {}
-        setIcon();
-      });
+      btn.addEventListener('click', function(){ var n=cur()==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',n); try{localStorage.setItem('theme',n);}catch(e){} setIcon(); });
     })();
 
     // 删除确认
@@ -318,91 +361,52 @@ TEMPLATES = {
       document.addEventListener('submit', function(e){
         const f = e.target;
         if(f.matches('.confirm')){
-          e.preventDefault();
-          pendingForm = f;
-          open(f.dataset.confirm || '确定要删除这条记录吗？');
+          e.preventDefault(); pendingForm = f; open(f.dataset.confirm || '确定要删除这条记录吗？');
         }
       }, true);
-      btnCancel.addEventListener('click', close);
-      btnOK.addEventListener('click', function(){
-        if(pendingForm){ const f = pendingForm; pendingForm=null; close(); f.classList.remove('confirm'); f.submit(); }
-      });
+      btnCancel&&btnCancel.addEventListener('click', close);
+      btnOK&&btnOK.addEventListener('click', function(){ if(pendingForm){ const f=pendingForm; pendingForm=null; close(); f.classList.remove('confirm'); f.submit(); } });
       document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
       backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
-    })();
-
-    // 大弹窗加载器（partial=1）
-    (function(){
-      const big = document.getElementById('bigBackdrop');
-      const content = document.getElementById('bigContent');
-      const title = document.getElementById('bigTitle');
-      const closeBtn = document.getElementById('bigClose');
-
-      function open(){ big.classList.add('open'); big.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; }
-      function close(){
-        big.classList.add('closing');
-        setTimeout(()=>{ big.classList.remove('open','closing'); big.setAttribute('aria-hidden','true'); document.body.style.overflow=''; content.innerHTML=''; title.textContent='📄 表单'; }, 220);
-      }
-
-      async function load(url, text){
-        title.textContent = text || '📄 表单';
-        content.innerHTML = '<div class="panel">正在加载…</div>';
-        open();
-        try{
-          const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'partial=1', {headers:{'X-Requested-With':'fetch'}});
-          const html = await res.text();
-          content.innerHTML = html;
-        }catch(e){
-          content.innerHTML = '<div class="panel">加载失败，请重试。</div>';
-        }
-      }
-
-      document.addEventListener('click', function(ev){
-        const el = ev.target.closest('a.js-open-modal, button.js-open-modal');
-        if(el){
-          ev.preventDefault();
-          const href = el.getAttribute('href') || el.dataset.href || '#';
-          const tt = el.getAttribute('data-title') || el.title || el.textContent.trim();
-          load(href, tt);
-        }
-      });
-
-      big.addEventListener('submit', async function(ev){
-        const f = ev.target;
-        if(!big.contains(f)) return;
-        ev.preventDefault();
-        const data = new FormData(f);
-        const btn = f.querySelector('button[type="submit"]'); if(btn){ btn.disabled=true; btn.style.opacity=.75; }
-        try{
-          await fetch(f.action, {method: f.method || 'POST', body: data, headers:{'X-Requested-With':'fetch'}});
-          close(); location.reload();
-        }catch(e){ alert('提交失败，请重试'); } finally{ if(btn){ btn.disabled=false; btn.style.opacity=1; } }
-      });
-
-      closeBtn.addEventListener('click', close);
-      big.addEventListener('click', (e)=>{ if(e.target===big) close(); });
-      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && big.classList.contains('open')) close(); });
     })();
   </script>
 </body>
 </html>
 """,
 
+# ===== 登录页（山景 + 玻璃卡片） =====
 "login.html": """{% extends "base.html" %}
 {% block title %}登录 · {{ t.app_name }}{% endblock %}
 {% block content %}
-<div class="panel">
-  <h2>登录</h2>
-  <p>{{ t.login_tip }}</p>
-  <form class="form" method="post" action="{{ url_for('login_post') }}">
-    <input name="username" placeholder="{{ t.username }}" required>
-    <input name="password" type="password" placeholder="{{ t.password }}" required>
-    <button class="btn" type="submit">{{ t.login }}</button>
-  </form>
+<div class="auth-hero">
+  <div class="auth-frame">
+    <div class="auth-card" role="dialog" aria-label="登录表单">
+      <div class="auth-title">Login</div>
+      <form class="auth-form" method="post" action="{{ url_for('login_post') }}">
+        <label class="input">
+          <input name="username" placeholder="Email / 用户名" required>
+          <!-- 邮件图标 -->
+          <svg class="i-right" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M20 4H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h16a2 2 0 0 0 2-2V6c0-1.1-.9-2-2-2Zm0 4-8 5-8-5V6l8 5 8-5v2Z"/></svg>
+        </label>
+        <label class="input">
+          <input name="password" type="password" placeholder="Password 密码" required>
+          <!-- 锁图标 -->
+          <svg class="i-right" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 1a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V6a5 5 0 0 1 5-5Zm3 8V6a3 3 0 1 0-6 0v3h6Z"/></svg>
+        </label>
+        <div class="auth-row">
+          <label><input type="checkbox" name="remember" checked>  Remember me</label>
+          <a href="#" onclick="alert('请联系管理员重置密码');return false;">Forgot Password?</a>
+        </div>
+        <button class="auth-primary" type="submit">Login</button>
+        <div class="auth-foot">Don’t have an account? <a href="#" onclick="alert('请联系管理员创建账号');return false;">Register</a></div>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}
 """,
 
+# ===== 其余页面（保留） =====
 "dashboard.html": """{% extends "base.html" %}
 {% block title %}Dashboard · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -416,7 +420,6 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ===== 列表页：操作列纯图标，一排靠右 =====
 "workers_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.workers }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -430,21 +433,17 @@ TEMPLATES = {
     <table>
       <thead>
         <tr>
-          <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th>
-          <th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
+          <th>ID</th><th>{{ t.name }}</th><th>{{ t.company }}</th><th>{{ t.commission }}</th><th>{{ t.expenses }}</th><th>{{ t.created_at }}</th><th>{{ t.actions }}</th>
         </tr>
       </thead>
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td><td>{{ r.name }}</td><td>{{ r.company }}</td><td>{{ r.commission }}</td><td>{{ r.expenses }}</td>
-          <td>{{ r.created_at }}</td>
+          <td>{{ r.id }}</td><td>{{ r.name }}</td><td>{{ r.company }}</td><td>{{ r.commission }}</td><td>{{ r.expenses }}</td><td>{{ r.created_at }}</td>
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('workers_toggle', wid=r.id) }}">
-                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
-                  {{ '✅' if r.status==1 else '🚫' }}
-                </button>
+                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button>
               </form>
               <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('workers_edit_form', wid=r.id) }}" data-title="✏️ 编辑工人" title="编辑" aria-label="编辑">✏️</a>
               <form method="post" action="{{ url_for('workers_delete', wid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
@@ -480,14 +479,11 @@ TEMPLATES = {
       <tbody>
         {% for r in rows %}
         <tr>
-          <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.holder }}</td><td>{{ r.card_company or '-' }}</td>
-          <td>{{ r.created_at }}</td>
+          <td>{{ r.id }}</td><td>{{ r.bank_name }}</td><td>{{ r.account_no }}</td><td>{{ r.holder }}</td><td>{{ r.card_company or '-' }}</td><td>{{ r.created_at }}</td>
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('bank_accounts_toggle', bid=r.id) }}">
-                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
-                  {{ '✅' if r.status==1 else '🚫' }}
-                </button>
+                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button>
               </form>
               <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('bank_accounts_edit_form', bid=r.id) }}" data-title="✏️ 编辑银行账户" title="编辑" aria-label="编辑">✏️</a>
               <form method="post" action="{{ url_for('bank_accounts_delete', bid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
@@ -528,9 +524,7 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('card_rentals_toggle', rid=r.id) }}">
-                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
-                  {{ '✅' if r.status==1 else '🚫' }}
-                </button>
+                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button>
               </form>
               <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('card_rentals_edit_form', rid=r.id) }}" data-title="✏️ 编辑银行卡租金" title="编辑" aria-label="编辑">✏️</a>
               <form method="post" action="{{ url_for('card_rentals_delete', rid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
@@ -570,9 +564,7 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}">
-                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
-                  {{ '✅' if r.status==1 else '🚫' }}
-                </button>
+                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button>
               </form>
               <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('salaries_edit_form', sid=r.id) }}" data-title="✏️ 编辑出粮记录" title="编辑" aria-label="编辑">✏️</a>
               <form method="post" action="{{ url_for('salaries_delete', sid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
@@ -612,9 +604,7 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('expenses_toggle', eid=r.id) }}">
-                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
-                  {{ '✅' if r.status==1 else '🚫' }}
-                </button>
+                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">{{ '✅' if r.status==1 else '🚫' }}</button>
               </form>
               <a class="btn btn-edit btn-icon js-open-modal" href="{{ url_for('expenses_edit_form', eid=r.id) }}" data-title="✏️ 编辑开销记录" title="编辑" aria-label="编辑">✏️</a>
               <form method="post" action="{{ url_for('expenses_delete', eid=r.id) }}" class="confirm" data-confirm="{{ t.confirm_delete }}">
@@ -631,137 +621,15 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ———— 账号安全页 ————
+# ———— 登录之外的简短占位页 ——（安全设置）。
 "account_security.html": """{% extends "base.html" %}
 {% block title %}账号安全 · {{ t.app_name }}{% endblock %}
 {% block content %}
 <div class="panel">
   <h2>🔐 账号安全</h2>
-  <div class="actions">
-    <a class="btn js-open-modal" href="{{ url_for('account_credentials') }}" data-title="🧑‍💻 修改登录账号/密码">🧑‍💻 修改登录账号/密码</a>
-    <a class="btn js-open-modal" href="{{ url_for('account_change_password') }}" data-title="🔑 修改密码">🔑 修改密码</a>
-    <a class="btn js-open-modal" href="{{ url_for('account_change_username') }}" data-title="🆔 修改用户名">🆔 修改用户名</a>
-    <a class="btn btn-delete js-open-modal" href="{{ url_for('account_reset') }}" data-title="🛠 管理员重置密码">🛠 管理员重置密码</a>
-  </div>
+  <p>忘记密码请联系管理员重置。</p>
 </div>
 {% endblock %}
-""",
-
-# ———— partials（弹窗表单） ————
-"partials/account_credentials_form.html": """
-<div class="panel">
-  <h2>🧑‍💻 修改登录账号/密码</h2>
-  <form class="form" method="post" action="{{ url_for('account_credentials_post') }}">
-    <input name="username" placeholder="{{ t.username }}" required>
-    <input name="password" type="password" placeholder="{{ t.password }}" required>
-    <button class="btn btn-edit" type="submit">💾 {{ t.save }}</button>
-  </form>
-</div>
-""",
-"partials/account_change_password_form.html": """
-<div class="panel">
-  <h2>🔑 修改密码</h2>
-  <form class="form" method="post" action="{{ url_for('account_change_password_post') }}">
-    <input name="old_password" type="password" placeholder="旧密码" required>
-    <input name="new_password" type="password" placeholder="新密码" required>
-    <button class="btn btn-edit" type="submit">💾 {{ t.save }}</button>
-  </form>
-</div>
-""",
-"partials/account_change_username_form.html": """
-<div class="panel">
-  <h2>🆔 修改用户名</h2>
-  <form class="form" method="post" action="{{ url_for('account_change_username_post') }}">
-    <input name="new_username" placeholder="新用户名" required>
-    <button class="btn btn-edit" type="submit">💾 {{ t.save }}</button>
-  </form>
-</div>
-""",
-"partials/account_reset_form.html": """
-<div class="panel">
-  <h2>🛠 管理员重置密码</h2>
-  <form class="form" method="post" action="{{ url_for('account_reset_post') }}">
-    <input name="target_username" placeholder="目标用户名" required>
-    <input name="new_password" type="password" placeholder="新密码" required>
-    <button class="btn btn-delete" type="submit">💾 {{ t.save }}</button>
-  </form>
-</div>
-""",
-"partials/workers_form.html": """
-<div class="panel">
-  <h2 style="margin-top:0">{{ '✏️ 编辑工人' if r else '➕ 新增工人' }}</h2>
-  <form class="form" method="post" action="{{ url_for('workers_edit', wid=r.id) if r else url_for('workers_add') }}">
-    <input name="name" value="{{ r.name if r else '' }}" placeholder="{{ t.name }}" required>
-    <input name="company" value="{{ r.company if r else '' }}" placeholder="{{ t.company }}">
-    <input name="commission" type="number" step="0.01" value="{{ r.commission if r else '' }}" placeholder="{{ t.commission }}">
-    <input name="expenses" type="number" step="0.01" value="{{ r.expenses if r else '' }}" placeholder="{{ t.expenses }}">
-    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
-  </form>
-</div>
-""",
-"partials/bank_accounts_form.html": """
-<div class="panel">
-  <h2 style="margin-top:0">{{ '✏️ 编辑银行账户' if r else '➕ 新增银行账户' }}</h2>
-  <form class="form" method="post" action="{{ url_for('bank_accounts_edit', bid=r.id) if r else url_for('bank_accounts_add') }}">
-    <input name="bank_name" value="{{ r.bank_name if r else '' }}" placeholder="银行名" required>
-    <input name="account_no" value="{{ r.account_no if r else '' }}" placeholder="账号" required>
-    <input name="holder" value="{{ r.holder if r else '' }}" placeholder="户名" required>
-    <input name="card_company" value="{{ r.card_company if r else '' }}" placeholder="银行卡公司（如 Visa / Master / 银联）">
-    <select name="status">
-      <option value="1" {% if r and r.status==1 %}selected{% endif %}>{{ t.active }}</option>
-      <option value="0" {% if r and r.status==0 %}selected{% endif %}>{{ t.inactive }}</option>
-    </select>
-    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
-  </form>
-</div>
-""",
-"partials/card_rentals_form.html": """
-<div class="panel">
-  <h2 style="margin-top:0">{{ '✏️ 编辑银行卡租金' if r else '➕ 新增银行卡租金' }}</h2>
-  <form class="form" method="post" action="{{ url_for('card_rentals_edit', rid=r.id) if r else url_for('card_rentals_add') }}">
-    <input name="bank_name"    value="{{ r.bank_name if r else '' }}" placeholder="银行名称" required>
-    <input name="account_no"   value="{{ r.account_no if r else '' }}" placeholder="银行账号" required>
-    <input name="card_company" value="{{ r.card_company if r else '' }}" placeholder="银行卡公司（如 Visa / Master / 银联）">
-    <input name="monthly_rent" type="number" step="0.01" value="{{ r.monthly_rent if r else '' }}" placeholder="月租金" required>
-    <input name="start_date"   type="date" value="{{ r.start_date if r else '' }}" placeholder="开始日期">
-    <input name="end_date"     type="date" value="{{ r.end_date if r else '' }}" placeholder="结束日期">
-    <textarea name="note" placeholder="备注">{{ r.note if r else '' }}</textarea>
-    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
-  </form>
-</div>
-""",
-"partials/salaries_form.html": """
-<div class="panel">
-  <h2 style="margin-top:0">{{ '✏️ 编辑出粮记录' if r else '➕ 新增出粮记录' }}</h2>
-  <form class="form" method="post" action="{{ url_for('salaries_edit', sid=r.id) if r else url_for('salaries_add') }}">
-    <select name="worker_id">
-      {% for w in workers %}
-        <option value="{{ w.id }}" {% if r and r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>
-      {% endfor %}
-    </select>
-    <input name="amount" type="number" step="0.01" value="{{ r.amount if r else '' }}" placeholder="{{ t.salary_amount }}" required>
-    <input name="pay_date" type="date" value="{{ r.pay_date if r else '' }}" placeholder="{{ t.pay_date }}" required>
-    <textarea name="note" placeholder="{{ t.note }}">{{ r.note if r else '' }}</textarea>
-    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
-  </form>
-</div>
-""",
-"partials/expenses_form.html": """
-<div class="panel">
-  <h2 style="margin-top:0">{{ '✏️ 编辑开销记录' if r else '➕ 新增开销记录' }}</h2>
-  <form class="form" method="post" action="{{ url_for('expenses_edit', eid=r.id) if r else url_for('expenses_add') }}">
-    <select name="worker_id">
-      <option value="">不关联工人</option>
-      {% for w in workers %}
-        <option value="{{ w.id }}" {% if r and r.worker_id==w.id %}selected{% endif %}>{{ w.name }}</option>
-      {% endfor %}
-    </select>
-    <input name="amount" type="number" step="0.01" value="{{ r.amount if r else '' }}" placeholder="{{ t.expense_amount }}" required>
-    <input name="date" type="date" value="{{ r.date if r else '' }}" placeholder="{{ t.date }}" required>
-    <textarea name="note" placeholder="{{ t.expenses_note }}">{{ r.note if r else '' }}</textarea>
-    <button class="btn btn-edit" type="submit">💾 {{ t.save if r else t.add }}</button>
-  </form>
-</div>
 """,
 }
 
@@ -821,7 +689,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, company TEXT, commission REAL DEFAULT 0.0, expenses REAL DEFAULT 0.0, status INTEGER DEFAULT 1, created_at TEXT
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS bank_accounts(
-            id INTEGER PRIMARY KEY AUTOINCREMENT, bank_name TEXT, account_no TEXT, holder TEXT, status INTEGER DEFAULT 1, created_at TEXT
+            id INTEGER PRIMARY KEY AUTOINCREMENT, bank_name TEXT, account_no TEXT, holder TEXT, status INTEGER DEFAULT 1, created_at TEXT, card_company TEXT
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS card_rentals(
             id INTEGER PRIMARY KEY AUTOINCREMENT, bank_account_id INTEGER, monthly_rent REAL, start_date TEXT, end_date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
@@ -832,7 +700,7 @@ def init_db():
         cur.execute("""CREATE TABLE IF NOT EXISTS expenses(
             id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
-        # 兜底列 + 卡公司
+        # 补列
         ensure_column(c, "workers", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "card_company", "TEXT", "")
@@ -867,11 +735,13 @@ def login(): return render_template("login.html")
 def login_post():
     username = request.form.get("username","").strip()
     password = request.form.get("password","").strip()
+    remember = True if request.form.get("remember") else False
     with conn() as c:
         u = c.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
         if not u or not check_password_hash(u["password_hash"], password):
             flash("用户名或密码不正确", "error"); return redirect(url_for("login"))
         session["user_id"] = u["username"]
+        session.permanent = True if remember else False
     return redirect(url_for("dashboard"))
 
 @app.get("/logout")
@@ -888,98 +758,7 @@ def dashboard():
         total_expenses = c.execute("SELECT IFNULL(SUM(amount),0) s FROM expenses").fetchone()["s"]
     return render_template("dashboard.html", total_workers=total_workers,total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
 
-# ----------------------- 账号安全 -----------------------
-@app.get("/account-security")
-def account_security():
-    if require_login(): return require_login()
-    return render_template("account_security.html")
-
-@app.get("/account/credentials")
-def account_credentials():
-    if require_login(): return require_login()
-    if request.args.get("partial") == "1":
-        return render_template("partials/account_credentials_form.html")
-    return render_template("account_security.html")
-
-@app.post("/account/credentials")
-def account_credentials_post():
-    if require_login(): return require_login()
-    new_username = request.form.get("username","").strip()
-    new_password = request.form.get("password","").strip()
-    if not new_username or not new_password:
-        flash("用户名与密码不能为空", "error"); return redirect(url_for("account_security"))
-    with conn() as c:
-        u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"],)).fetchone()
-        if not u: abort(403)
-        c.execute("UPDATE users SET username=?, password_hash=? WHERE id=?", (new_username, generate_password_hash(new_password), u["id"]))
-        c.commit()
-        session["user_id"] = new_username
-    flash("登录账号与密码已更新", "success"); return redirect(url_for("account_security"))
-
-@app.get("/account/change-password")
-def account_change_password():
-    if require_login(): return require_login()
-    if request.args.get("partial") == "1":
-        return render_template("partials/account_change_password_form.html")
-    return render_template("account_security.html")
-
-@app.post("/account/change-password")
-def account_change_password_post():
-    if require_login(): return require_login()
-    old_pw = request.form.get("old_password",""); new_pw = request.form.get("new_password","")
-    with conn() as c:
-        u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"]),).fetchone()
-        # 兼容：有些 sqlite3 版本不接受单元素 tuple，这里兜底：
-        if not u:
-            u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"],)).fetchone()
-        if not u or not check_password_hash(u["password_hash"], old_pw):
-            flash("旧密码不正确", "error"); return redirect(url_for("account_security"))
-        c.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new_pw), u["id"]))
-        c.commit()
-    flash("密码已更新", "success"); return redirect(url_for("account_security"))
-
-@app.get("/account/change-username")
-def account_change_username():
-    if require_login(): return require_login()
-    if request.args.get("partial") == "1":
-        return render_template("partials/account_change_username_form.html")
-    return render_template("account_security.html")
-
-@app.post("/account/change-username")
-def account_change_username_post():
-    if require_login(): return require_login()
-    new_username = request.form.get("new_username","").strip()
-    if not new_username:
-        flash("新用户名不能为空", "error"); return redirect(url_for("account_security"))
-    with conn() as c:
-        u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"],)).fetchone()
-        if not u: abort(403)
-        c.execute("UPDATE users SET username=? WHERE id=?", (new_username, u["id"]))
-        c.commit()
-        session["user_id"] = new_username
-    flash("用户名已更新", "success"); return redirect(url_for("account_security"))
-
-@app.get("/account/reset")
-def account_reset():
-    if require_login(): return require_login()
-    if request.args.get("partial") == "1":
-        return render_template("partials/account_reset_form.html")
-    return render_template("account_security.html")
-
-@app.post("/account/reset")
-def account_reset_post():
-    if require_login(): return require_login()
-    target_username = request.form.get("target_username","").strip()
-    new_password = request.form.get("new_password","").strip()
-    with conn() as c:
-        u = c.execute("SELECT * FROM users WHERE username=?", (target_username,)).fetchone()
-        if not u:
-            flash("目标用户不存在", "error"); return redirect(url_for("account_security"))
-        c.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new_password), u["id"]))
-        c.commit()
-    flash("目标用户密码已重置", "success"); return redirect(url_for("account_security"))
-
-# ----------------------- 工人 / 平台 -----------------------
+# ----------------------- CRUD：工人 / 平台 -----------------------
 @app.get("/workers")
 def workers_list():
     if require_login(): return require_login()
@@ -1210,11 +989,8 @@ def card_rentals_edit(rid):
     note         = request.form.get("note","")
     bank_account_id = get_or_create_bank_account(bank_name, account_no, card_company)
     with conn() as c:
-        c.execute("""UPDATE card_rentals
-                     SET bank_account_id=?, monthly_rent=?, start_date=?, end_date=?, note=?
-                     WHERE id=?""",
-                  (bank_account_id, monthly_rent, start_date, end_date, note, rid))
-        c.commit()
+        c.execute("""UPDATE card_rentals SET bank_account_id=?, monthly_rent=?, start_date=?, end_date=?, note=? WHERE id=?""",
+                  (bank_account_id, monthly_rent, start_date, end_date, note, rid)); c.commit()
     return redirect(url_for("card_rentals_list"))
 
 @app.post("/card-rentals/<int:rid>/toggle")
