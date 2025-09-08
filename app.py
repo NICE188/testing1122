@@ -1,4 +1,4 @@
-# app.py – Luxury Royale Admin（按钮纯图标 + 紧凑高度 + 手机端两行折叠 · 完整版）
+# app.py – Admin Royale（深/浅色主题 + 右侧操作列 + 内置模板 · 完整可运行）
 from flask import Flask, request, render_template, redirect, url_for, session, flash, abort, send_file, Response
 from jinja2 import DictLoader, TemplateNotFound
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -16,7 +16,7 @@ app.secret_key = SECRET_KEY
 @app.get("/health")
 def health(): return "ok", 200
 
-# ----------------------- Luxury Royale 样式（黑金 + 玻璃 + 高级动效） -----------------------
+# ----------------------- 样式（黑金风，含 Light Mode 覆写） -----------------------
 STYLE_CSS = r""":root{
   --bg:#0a0c12; --bg-2:#0d111b; --surface:#0f1522; --line:#212a3d;
   --text:#eaeef7; --muted:#a8b4cc;
@@ -49,8 +49,8 @@ body{
   background:conic-gradient(from 0deg, var(--gold), var(--royal), var(--gold));
   box-shadow:0 0 10px var(--gold);
 }
-.nav a{margin-left:10px;padding:6px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.06);text-decoration:none;color:var(--text)}
-.nav a:hover{border-color:var(--line)}
+.nav a,.nav .btn{margin-left:10px;padding:6px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.06);text-decoration:none;color:var(--text);background:transparent}
+.nav a:hover,.nav .btn:hover{border-color:var(--line)}
 
 /* 布局与侧栏 */
 .layout{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 56px)}
@@ -83,7 +83,7 @@ body{
     0 12px 28px rgba(0,0,0,.35);
 }
 
-/* 概览卡片与通用面板（略） */
+/* 概览卡片与通用面板 */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:14px 0}
 .card,.panel{
   position:relative;
@@ -135,7 +135,7 @@ body{
 }
 .actions-inline form{ margin:0; display:inline-flex; }
 
-/* 纯图标按钮（用于编辑/删除/启停） */
+/* 纯图标按钮（用于启停/编辑/删除） */
 .btn-icon{
   width:34px; height:34px; padding:0;
   border-radius:12px;
@@ -157,7 +157,7 @@ td{padding:10px;border-bottom:1px solid var(--line)}
 tbody tr:hover{background: linear-gradient(90deg, color-mix(in oklab, var(--gold) 10%, transparent), transparent 60%) !important}
 tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 
-/* 小/大弹窗（略保留） */
+/* 小弹窗 / 大弹窗（保留） */
 .modal-backdrop{position:fixed; inset:0; z-index:50; display:none; background:radial-gradient(1200px 600px at 15% -10%, color-mix(in oklab, var(--gold) 16%, transparent), transparent 60%), radial-gradient(1200px 600px at 120% 10%, color-mix(in oklab, var(--royal) 14%, transparent), transparent 60%), rgba(5,8,14,.62); backdrop-filter:blur(10px) saturate(140%)}
 .modal-backdrop.open{display:flex; align-items:center; justify-content:center; padding:22px}
 .modal{width:min(440px,100%); border-radius:var(--radius); padding:18px; background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%), #0e1528; border:1px solid rgba(255,255,255,.14); box-shadow:0 34px 80px rgba(0,0,0,.58); opacity:0; transform:translateY(10px) scale(.985); transition:opacity .18s ease, transform .18s ease; position:relative;}
@@ -175,11 +175,44 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 @media (max-width: 640px){
   th, td { padding:8px; }
   .actions-inline{ gap:6px; }
-  /* 让第一个动作（通常是启停）独占一行靠右，其余图标在下一行 */
   .actions-inline > form:first-child{ order:0; flex-basis:100%; display:flex; justify-content:flex-end; }
   .actions-inline > *:not(:first-child){ order:1; }
   .btn-icon{ width:32px; height:32px; font-size:15px; border-radius:10px; }
 }
+
+/* === Light Mode 变量覆写 === */
+:root[data-theme="light"]{
+  --bg:#f7f8fb; --bg-2:#eef1f7; --surface:#ffffff; --line:#d8dfec;
+  --text:#0b1020; --muted:#5b6780;
+  --gold:#c79f2b; --gold-2:#e2b941; --royal:#5e56ff; --emerald:#16a085; --ruby:#d24a64;
+}
+:root[data-theme="light"] .topbar{
+  background:rgba(255,255,255,.84);
+  border-bottom:1px solid var(--line);
+  box-shadow:0 8px 28px rgba(0,0,0,.08);
+}
+:root[data-theme="light"] .sidebar{
+  background:linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.9));
+  border-right:1px solid var(--line);
+}
+:root[data-theme="light"] .card,
+:root[data-theme="light"] .panel{
+  background:linear-gradient(180deg, rgba(0,0,0,.02), transparent 60%), var(--surface);
+  border:1px solid rgba(0,0,0,.06);
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+:root[data-theme="light"] .btn{
+  border-color:rgba(0,0,0,.08);
+  background:linear-gradient(180deg, rgba(0,0,0,.02), transparent 60%), rgba(255,255,255,.9);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 8px 18px rgba(0,0,0,.08);
+  color:var(--text);
+}
+:root[data-theme="light"] th{
+  background:rgba(255,255,255,.92);
+  color:#303a58;
+  border-bottom:1px solid var(--line);
+}
+:root[data-theme="light"] tbody tr:nth-child(even){ background:rgba(0,0,0,.02) }
 """
 
 @app.get("/static/style.css")
@@ -192,13 +225,28 @@ TEMPLATES = {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <!-- ① 先设定主题，避免闪烁 -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('theme');
+        var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = saved || (sysDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {}
+    })();
+  </script>
+
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=140">
+  <!-- ② 再加载样式（更新版本号确保刷新缓存） -->
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=160">
 </head>
 <body class="luxury">
   <header class="topbar">
     <div class="brand">Admin Royale</div>
     <nav class="nav">
+      <button id="themeToggle" class="btn" type="button" title="切换主题" aria-label="切换主题">🌙</button>
       {% if session.get('user_id') %}
         <span>👤 {{ session.get('user_id') }}</span>
         <a href="{{ url_for('logout') }}">退出</a>
@@ -260,6 +308,29 @@ TEMPLATES = {
   </div>
 
   <script>
+    // 主题按钮逻辑（本地记忆）
+    (function () {
+      var btn = document.getElementById('themeToggle');
+      if (!btn) return;
+      function currentTheme() {
+        return document.documentElement.getAttribute('data-theme') || 'dark';
+      }
+      function setIcon() {
+        var cur = currentTheme();
+        btn.textContent = (cur === 'dark') ? '🌙' : '☀️';
+        btn.setAttribute('aria-label', cur === 'dark' ? '切换到亮色' : '切换到暗色');
+        btn.title = btn.getAttribute('aria-label');
+      }
+      setIcon();
+      btn.addEventListener('click', function () {
+        var cur = currentTheme();
+        var next = cur === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {}
+        setIcon();
+      });
+    })();
+
     // 删除确认
     (function(){
       const backdrop = document.getElementById('confirmBackdrop');
@@ -370,7 +441,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ===== 列表页：状态/编辑/删除 纯图标，一排靠右，手机端两行 =====
+# ===== 列表页：操作列纯图标，一排靠右 =====
 "workers_list.html": """{% extends "base.html" %}
 {% block title %}{{ t.workers }} · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -590,7 +661,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ———— 账号安全页（与原版一致） ————
+# ———— 账号安全页 ————
 "account_security.html": """{% extends "base.html" %}
 {% block title %}账号安全 · {{ t.app_name }}{% endblock %}
 {% block content %}
@@ -606,7 +677,7 @@ TEMPLATES = {
 {% endblock %}
 """,
 
-# ———— partials（保持原有功能，无需改动） ————
+# ———— partials（弹窗表单） ————
 "partials/account_credentials_form.html": """
 <div class="panel">
   <h2>🧑‍💻 修改登录账号/密码</h2>
@@ -646,7 +717,6 @@ TEMPLATES = {
   </form>
 </div>
 """,
-
 "partials/workers_form.html": """
 <div class="panel">
   <h2 style="margin-top:0">{{ '✏️ 编辑工人' if r else '➕ 新增工人' }}</h2>
@@ -792,7 +862,7 @@ def init_db():
         cur.execute("""CREATE TABLE IF NOT EXISTS expenses(
             id INTEGER PRIMARY KEY AUTOINCREMENT, worker_id INTEGER, amount REAL, date TEXT, note TEXT, status INTEGER DEFAULT 1, created_at TEXT
         )""")
-        # 兜底列 & 卡公司
+        # 兜底列 + 卡公司
         ensure_column(c, "workers", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "status", "INTEGER DEFAULT 1", 1)
         ensure_column(c, "bank_accounts", "card_company", "TEXT", "")
@@ -848,7 +918,7 @@ def dashboard():
         total_expenses = c.execute("SELECT IFNULL(SUM(amount),0) s FROM expenses").fetchone()["s"]
     return render_template("dashboard.html", total_workers=total_workers,total_rentals=total_rentals,total_salaries=total_salaries,total_expenses=total_expenses)
 
-# ----------------------- 账号安全（保持不变） -----------------------
+# ----------------------- 账号安全 -----------------------
 @app.get("/account-security")
 def account_security():
     if require_login(): return require_login()
@@ -888,7 +958,7 @@ def account_change_password_post():
     if require_login(): return require_login()
     old_pw = request.form.get("old_password",""); new_pw = request.form.get("new_password","")
     with conn() as c:
-        u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"]),).fetchone()
+        u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"],)).fetchone()
         if not u or not check_password_hash(u["password_hash"], old_pw):
             flash("旧密码不正确", "error"); return redirect(url_for("account_security"))
         c.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new_pw), u["id"]))
@@ -1093,7 +1163,7 @@ def get_or_create_bank_account(bank_name:str, account_no:str, card_company:str):
     account_no = (account_no or "").strip()
     card_company = (card_company or "").strip()
     if not bank_name or not account_no:
-        raise ValueError("bank_name/account_no 必填")
+        raise ValueError("bank_name / account_no 必填")
     with conn() as c:
         ex = c.execute("SELECT id, card_company FROM bank_accounts WHERE bank_name=? AND account_no=?", (bank_name, account_no)).fetchone()
         if ex:
