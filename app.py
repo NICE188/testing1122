@@ -1,4 +1,4 @@
-# app.py – Admin Royale（深/浅色主题 + 右侧操作列 + 内置模板 · 完整可运行）
+# app.py – Admin Royale（未登录隐藏侧边栏 + 亮/暗主题 + 右侧操作列 · 完整可运行）
 from flask import Flask, request, render_template, redirect, url_for, session, flash, abort, send_file, Response
 from jinja2 import DictLoader, TemplateNotFound
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -52,14 +52,17 @@ body{
 .nav a,.nav .btn{margin-left:10px;padding:6px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.06);text-decoration:none;color:var(--text);background:transparent}
 .nav a:hover,.nav .btn:hover{border-color:var(--line)}
 
-/* 布局与侧栏 */
+/* 布局（登录用户=两列；未登录=单列） */
 .layout{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 56px)}
+.layout-guest{grid-template-columns:1fr}
 .sidebar{
   position:sticky; top:56px; height:calc(100vh - 56px);
   padding:14px 12px; background:linear-gradient(180deg, rgba(22,26,44,.66), rgba(12,18,34,.86));
   border-right:1px solid var(--line)
 }
 .main{padding:22px}
+
+/* 侧栏菜单 */
 .side-menu{display:grid;gap:10px}
 .side-menu a{
   display:flex; align-items:center; gap:12px; padding:12px 14px;
@@ -69,21 +72,14 @@ body{
   box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
 }
 .side-menu a .icon{width:22px;text-align:center}
-.side-menu a:hover{
-  border-color:#3d4f7c; background:rgba(22,30,50,.75);
-  transform: translateY(-1px); transition: transform .12s ease, background .18s ease, border-color .18s ease;
-}
+.side-menu a:hover{border-color:#3d4f7c; background:rgba(22,30,50,.75); transform: translateY(-1px); transition: transform .12s ease, background .18s ease, border-color .18s ease;}
 .side-menu a.active{
   border-color: color-mix(in oklab, var(--gold) 38%, transparent);
-  background:
-    linear-gradient(100deg, color-mix(in oklab, var(--gold) 18%, transparent), color-mix(in oklab, var(--royal) 12%, transparent)),
-    rgba(22,30,50,.88);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in oklab, var(--gold) 26%, transparent),
-    0 12px 28px rgba(0,0,0,.35);
+  background:linear-gradient(100deg, color-mix(in oklab, var(--gold) 18%, transparent), color-mix(in oklab, var(--royal) 12%, transparent)), rgba(22,30,50,.88);
+  box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--gold) 26%, transparent), 0 12px 28px rgba(0,0,0,.35);
 }
 
-/* 概览卡片与通用面板 */
+/* 卡片与面板 */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:14px 0}
 .card,.panel{
   position:relative;
@@ -129,23 +125,13 @@ body{
 
 /* —— 操作列：一排靠右（纯图标 + 紧凑） —— */
 .actions-cell{ text-align:right; }
-.actions-inline{
-  display:flex; justify-content:flex-end; align-items:center;
-  gap:8px; flex-wrap:wrap;
-}
+.actions-inline{ display:flex; justify-content:flex-end; align-items:center; gap:8px; flex-wrap:wrap; }
 .actions-inline form{ margin:0; display:inline-flex; }
-
-/* 纯图标按钮（用于启停/编辑/删除） */
-.btn-icon{
-  width:34px; height:34px; padding:0;
-  border-radius:12px;
-  display:inline-flex; align-items:center; justify-content:center;
-  font-size:16px; line-height:1;
-}
+.btn-icon{ width:34px; height:34px; padding:0; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1; }
 .btn-icon:hover{ transform:translateY(-1px) }
 .btn-icon:active{ transform:translateY(0) }
 
-/* 表格更紧凑 */
+/* 表格 */
 .table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);box-shadow:0 28px 68px rgba(0,0,0,.52)}
 table{border-collapse:separate;border-spacing:0;width:100%}
 th{
@@ -171,7 +157,7 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 .big-close{padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 70%); color:var(--text); cursor:pointer;}
 .big-body{padding:20px}
 
-/* —— 手机端优化：操作列自动折两行 —— */
+/* 手机端优化 */
 @media (max-width: 640px){
   th, td { padding:8px; }
   .actions-inline{ gap:6px; }
@@ -186,17 +172,9 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
   --text:#0b1020; --muted:#5b6780;
   --gold:#c79f2b; --gold-2:#e2b941; --royal:#5e56ff; --emerald:#16a085; --ruby:#d24a64;
 }
-:root[data-theme="light"] .topbar{
-  background:rgba(255,255,255,.84);
-  border-bottom:1px solid var(--line);
-  box-shadow:0 8px 28px rgba(0,0,0,.08);
-}
-:root[data-theme="light"] .sidebar{
-  background:linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.9));
-  border-right:1px solid var(--line);
-}
-:root[data-theme="light"] .card,
-:root[data-theme="light"] .panel{
+:root[data-theme="light"] .topbar{ background:rgba(255,255,255,.84); border-bottom:1px solid var(--line); box-shadow:0 8px 28px rgba(0,0,0,.08); }
+:root[data-theme="light"] .sidebar{ background:linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.9)); border-right:1px solid var(--line); }
+:root[data-theme="light"] .card, :root[data-theme="light"] .panel{
   background:linear-gradient(180deg, rgba(0,0,0,.02), transparent 60%), var(--surface);
   border:1px solid rgba(0,0,0,.06);
   box-shadow:0 10px 30px rgba(0,0,0,.08);
@@ -207,11 +185,7 @@ tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 8px 18px rgba(0,0,0,.08);
   color:var(--text);
 }
-:root[data-theme="light"] th{
-  background:rgba(255,255,255,.92);
-  color:#303a58;
-  border-bottom:1px solid var(--line);
-}
+:root[data-theme="light"] th{ background:rgba(255,255,255,.92); color:#303a58; border-bottom:1px solid var(--line); }
 :root[data-theme="light"] tbody tr:nth-child(even){ background:rgba(0,0,0,.02) }
 """
 
@@ -226,7 +200,7 @@ TEMPLATES = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <!-- ① 先设定主题，避免闪烁 -->
+  <!-- 先设定主题，避免闪烁 -->
   <script>
     (function () {
       try {
@@ -239,8 +213,7 @@ TEMPLATES = {
   </script>
 
   <title>{% block title %}后台 · {{ t.app_name }}{% endblock %}</title>
-  <!-- ② 再加载样式（更新版本号确保刷新缓存） -->
-  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=160">
+  <link rel="stylesheet" href="{{ url_for('static_style') }}?v=170">
 </head>
 <body class="luxury">
   <header class="topbar">
@@ -256,18 +229,22 @@ TEMPLATES = {
     </nav>
   </header>
 
-  <div class="layout">
-    <aside class="sidebar">
-      <nav class="side-menu">
-        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}"><span class="icon">🏠</span>Dashboard</a>
-        <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}"><span class="icon">👨‍💼</span>工人 / 平台</a>
-        <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}"><span class="icon">🏦</span>银行账户</a>
-        <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}"><span class="icon">💳</span>银行卡租金</a>
-        <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}"><span class="icon">💵</span>出粮记录</a>
-        <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}"><span class="icon">💸</span>开销记录</a>
-        <a href="{{ url_for('account_security') }}" class="{{ 'active' if request.path.startswith('/account') or request.path.startswith('/account-security') else '' }}"><span class="icon">🔐</span>安全设置</a>
-      </nav>
-    </aside>
+  {% set is_auth = session.get('user_id') %}
+  <div class="layout {{ '' if is_auth else 'layout-guest' }}">
+    {% if is_auth %}
+      <aside class="sidebar">
+        <nav class="side-menu">
+          <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}"><span class="icon">🏠</span>Dashboard</a>
+          <a href="{{ url_for('workers_list') }}" class="{{ 'active' if request.path.startswith('/workers') else '' }}"><span class="icon">👨‍💼</span>工人 / 平台</a>
+          <a href="{{ url_for('bank_accounts_list') }}" class="{{ 'active' if request.path.startswith('/bank-accounts') else '' }}"><span class="icon">🏦</span>银行账户</a>
+          <a href="{{ url_for('card_rentals_list') }}" class="{{ 'active' if request.path.startswith('/card-rentals') else '' }}"><span class="icon">💳</span>银行卡租金</a>
+          <a href="{{ url_for('salaries_list') }}" class="{{ 'active' if request.path.startswith('/salaries') else '' }}"><span class="icon">💵</span>出粮记录</a>
+          <a href="{{ url_for('expenses_list') }}" class="{{ 'active' if request.path.startswith('/expenses') else '' }}"><span class="icon">💸</span>开销记录</a>
+          <a href="{{ url_for('account_security') }}" class="{{ 'active' if request.path.startswith('/account') or request.path.startswith('/account-security') else '' }}"><span class="icon">🔐</span>安全设置</a>
+        </nav>
+      </aside>
+    {% endif %}
+
     <main class="main">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -312,9 +289,7 @@ TEMPLATES = {
     (function () {
       var btn = document.getElementById('themeToggle');
       if (!btn) return;
-      function currentTheme() {
-        return document.documentElement.getAttribute('data-theme') || 'dark';
-      }
+      function currentTheme() { return document.documentElement.getAttribute('data-theme') || 'dark'; }
       function setIcon() {
         var cur = currentTheme();
         btn.textContent = (cur === 'dark') ? '🌙' : '☀️';
@@ -467,8 +442,7 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('workers_toggle', wid=r.id) }}">
-                <button class="btn btn-icon" type="submit"
-                        title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
+                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
                   {{ '✅' if r.status==1 else '🚫' }}
                 </button>
               </form>
@@ -511,8 +485,7 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('bank_accounts_toggle', bid=r.id) }}">
-                <button class="btn btn-icon" type="submit"
-                        title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
+                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
                   {{ '✅' if r.status==1 else '🚫' }}
                 </button>
               </form>
@@ -555,8 +528,7 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('card_rentals_toggle', rid=r.id) }}">
-                <button class="btn btn-icon" type="submit"
-                        title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
+                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
                   {{ '✅' if r.status==1 else '🚫' }}
                 </button>
               </form>
@@ -598,8 +570,7 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('salaries_toggle', sid=r.id) }}">
-                <button class="btn btn-icon" type="submit"
-                        title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
+                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
                   {{ '✅' if r.status==1 else '🚫' }}
                 </button>
               </form>
@@ -641,8 +612,7 @@ TEMPLATES = {
           <td class="actions-cell">
             <div class="actions-inline">
               <form method="post" action="{{ url_for('expenses_toggle', eid=r.id) }}">
-                <button class="btn btn-icon" type="submit"
-                        title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
+                <button class="btn btn-icon" type="submit" title="{{ '停用' if r.status==1 else '启用' }}" aria-label="{{ '停用' if r.status==1 else '启用' }}">
                   {{ '✅' if r.status==1 else '🚫' }}
                 </button>
               </form>
@@ -958,7 +928,10 @@ def account_change_password_post():
     if require_login(): return require_login()
     old_pw = request.form.get("old_password",""); new_pw = request.form.get("new_password","")
     with conn() as c:
-        u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"],)).fetchone()
+        u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"]),).fetchone()
+        # 兼容：有些 sqlite3 版本不接受单元素 tuple，这里兜底：
+        if not u:
+            u = c.execute("SELECT * FROM users WHERE username=?", (session["user_id"],)).fetchone()
         if not u or not check_password_hash(u["password_hash"], old_pw):
             flash("旧密码不正确", "error"); return redirect(url_for("account_security"))
         c.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new_pw), u["id"]))
